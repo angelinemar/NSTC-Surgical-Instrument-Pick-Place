@@ -1,0 +1,21 @@
+#usda 1.0
+(
+    defaultPrim = "SurgicalInstrumentTable"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+# Normalize the centimeter, Y-up source model for the meter, Z-up workspace.
+# The resulting tabletop is centered in XY and its top is exactly local Z=0.
+def Xform "SurgicalInstrumentTable"
+{
+    def Xform "Model" (
+        prepend references = @./surgical_instrument_table.usd@
+    )
+    {
+        double3 xformOp:translate = (0.05282650887966156, 0.11050403748565586, -1.2010480165481572)
+        float3 xformOp:rotateXYZ = (90, 0, 0)
+        float3 xformOp:scale = (0.01, 0.01, 0.01)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+    }
+}

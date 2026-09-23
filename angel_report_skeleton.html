@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diffusion Policy &amp; Object Detection — Surgical Instrument Pick-and-Place</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root {
+  --navy:       #1D3461;
+  --navy-mid:   #2B4A84;
+  --gold:       #B07A1E;
+  --gold-light: #FBF3E2;
+  --blue-light: #EBF1FB;
+  --blue-mid:   #C5D4EC;
+  --red-accent: #B02A2A;
+  --red-light:  #FDF4F4;
+  --teal:       #1A6B9A;
+  --text:       #252525;
+  --text-soft:  #3D3D3D;
+  --text-muted: #666;
+  --border:     #C5D0E0;
+  --bg:         #FFFFFF;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { background: #F3F5F8; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Merriweather', Georgia, 'Times New Roman', serif;
+  font-size: 13.5px;
+  line-height: 1.9;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 52px 44px 96px;
+  box-shadow: 0 0 48px rgba(0,0,0,0.08);
+  min-height: 100vh;
+}
+
+/* ── EYEBROW & LABELS ── */
+.cover-eyebrow {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+
+.section-label {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 56px;
+  margin-bottom: 6px;
+}
+
+/* ── HEADINGS ── */
+h1 {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 2.05rem;
+  font-weight: 900;
+  line-height: 1.18;
+  color: var(--navy);
+  margin: 20px 0 18px;
+  text-wrap: balance;
+}
+
+h2 {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.42rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 14px;
+  padding-bottom: 9px;
+  border-bottom: 2.5px solid var(--gold);
+  text-wrap: balance;
+}
+
+h3 {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 26px 0 7px;
+  letter-spacing: 0.01em;
+}
+
+h4 {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 14px 0 5px;
+}
+
+/* ── BODY TEXT ── */
+p {
+  color: var(--text-soft);
+  font-size: 0.895rem;
+  margin-bottom: 10px;
+}
+
+.planning-note {
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+/* ── LISTS ── */
+ul, ol {
+  padding-left: 22px;
+  margin-bottom: 10px;
+}
+
+li {
+  color: var(--text-soft);
+  font-size: 0.895rem;
+  margin-bottom: 3px;
+}
+
+li strong { color: var(--text); }
+
+/* ── COVER INFO TABLE ── */
+.cover-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0 22px;
+  font-size: 0.885rem;
+}
+.cover-table td {
+  padding: 4px 0;
+  vertical-align: top;
+}
+.cover-table td:first-child {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: var(--text);
+  width: 170px;
+  padding-right: 12px;
+}
+.cover-table td:last-child {
+  color: var(--text-soft);
+}
+
+/* ── CALLOUT BOXES ── */
+.callout {
+  border-left: 4px solid var(--navy);
+  background: var(--blue-light);
+  padding: 11px 16px;
+  margin: 14px 0;
+  border-radius: 0 4px 4px 0;
+}
+.callout.gold {
+  border-left-color: var(--gold);
+  background: var(--gold-light);
+}
+.callout p { margin: 0; font-size: 0.88rem; }
+.callout h4 { margin: 0 0 5px; }
+.callout ul { margin: 4px 0 0; }
+
+/* ── AUTHOR BOX ── */
+.author-box {
+  border: 1.5px solid var(--red-accent);
+  background: var(--red-light);
+  border-radius: 4px;
+  padding: 11px 15px;
+  margin: 14px 0;
+  font-size: 0.875rem;
+  color: var(--text-soft);
+}
+.author-box strong { color: var(--red-accent); }
+
+/* ── PIPELINE ── */
+.pipeline {
+  background: var(--blue-light);
+  border: 1px solid var(--blue-mid);
+  border-radius: 4px;
+  padding: 14px 18px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem;
+  color: var(--navy);
+  margin: 10px 0;
+  line-height: 2.1;
+}
+
+/* ── REPORT ORDER TABLE ── */
+.order-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.875rem;
+}
+.order-table td {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text-soft);
+}
+.order-table td:first-child {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: var(--navy);
+  width: 200px;
+  padding-right: 16px;
+}
+.order-table tr:last-child td { border-bottom: none; }
+
+/* ── DATA TABLES ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 18px;
+  font-size: 0.83rem;
+}
+.data-table th {
+  background: var(--navy);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  text-align: left;
+  padding: 9px 11px;
+  letter-spacing: 0.01em;
+}
+.data-table td {
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-soft);
+  vertical-align: top;
+}
+.data-table tr:nth-child(even) td { background: var(--blue-light); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table code {
+  font-family: 'Inter', monospace;
+  font-size: 0.8rem;
+  background: var(--blue-mid);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--navy);
+}
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+.badge.impl   { background: #D4EDDA; color: #155724; }
+.badge.verif  { background: #CCE5FF; color: #0C4080; }
+.badge.eval   { background: #FFF3CD; color: #7B5700; }
+
+/* ── NAME COLORS ── */
+.angel  { color: var(--red-accent); font-weight: 700; }
+.jordan { color: var(--teal);       font-weight: 700; }
+
+/* ── HR ── */
+hr.rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 48px 0;
+}
+
+/* ── GUIDE EYEBROW ── */
+.guide-head {
+  display: block;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 40px;
+  margin-bottom: 6px;
+}
+
+@media print {
+  html { background: #fff; }
+  body { box-shadow: none; padding: 24px 28px 48px; }
+  .section-label { margin-top: 36px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     COVER
+════════════════════════════════════════════════════ -->
+<span class="cover-eyebrow">Project Report Planning Guide</span>
+
+<h1>Diffusion Policy and Object Detection for Robotic Surgical-Instrument Pick-and-Place</h1>
+
+<p style="color:var(--text-soft);font-size:0.895rem;margin-bottom:22px;">
+  A section-by-section writing skeleton for the shared simulation environment,
+  synthetic detection data, Diffusion Policy demonstrations, and hybrid manipulation pipeline.
+</p>
+
+<table class="cover-table">
+  <tr><td>Team leader</td><td>Angel &nbsp;/&nbsp; Student ID</td></tr>
+  <tr><td>Team members</td><td>Names &nbsp;/&nbsp; Student IDs</td></tr>
+  <tr><td>Department / course</td><td>Insert if required</td></tr>
+  <tr><td>Date</td><td>Insert submission date</td></tr>
+</table>
+
+<div class="callout">
+  <p><strong>Submission requirement:</strong> do not include or reveal the advisor's name anywhere in the report.</p>
+</div>
+
+<p class="planning-note">Planning document — replace all prompts and placeholders with the team's actual work and measured results.</p>
+
+<span class="guide-head">How to use this guide</span>
+
+<!-- ═══════════════════════════════════════════════════
+     CENTRAL STORY
+════════════════════════════════════════════════════ -->
+<h2>The report's central story</h2>
+
+<p>
+  One spatially randomized simulation environment — designed and implemented entirely by this author —
+  generates data for two connected learning problems: surgical-instrument object detection and
+  Diffusion Policy manipulation. A scripted finite state machine links the learned components
+  into a safer, modular pick-and-place application.
+</p>
+
+<div class="callout">
+  <h4>Central research question</h4>
+  <ul>
+    <li>
+      Can a shared randomized simulation support both instrument detection and Diffusion Policy
+      manipulation, allowing a Franka robot to reliably pick thin surgical instruments with varied
+      geometries and place them into a tray?
+    </li>
+  </ul>
+</div>
+
+<h3>Recommended narrative</h3>
+<ol>
+  <li><strong>Thin surgical instruments</strong> are difficult to grasp: small contact surfaces, high tipping risk, limited table clearance, and instrument-specific balance points that defeat fixed scripted trajectories.</li>
+  <li>A <strong>shared Isaac Lab environment</strong> (ScissorGraspEnv, scripted FSM, and HDF5 recorder — all original contributions by this author) creates varied but controlled scenes with full reproducibility.</li>
+  <li>The environment produces <strong>synthetic detection annotations</strong> (RGB + per-instance segmentation masks) and <strong>robot demonstrations</strong> recorded via the scripted FSM expert.</li>
+  <li><strong>RF-DETR-Seg</strong> is trained on the synthetic data to select and localize the target instrument; the scripted FSM handles predictable global approach and transport.</li>
+  <li><strong>Diffusion Policy</strong> is trained on FSM expert demonstrations and handles the short, contact-rich, visually sensitive pick-lift phase where scripted motion would be brittle.</li>
+  <li>Each component is verified independently before evaluating the complete pick-and-place application end-to-end.</li>
+</ol>
+
+<h3>Suggested report order</h3>
+<table class="order-table">
+  <tr><td>01 Abstract</td><td>Condensed problem, method, and results</td></tr>
+  <tr><td>02 Introduction</td><td>Background, motivation, objectives, and scope</td></tr>
+  <tr><td>03 Related Work</td><td>Detection, Diffusion Policy, simulation, and hybrid control</td></tr>
+  <tr><td>04 Problem and Requirements</td><td>Task, instruments, assumptions, and success criteria</td></tr>
+  <tr><td>05 System Design</td><td>Overall architecture and division of responsibility</td></tr>
+  <tr><td>06 Research Method</td><td>Randomization, data generation, recording, and conversion</td></tr>
+  <tr><td>07 Implementation</td><td>Software modules, Diffusion Policy integration, and runtime control</td></tr>
+  <tr><td>08 Experiments and Results</td><td>Data, detection, manipulation, and full-system evaluation</td></tr>
+  <tr><td>09 Contributions and Teamwork</td><td>What is new and how the team collaborated</td></tr>
+  <tr><td>10 Conclusion</td><td>Findings, limitations, and future work</td></tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 01
+════════════════════════════════════════════════════ -->
+<span class="section-label">Section 01</span>
+<h2>Abstract</h2>
+
+<p><strong>Purpose:</strong> give the reader the complete project in approximately 200–300 words. Write it last, even though it appears first.</p>
+
+<h3>Explain these five items</h3>
+<ol>
+  <li><strong>Problem:</strong> thin surgical instruments have challenging geometries, minimal contact surfaces, limited table clearance, and high tipping risk that make generic scripted grasping unreliable across instrument types.</li>
+  <li><strong>Objective:</strong> create a Franka-based system that uses object detection to locate instruments and Diffusion Policy to execute reliable contact-rich pick-lift interactions, placing instruments safely into a tray.</li>
+  <li><strong>Method:</strong> use Isaac Lab (ScissorGraspEnv, scripted FSM, HDF5 recorder — built by this author), spatial randomization, synthetic RF-DETR-Seg training data, FSM expert demonstrations, and Diffusion Policy training with a robomimic-compatible dataset.</li>
+  <li><strong>System idea:</strong> combine RF-DETR-Seg detection for instrument localization with Diffusion Policy for local contact-rich manipulation, and scripted FSM for predictable global motion.</li>
+  <li><strong>Results:</strong> report verified pipeline results and, after experimentation, detection and manipulation success rates per instrument and scene configuration.</li>
+</ol>
+
+<div class="callout gold">
+  <p><strong>Useful writing pattern:</strong> one or two sentences for the problem, two or three for the method, one or two for the results, and one for the contribution or conclusion.</p>
+</div>
+
+<h3>Do not put in the abstract</h3>
+<ul>
+  <li>Long implementation details, tensor dimensions, or command-line instructions.</li>
+  <li>Claims that Diffusion Policy or RF-DETR-Seg succeed unless task-level experiments have measured that success.</li>
+  <li>Unexplained abbreviations or citations unnecessary to understand the summary.</li>
+</ul>
+
+<h3>Abstract completion checklist</h3>
+<ul>
+  <li>The problem and motivation are understandable without reading the report.</li>
+  <li>The robot, environment, instruments, detection model, and learning approach are all identified.</li>
+  <li>At least one quantitative result is included in the final version.</li>
+  <li>The conclusion matches the evidence presented later in the report.</li>
+</ul>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 02
+════════════════════════════════════════════════════ -->
+<span class="section-label">Section 02</span>
+<h2>Introduction: Background, Motivation, Objectives, and Scope</h2>
+
+<h3>2.1 Background</h3>
+<p>Introduce robotic manipulation, visual perception, and learning from demonstrations. Explain why thin surgical instruments require both precise scene understanding (detection) and highly repeatable contact-rich local interaction (Diffusion Policy) that exceed what scripted motion can reliably deliver.</p>
+
+<h3>2.2 Motivation</h3>
+<p>Explain why the project is worth doing:</p>
+<ul>
+  <li>Thin, flat, curved, or scissor-like geometries are harder to grasp than standard blocks — contact area can be less than a millimetre wide.</li>
+  <li>Insufficient table clearance causes gripper-finger collisions or weak, off-centre contact during descent.</li>
+  <li>An off-centre grasp makes an instrument rotate, slip, or tip immediately after lift.</li>
+  <li>Fully scripted grasping is brittle under position, yaw, and instrument-geometry variation.</li>
+  <li>Diffusion Policy handles multimodal action distributions near contact, where deterministic policies converge to averaging failures.</li>
+  <li>Data-contract errors in HDF5 recordings must be caught before expensive large-scale collection and training begin.</li>
+</ul>
+
+<h3>2.3 Objectives</h3>
+<ul>
+  <li>Create a reusable simulated hospital manipulation environment (ScissorGraspEnv in Isaac Lab).</li>
+  <li>Represent several surgical-instrument geometries and their selected grasp regions in USD assets.</li>
+  <li>Randomize object locations and orientations while maintaining reachability and stability.</li>
+  <li>Generate synthetic RGB + instance-mask data for RF-DETR-Seg training and evaluation.</li>
+  <li>Record scripted FSM expert demonstrations in HDF5 format and convert to a robomimic-compatible dataset.</li>
+  <li>Train and evaluate a Diffusion Policy for the local pick-lift manipulation skill.</li>
+  <li>Integrate RF-DETR-Seg, scripted FSM, and Diffusion Policy into a complete pick-and-place application.</li>
+  <li>Evaluate performance across instruments, scene layouts, and starting-pose perturbations.</li>
+</ul>
+
+<h3>2.4 Scope and assumptions</h3>
+<ul>
+  <li>The robot picks and places instruments; it does not perform medical procedures.</li>
+  <li>The current work is simulation-based and uses a fixed-height table.</li>
+  <li>Initial scenes contain reachable, stable, non-overlapping instruments.</li>
+  <li>Predictable global motion remains scripted via FSM; the contact-rich pick-lift phase is learned via Diffusion Policy.</li>
+</ul>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 03
+════════════════════════════════════════════════════ -->
+<span class="section-label">Section 03</span>
+<h2>Related Work and Technical Comparison</h2>
+
+<p>Use this section to position the project, not merely to summarise papers. For each technology, explain its relevance and its limitation for this specific application.</p>
+
+<table class="data-table">
+  <thead>
+    <tr><th>Area</th><th>What to explain</th><th>Connection to this project</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Scripted manipulation</td>
+      <td>Predefined grasp points, trajectories, IK solvers, and FSM-based closed-loop state machines</td>
+      <td>Handles global approach, transport, safety gates, and generates repeatable expert demonstrations for policy training</td>
+    </tr>
+    <tr>
+      <td>Detection and segmentation</td>
+      <td>Class detection vs per-instance masks; synthetic automatic labels; RT-DETR / RF-DETR-Seg architecture</td>
+      <td>RF-DETR-Seg selects and localizes instruments in cluttered randomized scenes, providing the grasp approach position</td>
+    </tr>
+    <tr>
+      <td>Imitation learning</td>
+      <td>Behavioural cloning; learning action prediction from synchronized expert observations and actions</td>
+      <td>The scripted FSM expert generates successful local demonstrations; Diffusion Policy is trained on these episodes</td>
+    </tr>
+    <tr>
+      <td>Diffusion Policy</td>
+      <td>Denoising diffusion models applied to robot action prediction; UNet and Transformer backbones; action chunking and temporal ensembling (Chi et al., 2023)</td>
+      <td>Diffusion Policy predicts the local pick-lift action sequence from visual observations, correctly handling multimodal action distributions near contact</td>
+    </tr>
+    <tr>
+      <td>Simulation and randomization</td>
+      <td>Automatic data generation, repeatability, domain randomization, and simulation-to-real limitations</td>
+      <td>Isaac Lab (ScissorGraspEnv) provides shared randomized scenes for both the detection and the Diffusion Policy pipelines</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Comparison to possible alternatives</h3>
+
+<table class="data-table">
+  <thead>
+    <tr><th>Approach</th><th>Advantage</th><th>Limitation</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Fully scripted</td>
+      <td>Predictable and easy to inspect; no training data required</td>
+      <td>Brittle under visual and geometric variation; fails on unseen yaw or instrument shape</td>
+    </tr>
+    <tr>
+      <td>End-to-end imitation</td>
+      <td>Can learn the whole trajectory; flexible to novel situations</td>
+      <td>High data demand; scripted phases dilute the training signal; harder to debug failures</td>
+    </tr>
+    <tr>
+      <td>VLA zero-shot (e.g. OpenVLA)</td>
+      <td>No task-specific training; language-conditioned generalization</td>
+      <td>Embodiment and task mismatch may reduce reliability; inference latency may be unsuitable for contact-rich control</td>
+    </tr>
+    <tr>
+      <td>Proposed hybrid (RF-DETR-Seg + FSM + Diffusion Policy)</td>
+      <td>Learning concentrated on the contact-rich phase where it matters most; detection enables instrument-class generalization</td>
+      <td>Requires well-defined FSM-to-policy transitions and integrated testing of all three components</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <p><strong>End this section with your design choice:</strong> the hybrid approach balances adaptability with predictable global motion, modular per-component testing, and explicit success gates at every stage transition.</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTIONS 04–05
+════════════════════════════════════════════════════ -->
+<span class="section-label">Sections 04–05</span>
+<h2>Problem Definition and Overall System Design</h2>
+
+<h3>4.1 Formal task definition</h3>
+<div class="callout">
+  <p>Given a requested instrument in a spatially randomized scene, detect and localize it with RF-DETR-Seg, approach a feasible grasp region via scripted FSM, execute a Diffusion Policy pick-lift, validate lift success, transport the instrument to the tray via scripted FSM, and place it stably.</p>
+</div>
+
+<h3>4.2 Instrument selection</h3>
+<p>For each final instrument, document its shape, selected grasp region, clearance, balance point, and expected failure mode. Include a labeled figure and the comparison table below.</p>
+
+<table class="data-table">
+  <thead>
+    <tr><th>Instrument</th><th>Geometry challenge</th><th>Selected grasp region</th><th>Expected risk</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>[Final name]</td><td>[Flat / slender / curved / scissor-like]</td><td>[Describe location]</td><td>[Slip / tip / table contact]</td></tr>
+    <tr><td>[Final name]</td><td>[Describe]</td><td>[Describe]</td><td>[Describe]</td></tr>
+    <tr><td>[Final name]</td><td>[Describe]</td><td>[Describe]</td><td>[Describe]</td></tr>
+  </tbody>
+</table>
+
+<h3>4.3 Requirements and success criteria</h3>
+<ul>
+  <li>RF-DETR-Seg correctly identifies the target instrument and provides a valid instance mask.</li>
+  <li>Grasp approach position derived from the detection mask is reachable and collision-free.</li>
+  <li>Objects are stable and sufficiently separated after physics settling.</li>
+  <li>Camera, state, action, and timestamp data remain synchronized in every recorded episode.</li>
+  <li>A successful pick-lift reaches the required height and holds the instrument without invalid contact for the required duration.</li>
+  <li>A successful placement releases the instrument inside the tray and leaves it stable after gripper retreat.</li>
+</ul>
+
+<h3>5.1 Complete application pipeline</h3>
+<div class="pipeline">
+  RF-DETR-Seg detect target &rarr; Scripted FSM approach &rarr; Diffusion Policy pick_lift &rarr; Lift check &rarr;<br>
+  Scripted FSM transport &rarr; FSM / DP place &rarr; Place check &rarr; Repeat
+</div>
+
+<h3>5.2 Division of responsibility</h3>
+<ul>
+  <li><strong>RF-DETR-Seg</strong> selects the target instrument and estimates the scene position for the scripted approach.</li>
+  <li><strong>Scripted FSM</strong> handles predictable global motion (approach, transport) and enforces known kinematic constraints.</li>
+  <li><strong>Diffusion Policy</strong> handles the short, visually sensitive, contact-rich pick-lift phase where scripted motion would fail.</li>
+  <li><strong>Success gates</strong> (height check, force check, tray containment) stop failures from propagating into later stages.</li>
+</ul>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 06
+════════════════════════════════════════════════════ -->
+<span class="section-label">Section 06</span>
+<h2>Research Method: Environment and Randomization</h2>
+
+<div class="author-box">
+  <strong>Authorship note — shared infrastructure:</strong> ScissorGraspEnv, the scripted FSM, and the HDF5 recorder described in §6.1–6.8 are original contributions designed and implemented solely by <strong>Angel</strong>. Jordan's OpenVLA track uses the same shared scene-generation API and observation schema without modifying these components.
+</div>
+
+<h3>6.1 Simulation setup</h3>
+<p>Describe the hospital scene, Franka robot, operating table, instrument tray, instrument USD assets, front camera, wrist camera, coordinate frames, physics timestep, control frequency, and workspace boundaries defined in ScissorGraspEnv (Isaac Lab).</p>
+
+<h3>6.2 Scene generation</h3>
+<ol>
+  <li>Select the target instrument class and any distractor instruments for the scene.</li>
+  <li>Sample target and distractor XY positions and yaw angles within the allowed workspace grid.</li>
+  <li>Check minimum separation, grasp reachability, and workspace boundary constraints.</li>
+  <li>Spawn the objects and allow the physics engine to settle for the required number of steps.</li>
+  <li>Reject scenes with overlapping objects or unstable final poses; resample until an accepted scene is found.</li>
+  <li>Save the accepted random seed and full scene metadata for reproducibility.</li>
+</ol>
+
+<h3>6.3 Why randomization matters</h3>
+<ul>
+  <li>Prevents detection and policy training from depending on a single fixed layout.</li>
+  <li>Tests generalization to varied instrument positions and yaw angles.</li>
+  <li>Produces diverse backgrounds and spatial relationships for RF-DETR-Seg training.</li>
+  <li>Allows held-out scene configurations to be generated systematically for evaluation.</li>
+</ul>
+
+<h3>6.4 Evidence to include</h3>
+<ul>
+  <li>Top-down image of the allowed workspace and target-placement grid.</li>
+  <li>Examples of at least three accepted randomized scenes across different instruments.</li>
+  <li>Examples of rejected overlap, reachability, and stability failure cases.</li>
+  <li>Histogram or coverage plot of sampled XY positions and yaw angles.</li>
+  <li>Table of held-out scene seeds and their evaluation conditions.</li>
+</ul>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 06 CONTINUED
+════════════════════════════════════════════════════ -->
+<span class="section-label">Section 06 — continued</span>
+<h2>Research Method: Detection Data and Demonstration Recording</h2>
+
+<h3>6.5 Synthetic detection data (RF-DETR-Seg)</h3>
+<p>Explain how a single simulator frame produces an RGB image and aligned per-instance segmentation mask. Clarify class labels, instance IDs, camera views (front / wrist), annotation format (COCO-style or equivalent), and scene-grouped dataset splitting.</p>
+
+<div class="callout">
+  <p><strong>Important:</strong> keep every camera view of the same scene in the same dataset split. Otherwise, nearly identical layouts can leak from training into validation or test sets, artificially inflating reported detection accuracy.</p>
+</div>
+
+<h3>6.6 Scripted FSM local expert</h3>
+<table class="data-table">
+  <thead>
+    <tr><th>Skill</th><th>Recorded FSM stages</th><th>Success condition</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>pick_lift</code></td>
+      <td>Align over grasp region, descend, close gripper, lift, stable hold</td>
+      <td>Target rises above the lift height threshold and remains held without invalid contact for the required duration</td>
+    </tr>
+    <tr>
+      <td><code>place</code></td>
+      <td>Align over tray, lower, open gripper, retreat</td>
+      <td>Instrument is released inside the tray and remains stable after gripper retreat</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>6.7 Recorded modalities</h3>
+<ul>
+  <li>Front and wrist RGB observations (resolution and frame rate).</li>
+  <li>End-effector position and orientation (7-DOF pose).</li>
+  <li>Joint positions and velocities (7 joints).</li>
+  <li>Gripper width and gripper command.</li>
+  <li>Delta-action vector (EEF position delta + gripper command).</li>
+  <li>Timestamps, episode index, frame index, FSM stage label, success flag, and failure reason metadata.</li>
+</ul>
+
+<h3>6.8 Episode handling</h3>
+<p>Explain when recording begins (after the scripted approach completes and the wrist camera is in position) and ends (after the stable-hold check or place-stability check passes). Explain why transitions inside the recorded skill must remain temporally continuous. Describe how failed episodes are logged and excluded from the Diffusion Policy training set. Clarify why scripted approach and transport phases are excluded from skill-specific training episodes.</p>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTIONS 06–07
+════════════════════════════════════════════════════ -->
+<span class="section-label">Sections 06–07</span>
+<h2>HDF5 Conversion, Diffusion Policy Configuration, and Runtime Integration</h2>
+
+<h3>6.9 Raw-to-robomimic conversion</h3>
+<p>Describe the mapping from raw HDF5 recorded episodes to the robomimic-compatible dataset structure required by the Diffusion Policy training pipeline:</p>
+<ul>
+  <li>Episode and frame indexing (<code>data/demo_N/obs</code>, <code>data/demo_N/actions</code>).</li>
+  <li>Front and wrist image observation keys and storage encoding.</li>
+  <li>Robot-state vector (joint positions, EEF pose, gripper width) and its key names.</li>
+  <li>Action vector definition, units, and normalization bounds.</li>
+  <li>Dataset metadata file: number of episodes, total steps, train/val split, and normalization statistics.</li>
+</ul>
+
+<h3>6.10 Verification before large-scale collection</h3>
+<ul>
+  <li>Images decode at the expected resolution and per-episode frame count.</li>
+  <li>State and action vector dimensions match the Diffusion Policy model configuration file.</li>
+  <li>All values are finite and episode timestamps are strictly ordered.</li>
+  <li>Episode lengths are consistent across image, state, and action arrays.</li>
+  <li>The robomimic data loader reads sample episodes and computes normalization statistics without errors.</li>
+  <li>Visual inspection of rendered rollout videos confirms that recorded actions correspond to the displayed motion.</li>
+</ul>
+
+<h3>7.1 Diffusion Policy training configuration</h3>
+<p>After training is complete, record the exact values used for every hyperparameter.</p>
+
+<table class="data-table">
+  <thead><tr><th>Parameter</th><th>Value / description to report</th></tr></thead>
+  <tbody>
+    <tr><td>Backbone architecture</td><td>CNN-UNet or Transformer (specify which and why)</td></tr>
+    <tr><td>Observation horizon T<sub>o</sub></td><td>[e.g., 2 steps]</td></tr>
+    <tr><td>Action prediction horizon T<sub>p</sub></td><td>[e.g., 16 steps]</td></tr>
+    <tr><td>Action execution horizon T<sub>a</sub></td><td>[e.g., 8 steps]</td></tr>
+    <tr><td>Diffusion inference steps</td><td>[e.g., 100 DDPM / 10 DDIM]</td></tr>
+    <tr><td>Dataset split</td><td>[N episodes total — XX% train, XX% val]</td></tr>
+    <tr><td>Batch size / learning rate</td><td>[e.g., 256 / 1e-4 with cosine decay]</td></tr>
+    <tr><td>Training epochs / steps</td><td>[e.g., 3,000 epochs]</td></tr>
+    <tr><td>EMA decay rate</td><td>[e.g., 0.9999]</td></tr>
+    <tr><td>Hardware</td><td>[GPU model, VRAM, wall-clock training time]</td></tr>
+    <tr><td>Checkpoint selection rule</td><td>[lowest validation MSE / best pick-lift success on held-out episodes]</td></tr>
+  </tbody>
+</table>
+
+<h3>7.2 Runtime integration</h3>
+<p>Explain that Isaac Lab (simulation) and Diffusion Policy inference run in separate Python environments. At each control step the simulator sends the stacked observation window (front RGB, wrist RGB, robot state) to the Diffusion Policy inference server, which returns an action chunk. Before execution the runtime controller validates that all values are finite, reference frames are correct, rotation quaternions are unit-normalised, and action magnitudes are within defined workspace limits.</p>
+
+<div class="callout">
+  <p><strong>Reporting rule:</strong> successful dataset loading or client–server communication proves interface compatibility; it does not prove successful object manipulation. Report manipulation success rates only from actual execution trials.</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 08
+════════════════════════════════════════════════════ -->
+<span class="section-label">Section 08</span>
+<h2>Experimental Design and Performance Evaluation</h2>
+
+<p>Organise experiments around questions rather than presenting one undifferentiated results table.</p>
+
+<table class="data-table">
+  <thead>
+    <tr><th>Experiment</th><th>Question</th><th>Suggested measures</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Data integrity</td>
+      <td>Is the HDF5 dataset structurally and temporally correct?</td>
+      <td>Episode acceptance rate, missing frame count, dimension validation pass rate, robomimic loader pass rate</td>
+    </tr>
+    <tr>
+      <td>Scene generation</td>
+      <td>Does randomization cover the intended workspace safely?</td>
+      <td>XY / yaw coverage fraction, scene rejection rate, reachability fraction, overlap rate</td>
+    </tr>
+    <tr>
+      <td>Detection (RF-DETR-Seg)</td>
+      <td>Can the target instrument be detected and segmented in held-out scenes?</td>
+      <td>Precision, recall, mAP@0.5, mask IoU, per-instrument-class results</td>
+    </tr>
+    <tr>
+      <td>Pick-lift skill (DP)</td>
+      <td>Can Diffusion Policy grasp, lift, and hold the instrument reliably?</td>
+      <td>Pick-lift success rate, stable-hold rate, per-instrument success rate, action MSE on held-out episodes</td>
+    </tr>
+    <tr>
+      <td>Place skill</td>
+      <td>Can the instrument be placed stably in the tray?</td>
+      <td>Place success rate, tray containment rate, stability after gripper retreat</td>
+    </tr>
+    <tr>
+      <td>Complete system</td>
+      <td>Do RF-DETR-Seg, FSM, and Diffusion Policy work together end-to-end?</td>
+      <td>End-to-end success rate, average completion time, stage at which failures most commonly occur</td>
+    </tr>
+    <tr>
+      <td>Generalization</td>
+      <td>Does performance hold outside training scene configurations?</td>
+      <td>Held-out position, yaw, start-pose, and instrument success rates vs. training-distribution results</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Useful comparisons</h3>
+<ul>
+  <li>Scripted local grasp versus Diffusion Policy pick-lift on the same instrument and scene.</li>
+  <li>Front camera only versus front + wrist cameras as Diffusion Policy observation input.</li>
+  <li>CNN-UNet Diffusion Policy versus Transformer Diffusion Policy (if both are trained).</li>
+  <li>Nominal approach pose versus perturbed start poses (±X cm, ±Y°).</li>
+  <li>Training scene configurations versus grouped held-out configurations.</li>
+</ul>
+
+<div class="callout">
+  <p><strong>Recommended primary metrics:</strong> report separately — detection success rate, pick_lift success rate, place success rate, and complete-cycle success rate. A complete cycle succeeds only when every required stage succeeds in the same trial.</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTIONS 08–09
+════════════════════════════════════════════════════ -->
+<span class="section-label">Sections 08–09</span>
+<h2>Results, Failure Analysis, Contributions, and Teamwork</h2>
+
+<h3>8.1 Current verified results</h3>
+<p>Use careful evidence labels throughout:</p>
+<ul>
+  <li><span class="badge impl">Implemented</span> The component exists in the system.</li>
+  <li><span class="badge verif">Verified</span> The component passed a defined technical test.</li>
+  <li><span class="badge eval">To evaluate</span> Repeated task trials and quantitative results are still required.</li>
+</ul>
+
+<p>Possible verified pipeline evidence includes: camera render resolution, HDF5 schema consistency, robomimic loader compatibility, Diffusion Policy inference round-trip latency, RF-DETR-Seg training convergence curves, and shadow-mode rollout validation. Add task success rates only after actual execution trials.</p>
+
+<h3>8.2 Failure taxonomy</h3>
+<ul>
+  <li>Wrong instrument class detected or detection confidence below the operating threshold.</li>
+  <li>Grasp approach position derived from the mask is unreachable or causes a collision.</li>
+  <li>Insufficient table clearance during gripper descent phase.</li>
+  <li>Off-centre Diffusion Policy action: instrument rotates, slips, or tips during lift.</li>
+  <li>Instrument dropped during scripted transport phase (out-of-grasp trajectory disturbance).</li>
+  <li>Placement outside tray boundary or instrument unstable after gripper opens.</li>
+  <li>Invalid Diffusion Policy action chunk: NaN values, workspace limit violation, or inference timeout.</li>
+</ul>
+<p>For each failure category, present frequency across trials, likely root cause, and a proposed remediation.</p>
+
+<h3>9.1 Original contributions — Angel</h3>
+
+<div class="author-box">
+  <strong>The following components are original work by Angel and constitute the shared infrastructure that both project tracks depend on.</strong>
+</div>
+
+<ul>
+  <li><strong>ScissorGraspEnv</strong> — a reusable spatially randomized Isaac Lab simulation environment for thin surgical-instrument manipulation, including scene generation, reachability checking, and physics settling.</li>
+  <li><strong>Scripted FSM expert</strong> — a multi-stage finite state machine that generates valid, reproducible pick-lift and place demonstrations for imitation learning.</li>
+  <li><strong>HDF5 recorder and conversion pipeline</strong> — synchronous multi-modal recording (RGB, state, action, FSM stage, metadata) and robomimic-compatible dataset export with normalization statistics.</li>
+  <li><strong>Synthetic detection dataset</strong> — automatically annotated RGB + per-instance segmentation data generated from ScissorGraspEnv for RF-DETR-Seg training.</li>
+  <li><strong>RF-DETR-Seg training and evaluation</strong> — detection model trained on the synthetic surgical-instrument dataset and evaluated on held-out scenes.</li>
+  <li><strong>Diffusion Policy training and evaluation</strong> — pick-lift manipulation policy trained on FSM expert demonstrations and evaluated per instrument and scene configuration.</li>
+  <li><strong>Hybrid runtime integration</strong> — detection → scripted FSM → Diffusion Policy pipeline with cross-process communication and pre-execution action validation.</li>
+</ul>
+
+<h3>9.2 Team cooperation</h3>
+<p>State the actual division of work and provide evidence of shared interfaces, integration testing, and problem resolution.</p>
+
+<table class="data-table">
+  <thead>
+    <tr><th>Member</th><th>Responsibility</th><th>Deliverable / evidence</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="angel">Angel</span></td>
+      <td>Environment, FSM, recorder, detection pipeline (RF-DETR-Seg), Diffusion Policy pipeline, hybrid runtime integration</td>
+      <td>ScissorGraspEnv code, FSM stage definitions, HDF5 schema, RF-DETR-Seg training logs and mAP curves, DP training logs and pick-lift success rates, evaluation results</td>
+    </tr>
+    <tr>
+      <td><span class="jordan">Jordan</span></td>
+      <td>OpenVLA adaptation (documented in a separate report) — uses the shared environment interface and observation schema without modifying shared infrastructure</td>
+      <td>OpenVLA fine-tuning scripts and evaluation results (see Jordan's report)</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SECTION 10
+════════════════════════════════════════════════════ -->
+<span class="section-label">Section 10</span>
+<h2>Limitations, Future Work, Conclusion, and References</h2>
+
+<h3>10.1 Limitations</h3>
+<ul>
+  <li>Simulation-only results do not yet demonstrate real-world Franka performance.</li>
+  <li>The instrument set and scene conditions evaluated are limited in number and variety.</li>
+  <li>Lighting, texture, physics, and camera differences may create a sim-to-real gap for both RF-DETR-Seg and Diffusion Policy.</li>
+  <li>Diffusion Policy training and statistically meaningful task evaluation may still be incomplete at the time of submission.</li>
+  <li>Detection-to-manipulation integration may require further closed-loop testing before reporting complete-cycle results.</li>
+</ul>
+
+<h3>10.2 Future work</h3>
+<ul>
+  <li>Collect a larger, class-balanced demonstration dataset and retrain Diffusion Policy with temporal ensembling.</li>
+  <li>Evaluate additional instrument geometries including curved, hinged, and non-parallel designs.</li>
+  <li>Apply domain randomization (textures, lighting, camera pose, friction, mass) to reduce the sim-to-real gap.</li>
+  <li>Add recovery behaviors after detection failure, unreachable grasp, or pick-lift failure.</li>
+  <li>Transfer and validate the full pipeline on a real Franka Emika Panda robot.</li>
+</ul>
+
+<h3>10.3 Conclusion</h3>
+<p>Restate the problem, summarise the shared environment and the hybrid RF-DETR-Seg + FSM + Diffusion Policy system, explain why concentrating learned behaviour on the contact-rich local phase was the key design decision, report the most important measured findings, and state what remains to be done. Do not introduce new methods or results in this section.</p>
+
+<h3>References</h3>
+<p>Include primary sources for: Diffusion Policy (Chi et al., 2023); Isaac Lab and Isaac Sim (NVIDIA); RF-DETR / RF-DETR-Seg (Roboflow); robomimic (Mandlekar et al.); imitation learning and behavioural cloning; domain randomization; robotic grasping of thin or deformable objects; and any other methods directly used in the project. Use one citation style consistently throughout the report.</p>
+
+<h3>Recommended appendices</h3>
+<ul>
+  <li>HDF5 observation and action schema (key names, tensor shapes, dtypes, units).</li>
+  <li>Dataset directory structure and robomimic modality configuration JSON.</li>
+  <li>Instrument profiles: grasp offsets, FSM stage parameters, and USD asset paths.</li>
+  <li>Diffusion Policy full training configuration and hardware specification.</li>
+  <li>Additional per-instrument results, detection confusion matrices, and failure-mode examples.</li>
+</ul>
+
+<hr class="rule">
+
+<!-- ═══════════════════════════════════════════════════
+     CONSISTENCY CHECKLIST
+════════════════════════════════════════════════════ -->
+<span class="guide-head">Before writing the final report</span>
+<h2>Project Consistency Checklist</h2>
+
+<p>The planned architecture and the current implementation may have evolved. Resolve every item below once and use the same definitions throughout the report, figures, dataset, and experiments.</p>
+
+<table class="data-table">
+  <thead>
+    <tr><th>Decision</th><th>Planned concept</th><th>Current implementation / question to resolve</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Learned skills</td>
+      <td>Diffusion Policy learns pick_lift; placement is scripted or also learned</td>
+      <td>Is the final project evaluating only <code>pick_lift</code>, or both <code>pick_lift</code> and <code>place</code> via DP?</td>
+    </tr>
+    <tr>
+      <td>Instrument set</td>
+      <td>Mayo scissors, Metzenbaum scissors, Brown forceps, Ragnell retractor, scalpel handle</td>
+      <td>Use the exact instrument names and USD asset paths present in the final HDF5 dataset</td>
+    </tr>
+    <tr>
+      <td>Detection scope</td>
+      <td>RF-DETR-Seg detects all scene instruments and selects the target class</td>
+      <td>State whether RF-DETR-Seg is fully integrated with the runtime, evaluated standalone, or described as planned work</td>
+    </tr>
+    <tr>
+      <td>DP observation</td>
+      <td>Front + wrist RGB, robot state (joint positions, EEF pose, gripper width)</td>
+      <td>Confirm exact HDF5 observation keys, image resolution, and stacking depth used in the final trained model</td>
+    </tr>
+    <tr>
+      <td>Claims</td>
+      <td>Complete integrated pick-and-place application</td>
+      <td>Clearly separate the intended architecture from the components that have been implemented and quantitatively evaluated</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Final evidence checklist</h3>
+<ul>
+  <li>Every reported success rate states the number of trials and the exact evaluation conditions.</li>
+  <li>Training, validation, and test scenes are scene-grouped to avoid layout leakage into RF-DETR-Seg evaluation.</li>
+  <li>Data-format verification is not described as task-performance success.</li>
+  <li>Scripted baseline and Diffusion Policy results are labelled separately.</li>
+  <li>Figures show the actual system (simulation renders, training curves, detection masks) rather than only conceptual diagrams.</li>
+  <li>Limitations and unsuccessful cases are discussed honestly and with quantified frequency where possible.</li>
+  <li>No advisor name appears anywhere in the document.</li>
+</ul>
+
+<div class="callout">
+  <p><strong>One-sentence report message:</strong> this project designs and validates a shared simulation-to-learning pipeline in which a randomized Isaac Lab environment (built entirely by this author) supplies synthetic data for RF-DETR-Seg detection and Diffusion Policy manipulation, enabling a Franka robot to pick and place varied thin surgical instruments with a modular, verifiable system.</p>
+</div>
+
+</body>
+</html>

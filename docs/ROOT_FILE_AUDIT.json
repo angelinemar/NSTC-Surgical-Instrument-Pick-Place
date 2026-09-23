@@ -1,0 +1,675 @@
+{
+  "method": "Text references plus manual review of CLI dynamic dispatch and migration side effects. Missing references alone never authorizes deletion.",
+  "entries": [
+    {
+      "root_entry": "apply_front_tray_camera_live.py",
+      "canonical": "scripts/tools/apply_front_tray_camera_live.py",
+      "references": [],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "check_h5_consistency.py",
+      "canonical": "scripts/tools/check_h5_consistency.py",
+      "references": [
+        "scripts\\p4.py"
+      ],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "control_panel.py",
+      "canonical": "src/ui/control_panel.py",
+      "references": [
+        "README.md",
+        "env\\phase4_scene.py",
+        "scripts\\p4.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "tests\\legacy\\test_panel_dashboard.py",
+        "tests\\legacy\\test_panel_output.py",
+        "tests\\legacy\\test_panel_retry.py",
+        "tests\\legacy\\test_panel_tabs.py",
+        "debug\\validation\\inspect_completed.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "inspect_episode_h5.py",
+      "canonical": "scripts/tools/inspect_episode_h5.py",
+      "references": [],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "make_all_camera_gif.py",
+      "canonical": "scripts/tools/make_all_camera_gif.py",
+      "references": [
+        "run_all_v2_test.ps1"
+      ],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "make_all_camera_semantic_gif.py",
+      "canonical": "scripts/tools/make_all_camera_semantic_gif.py",
+      "references": [
+        "run_all_v2_test.ps1"
+      ],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "object_handlers.py",
+      "canonical": "src/entry/object_handlers.py",
+      "references": [
+        "src\\entry\\record.py",
+        "src\\entry\\runner.py",
+        "scripts\\check_structure.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\prepare_p4.py",
+        "scripts\\tools\\verify_migration.py",
+        "tests\\legacy\\test_tray_slots.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase3_camera_tuning.py",
+      "canonical": "env/phase3_camera_tuning.py",
+      "references": [
+        "src\\entry\\runner.py",
+        "env\\phase3_recorder_camera_patch.py",
+        "backends\\phase3_grid_split_kelly_recorder.py",
+        "backends\\phase3_grid_split_love_retractor_recorder.py",
+        "backends\\phase3_grid_split_scalpel_recorder.py",
+        "backends\\phase3_grid_split_scalpel_type2_recorder.py",
+        "backends\\phase3_grid_split_scissor_recorder.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\prepare_p4.py",
+        "scripts\\tools\\verify_migration.py",
+        "tests\\legacy\\test_camera_names.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase3_recorder_camera_patch.py",
+      "canonical": "env/phase3_recorder_camera_patch.py",
+      "references": [
+        "src\\entry\\runner.py",
+        "backends\\phase3_grid_split_kelly_recorder.py",
+        "backends\\phase3_grid_split_love_retractor_recorder.py",
+        "backends\\phase3_grid_split_scalpel_recorder.py",
+        "backends\\phase3_grid_split_scalpel_type2_recorder.py",
+        "backends\\phase3_grid_split_scissor_recorder.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\prepare_p4.py",
+        "scripts\\tools\\verify_migration.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase3_run_metrics.py",
+      "canonical": "src/recorder/phase3_run_metrics.py",
+      "references": [
+        "src\\entry\\runner.py",
+        "src\\recorder\\phase4_metrics.py",
+        "backends\\phase3_grid_split_kelly_recorder.py",
+        "backends\\phase3_grid_split_love_retractor_recorder.py",
+        "backends\\phase3_grid_split_scalpel_recorder.py",
+        "backends\\phase3_grid_split_scalpel_type2_recorder.py",
+        "backends\\phase3_grid_split_scissor_recorder.py",
+        "scripts\\tools\\prepare_p4.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase3_settle_contract.py",
+      "canonical": "src/recorder/phase3_settle_contract.py",
+      "references": [
+        "src\\recorder\\phase4_runtime.py",
+        "backends\\phase3_grid_split_kelly_recorder.py",
+        "backends\\phase3_grid_split_love_retractor_recorder.py",
+        "backends\\phase3_grid_split_scalpel_recorder.py",
+        "backends\\phase3_grid_split_scalpel_type2_recorder.py",
+        "backends\\phase3_grid_split_scissor_recorder.py",
+        "scripts\\tools\\prepare_p4.py",
+        "tests\\test_settle_continuation.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase3_shared_env_cfg.py",
+      "canonical": "env/phase3_shared_env_cfg.py",
+      "references": [
+        "src\\entry\\runner.py",
+        "src\\recorder\\phase4_cell_spawn.py",
+        "src\\ui\\phase4_camera_preview.py",
+        "env\\phase3_recorder_camera_patch.py",
+        "env\\phase4_scene.py",
+        "backends\\phase3_grid_split_kelly_recorder.py",
+        "backends\\phase3_grid_split_love_retractor_recorder.py",
+        "backends\\phase3_grid_split_scalpel_recorder.py",
+        "backends\\phase3_grid_split_scalpel_type2_recorder.py",
+        "backends\\phase3_grid_split_scissor_recorder.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\preview_env.py",
+        "scripts\\tools\\verify_migration.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_approach.py",
+      "canonical": "src/recorder/phase4_approach.py",
+      "references": [
+        "src\\recorder\\phase4_feedback.py",
+        "env\\phase4_scene.py",
+        "tests\\test_scale_contracts.py",
+        "tests\\legacy\\test_near_base_approach.py",
+        "training\\runtime.py",
+        "debug\\validation\\approach_fix_20260916_v14\\validate_near_base.py",
+        "debug\\validation\\approach_matrix\\diagnose_wrist_path.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_camera_names.py",
+      "canonical": "env/phase4_camera_names.py",
+      "references": [
+        "src\\ui\\phase4_camera_preview.py",
+        "env\\phase3_camera_tuning.py",
+        "env\\phase4_scene.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\verify_migration.py",
+        "tests\\legacy\\test_camera_names.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_camera_preview.py",
+      "canonical": "src/ui/phase4_camera_preview.py",
+      "references": [
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\preview_env.py",
+        "tests\\legacy\\test_camera_names.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_cell_spawn.py",
+      "canonical": "src/recorder/phase4_cell_spawn.py",
+      "references": [
+        "src\\recorder\\phase4_runtime.py",
+        "src\\recorder\\phase4_session.py",
+        "env\\phase4_scene.py",
+        "scripts\\tools\\verify_cell_spawn.py",
+        "tests\\legacy\\test_grasp_evidence.py",
+        "tests\\legacy\\test_grid_coverage.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_coverage.py",
+      "canonical": "src/recorder/phase4_coverage.py",
+      "references": [
+        "README.md",
+        "src\\entry\\runner.py",
+        "src\\recorder\\phase4_session.py",
+        "src\\ui\\control_panel.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_grid_coverage.py",
+        "tests\\legacy\\test_panel_tabs.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_feedback.py",
+      "canonical": "src/recorder/phase4_feedback.py",
+      "references": [
+        "README.md",
+        "src\\entry\\record.py",
+        "src\\recorder\\phase4_fsm.py",
+        "env\\phase4_scene.py",
+        "scripts\\tools\\validate_feedback_dataset.py",
+        "tests\\legacy\\test_grid_coverage.py",
+        "tests\\legacy\\test_near_base_approach.py",
+        "tests\\legacy\\test_phase4_fsm.py",
+        "tests\\legacy\\test_tray_slots.py",
+        "debug\\validation\\approach_matrix\\audit_training_topics.py",
+        "debug\\validation\\approach_matrix\\run_case.py",
+        "debug\\validation\\harnesses\\test_empty_live.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_fsm.py",
+      "canonical": "src/recorder/phase4_fsm.py",
+      "references": [
+        "src\\recorder\\phase4_runtime.py",
+        "env\\phase4_scene.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_grasp_validation.py",
+      "canonical": "src/recorder/phase4_grasp_validation.py",
+      "references": [
+        "src\\recorder\\phase4_cell_spawn.py",
+        "src\\recorder\\phase4_feedback.py",
+        "src\\recorder\\phase4_reset.py",
+        "src\\recorder\\phase4_tray_slots.py",
+        "src\\ui\\phase4_panel_geometry.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_grasp_evidence.py",
+        "tests\\legacy\\test_panel_retry.py",
+        "tests\\legacy\\test_tray_slots.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_metrics.py",
+      "canonical": "src/recorder/phase4_metrics.py",
+      "references": [
+        "src\\entry\\runner.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_grasp_evidence.py",
+        "tests\\legacy\\test_tray_slots.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_panel_geometry.py",
+      "canonical": "src/ui/phase4_panel_geometry.py",
+      "references": [
+        "src\\recorder\\phase4_runtime.py",
+        "env\\phase4_scene.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_panel_log.py",
+      "canonical": "src/ui/phase4_panel_log.py",
+      "references": [
+        "src\\ui\\control_panel.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_grid_coverage.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_panel_state.py",
+      "canonical": "src/ui/phase4_panel_state.py",
+      "references": [
+        "src\\ui\\control_panel.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_panel_dashboard.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_panel_widgets.py",
+      "canonical": "src/ui/phase4_panel_widgets.py",
+      "references": [
+        "src\\ui\\control_panel.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_panel_tabs.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_reset.py",
+      "canonical": "src/recorder/phase4_reset.py",
+      "references": [
+        "src\\recorder\\phase4_feedback.py",
+        "src\\recorder\\phase4_runtime.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_panel_retry.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_runtime.py",
+      "canonical": "src/recorder/phase4_runtime.py",
+      "references": [
+        "README.md",
+        "env\\phase3_shared_env_cfg.py",
+        "env\\phase4_scene.py",
+        "tests\\test_settle_continuation.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_scene.py",
+      "canonical": "env/phase4_scene.py",
+      "references": [
+        "README.md",
+        "src\\entry\\runner.py",
+        "src\\recorder\\phase4_cell_spawn.py",
+        "src\\recorder\\phase4_feedback.py",
+        "src\\recorder\\phase4_fsm.py",
+        "src\\recorder\\phase4_session.py",
+        "src\\recorder\\phase4_tray_slots.py",
+        "env\\phase3_shared_env_cfg.py",
+        "env\\phase4_scene.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\preview_env.py",
+        "scripts\\tools\\verify_cell_spawn.py",
+        "scripts\\tools\\verify_migration.py",
+        "tests\\legacy\\test_grid_coverage.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_session.py",
+      "canonical": "src/recorder/phase4_session.py",
+      "references": [
+        "src\\entry\\runner.py",
+        "src\\recorder\\phase4_cell_spawn.py",
+        "src\\recorder\\phase4_feedback.py",
+        "src\\recorder\\phase4_runtime.py",
+        "src\\ui\\control_panel.py",
+        "env\\phase4_scene.py",
+        "tests\\legacy\\test_grasp_evidence.py",
+        "tests\\legacy\\test_grid_coverage.py",
+        "tests\\legacy\\test_panel_retry.py",
+        "debug\\validation\\approach_fix_20260916_v14\\validate_near_base.py",
+        "debug\\validation\\approach_matrix\\run_case.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_storage.py",
+      "canonical": "src/recorder/phase4_storage.py",
+      "references": [
+        "src\\recorder\\phase4_coverage.py",
+        "src\\recorder\\phase4_feedback.py",
+        "tests\\test_scale_contracts.py",
+        "training\\export_sensor_only.py",
+        "debug\\validation\\approach_matrix\\audit_current_consistency.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "phase4_tray_slots.py",
+      "canonical": "src/recorder/phase4_tray_slots.py",
+      "references": [
+        "README.md",
+        "src\\recorder\\phase4_cell_spawn.py",
+        "src\\recorder\\phase4_feedback.py",
+        "src\\recorder\\phase4_reset.py",
+        "src\\recorder\\phase4_runtime.py",
+        "src\\recorder\\phase4_session.py",
+        "src\\ui\\phase4_panel_geometry.py",
+        "env\\phase4_scene.py",
+        "scripts\\tools\\validate_feedback_dataset.py",
+        "tests\\legacy\\test_phase4_fsm.py",
+        "tests\\legacy\\test_tray_slots.py",
+        "debug\\validation\\approach_matrix\\audit_episode_pairs.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "prepare_p4.py",
+      "canonical": "scripts/tools/prepare_p4.py",
+      "references": [
+        "README.md"
+      ],
+      "role": "CLI tool entry",
+      "disposition": "removed_obsolete_migration"
+    },
+    {
+      "root_entry": "preview_env.py",
+      "canonical": "scripts/tools/preview_env.py",
+      "references": [
+        "view_env.ps1"
+      ],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "record.py",
+      "canonical": "src/entry/record.py",
+      "references": [
+        "run_all_v2_test.ps1",
+        "run_recorder.ps1",
+        "README.md",
+        "src\\entry\\object_handlers.py",
+        "src\\entry\\record.py",
+        "src\\entry\\runner.py",
+        "src\\recorder\\phase3_run_metrics.py",
+        "src\\recorder\\phase3_settle_contract.py",
+        "src\\recorder\\phase4_cell_spawn.py",
+        "src\\recorder\\phase4_feedback.py",
+        "src\\recorder\\phase4_fsm.py",
+        "src\\recorder\\phase4_metrics.py",
+        "src\\recorder\\phase4_reset.py",
+        "src\\recorder\\phase4_runtime.py",
+        "src\\recorder\\phase4_session.py",
+        "src\\recorder\\phase4_tray_slots.py",
+        "src\\ui\\control_panel.py",
+        "src\\ui\\phase4_camera_preview.py",
+        "src\\ui\\phase4_panel_log.py",
+        "src\\ui\\phase4_panel_state.py",
+        "src\\ui\\phase4_panel_widgets.py",
+        "env\\phase3_recorder_camera_patch.py",
+        "env\\phase3_shared_env_cfg.py",
+        "env\\phase4_scene.py",
+        "backends\\phase3_grid_split_kelly_recorder.py",
+        "backends\\phase3_grid_split_love_retractor_recorder.py",
+        "backends\\phase3_grid_split_scalpel_recorder.py",
+        "backends\\phase3_grid_split_scalpel_type2_recorder.py",
+        "backends\\phase3_grid_split_scissor_recorder.py",
+        "scripts\\check_structure.py",
+        "scripts\\p4.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\apply_front_tray_camera_live.py",
+        "scripts\\tools\\check_h5_consistency.py",
+        "scripts\\tools\\prepare_p4.py",
+        "scripts\\tools\\preview_env.py",
+        "scripts\\tools\\validate_feedback_dataset.py",
+        "scripts\\tools\\verify_migration.py",
+        "tests\\test_scale_contracts.py",
+        "tests\\legacy\\test_camera_names.py",
+        "tests\\legacy\\test_grid_coverage.py",
+        "tests\\legacy\\test_near_base_approach.py",
+        "tests\\legacy\\test_panel_dashboard.py",
+        "tests\\legacy\\test_phase4_fsm.py",
+        "tests\\legacy\\test_tray_slots.py",
+        "training\\audit_robot_fk.py",
+        "training\\runtime.py",
+        "training\\verify_pipeline.py",
+        "debug\\validation\\inspect_completed.py",
+        "debug\\validation\\approach_fix_20260916_v14\\validate_near_base.py",
+        "debug\\validation\\approach_matrix\\audit_current_consistency.py",
+        "debug\\validation\\approach_matrix\\audit_episode_pairs.py",
+        "debug\\validation\\approach_matrix\\audit_training_topics.py",
+        "debug\\validation\\approach_matrix\\benchmark_all.py",
+        "debug\\validation\\approach_matrix\\diagnose_wrist_ik.py",
+        "debug\\validation\\approach_matrix\\diagnose_wrist_path.py",
+        "debug\\validation\\approach_matrix\\run_case.py",
+        "debug\\validation\\approach_matrix\\summarize_followup.py",
+        "debug\\validation\\approach_matrix\\write_training_report.py",
+        "debug\\validation\\harnesses\\test_empty_live.py",
+        "debug\\validation\\harnesses\\test_far_manual.py",
+        "debug\\validation\\harnesses\\test_panel_retry.py",
+        "debug\\validation\\harnesses\\test_tray_manual.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "runner.py",
+      "canonical": "src/entry/runner.py",
+      "references": [
+        "src\\entry\\record.py",
+        "src\\entry\\runner.py",
+        "env\\phase4_scene.py",
+        "scripts\\check_structure.py",
+        "scripts\\maintenance\\organize_workspace.py",
+        "scripts\\tools\\verify_migration.py",
+        "debug\\validation\\inspect_completed.py"
+      ],
+      "role": "runtime/import entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_camera_names.py",
+      "canonical": "tests/legacy/test_camera_names.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_grasp_evidence.py",
+      "canonical": "tests/legacy/test_grasp_evidence.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_grid_coverage.py",
+      "canonical": "tests/legacy/test_grid_coverage.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_near_base_approach.py",
+      "canonical": "tests/legacy/test_near_base_approach.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_panel_dashboard.py",
+      "canonical": "tests/legacy/test_panel_dashboard.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_panel_output.py",
+      "canonical": "tests/legacy/test_panel_output.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_panel_retry.py",
+      "canonical": "tests/legacy/test_panel_retry.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_panel_tabs.py",
+      "canonical": "tests/legacy/test_panel_tabs.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_phase4_fsm.py",
+      "canonical": "tests/legacy/test_phase4_fsm.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "test_tray_slots.py",
+      "canonical": "tests/legacy/test_tray_slots.py",
+      "references": [],
+      "role": "legacy test command",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "validate_feedback_dataset.py",
+      "canonical": "scripts/tools/validate_feedback_dataset.py",
+      "references": [
+        "README.md",
+        "src\\recorder\\phase4_storage.py",
+        "tests\\test_scale_contracts.py",
+        "tests\\legacy\\test_grid_coverage.py",
+        "debug\\validation\\inspect_completed.py",
+        "debug\\validation\\approach_matrix\\benchmark_all.py"
+      ],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "validate_rgb_h5.py",
+      "canonical": "scripts/tools/validate_rgb_h5.py",
+      "references": [
+        "README.md"
+      ],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "verify_camera_layout_live.py",
+      "canonical": "scripts/tools/verify_camera_layout_live.py",
+      "references": [],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "verify_cell_spawn.py",
+      "canonical": "scripts/tools/verify_cell_spawn.py",
+      "references": [],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    },
+    {
+      "root_entry": "verify_migration.py",
+      "canonical": "scripts/tools/verify_migration.py",
+      "references": [],
+      "role": "CLI tool entry",
+      "disposition": "retained"
+    }
+  ],
+  "reviewed_obsolete": [
+    {
+      "path": "prepare_p4.py",
+      "sha256": "444daf4712d1b27426cd79f9f5c3dfebd308ff0a802452c12e17c44ad45bba52",
+      "reason": "Completed one-time migration; no runtime/test/validation callers; not required for recording or training",
+      "deleted_verified": true
+    },
+    {
+      "path": "scripts/tools/prepare_p4.py",
+      "sha256": "d31c965a7e15f1aca6f4a688323aec02a0e4816b81b6cc27d8f45a71cba99c24",
+      "reason": "Completed one-time migration; no runtime/test/validation callers; not required for recording or training",
+      "deleted_verified": true
+    },
+    {
+      "path": "scripts/maintenance/organize_workspace.py",
+      "sha256": "52384c80dc1be9a891fe9138606a7cda282c18d949173d9b5c654c9f98fcf063",
+      "reason": "Completed one-time migration; no runtime/test/validation callers; not required for recording or training",
+      "deleted_verified": true
+    }
+  ],
+  "remaining_root_wrappers": 49
+}

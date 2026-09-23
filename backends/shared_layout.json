@@ -1,0 +1,28 @@
+{
+  "robot": null,
+  "table": null,
+  "environment": {
+    "hospital_room": {
+      "path": "/World/envs/env_0/HospitalRoom",
+      "pos": [
+        0.0,
+        0.0,
+        -1.0098049640655518
+      ],
+      "rot": [
+        0.019798098527431342,
+        0.9998039984390432,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.009999999776482582,
+        0.009999999776482582,
+        0.009999999776482582
+      ]
+    }
+  },
+  "active_environment": [
+    "hospital_room"
+  ]
+}

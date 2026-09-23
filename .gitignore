@@ -1,0 +1,24 @@
+# Large generated recordings, datasets, diagnostics, and model output remain local.
+/datasets/*
+!/datasets/README.md
+/training/datasets/*
+!/training/datasets/README.md
+/training/runs/
+/debug/*
+!/debug/README.md
+/archive/
+/output/
+/test_runs/
+/tmp/
+/validation/
+__pycache__/
+*.py[cod]
+*.log
+*.bak
+*.tmp
+.pytest_cache/
+.mypy_cache/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

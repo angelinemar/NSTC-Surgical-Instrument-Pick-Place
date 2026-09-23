@@ -1,0 +1,52 @@
+{
+  "backends\\phase3_grid_split_kelly_recorder.py": {
+    "p3_sha256": "98b2ecd5738b102c141d9d51bd4e487b98bcea58a5b40e0d7601abf13ba9937e",
+    "p4_sha256": "11358e2c5351d256b81e33e7c90c2e39706a06bd02509ce454a7d8d8ccf8d06e",
+    "change": "asset paths only"
+  },
+  "backends\\phase3_grid_split_love_retractor_recorder.py": {
+    "p3_sha256": "2a1f5c1e034203a6e928be766c5173f75ed2c2217ab200c77c4dd0c4e34cf3e0",
+    "p4_sha256": "c26303022c14b86b732926a50e2d6dac56f82e682335a34979f38e198fd2d3cc",
+    "change": "asset paths only"
+  },
+  "backends\\phase3_grid_split_scalpel_recorder.py": {
+    "p3_sha256": "307f2d29dea63bb40d560fcd4990c0c4b37fde4394ee62c819d6e128835cb2c0",
+    "p4_sha256": "53c9e5f2232dc6952c7efac2f91a72d268fd58fe84eab46d1f015af7345c9823",
+    "change": "asset paths only"
+  },
+  "backends\\phase3_grid_split_scalpel_type2_recorder.py": {
+    "p3_sha256": "e5543177c84c33b6450036fabda04409a8972bef9af95f2cab6677d2dbbbd88d",
+    "p4_sha256": "4a3ecabfcff94caa5d66a61e7a15c714132967e0b13da2addea61e2887d6c043",
+    "change": "asset paths only"
+  },
+  "backends\\phase3_grid_split_scissor_recorder.py": {
+    "p3_sha256": "b49590563583743518f7901d11c40acc468814667c82052dfe2c47eed1f7bdf3",
+    "p4_sha256": "eae5557c3a49d28fd43f1520635cd830b7d0ae1f738a438d65892e1f9870d68e",
+    "change": "asset paths only"
+  },
+  "phase3_settle_contract.py": {
+    "p3_sha256": "eb57acb1fa9df17adf244d3d387dea4688d497099ea1fd0464174d3248837aeb",
+    "p4_sha256": "eb57acb1fa9df17adf244d3d387dea4688d497099ea1fd0464174d3248837aeb",
+    "change": "none"
+  },
+  "phase3_camera_tuning.py": {
+    "p3_sha256": "54864bfa5b671fdd2e5c93549836a6ab57667a3e34d398521837826009c36bfe",
+    "p4_sha256": "54864bfa5b671fdd2e5c93549836a6ab57667a3e34d398521837826009c36bfe",
+    "change": "none"
+  },
+  "phase3_recorder_camera_patch.py": {
+    "p3_sha256": "feb433f0e3309b4403ddf3c7737e9eb1a6c9ee6782c019e548a1799fed3cd296",
+    "p4_sha256": "feb433f0e3309b4403ddf3c7737e9eb1a6c9ee6782c019e548a1799fed3cd296",
+    "change": "none"
+  },
+  "phase3_run_metrics.py": {
+    "p3_sha256": "06d3d0002ef08f3bd61020a3971ca1b857f0d466800c2bc5a78ad7a39408b287",
+    "p4_sha256": "06d3d0002ef08f3bd61020a3971ca1b857f0d466800c2bc5a78ad7a39408b287",
+    "change": "none"
+  },
+  "object_handlers.py": {
+    "p3_sha256": "92c89b89c6e4d3c5f491eb4860d6dda4e614a18e5d29116ecf1d0b90ac0af4fc",
+    "p4_sha256": "92c89b89c6e4d3c5f491eb4860d6dda4e614a18e5d29116ecf1d0b90ac0af4fc",
+    "change": "none"
+  }
+}

@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sim-to-Sim Imitation Learning for Surgical Instruments</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ── Token System ── */
+:root {
+  --navy:        #0D1B2A;
+  --navy-mid:    #172436;
+  --steel:       #4A6FA5;
+  --steel-light: #6B8FC7;
+  --gold:        #B8922A;
+  --gold-light:  #D4A843;
+  --angel-hue:   #C05E52;
+  --angel-bg:    #FDF1EF;
+  --angel-border:#E8C4BF;
+  --jordan-hue:  #3A8E80;
+  --jordan-bg:   #EDF7F5;
+  --jordan-border:#B8DDD8;
+  --shared-hue:  #5C6BC0;
+  --shared-bg:   #F0F1FA;
+  --shared-border:#C5C9EE;
+
+  --bg:          #F7F8FC;
+  --surface:     #FFFFFF;
+  --surface-2:   #F0F2F8;
+  --border:      #D8DCE8;
+  --text-primary:#0D1B2A;
+  --text-body:   #2C3A4E;
+  --text-muted:  #6B7A8D;
+  --text-faint:  #9BA8B5;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:          #0A1420;
+    --surface:     #0F1E2E;
+    --surface-2:   #162538;
+    --border:      #243348;
+    --text-primary:#E8EDF5;
+    --text-body:   #B8C4D4;
+    --text-muted:  #7A8FA8;
+    --text-faint:  #4A5F78;
+
+    --angel-bg:    #1E1210;
+    --angel-border:#5C2E28;
+    --jordan-bg:   #0D1E1C;
+    --jordan-border:#1E504A;
+    --shared-bg:   #111525;
+    --shared-border:#2A2F5C;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:          #0A1420;
+  --surface:     #0F1E2E;
+  --surface-2:   #162538;
+  --border:      #243348;
+  --text-primary:#E8EDF5;
+  --text-body:   #B8C4D4;
+  --text-muted:  #7A8FA8;
+  --text-faint:  #4A5F78;
+
+  --angel-bg:    #1E1210;
+  --angel-border:#5C2E28;
+  --jordan-bg:   #0D1E1C;
+  --jordan-border:#1E504A;
+  --shared-bg:   #111525;
+  --shared-border:#2A2F5C;
+
+  color-scheme: dark;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-body);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  padding-inline: clamp(16px, 5vw, 48px);
+  padding-block: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-bottom, 0px));
+  max-width: 900px;
+  margin-inline: auto;
+}
+
+/* ── Theme Toggle ── */
+.theme-toggle {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top, 16px));
+  right: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  z-index: 100;
+}
+.theme-toggle:hover { color: var(--text-primary); border-color: var(--steel); }
+.theme-toggle:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+
+/* ── Cover Header ── */
+.cover {
+  background: var(--navy);
+  border-radius: 8px;
+  padding: clamp(32px, 6vw, 56px) clamp(24px, 5vw, 48px);
+  margin-bottom: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(74,111,165,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 10% 80%, rgba(58,142,128,0.15) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.cover-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.cover h1 {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: #FFFFFF;
+  text-wrap: balance;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.cover-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.cover-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  position: relative;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 0.775rem;
+  color: rgba(255,255,255,0.75);
+  font-family: 'Inter', sans-serif;
+}
+
+.meta-chip .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Section Structure ── */
+section {
+  margin-bottom: 40px;
+}
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--steel);
+  margin-bottom: 8px;
+  display: block;
+}
+
+h2 {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: clamp(1.15rem, 2.5vw, 1.45rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-wrap: balance;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+h3 {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  margin-top: 20px;
+  text-wrap: balance;
+}
+
+p {
+  color: var(--text-body);
+  margin-bottom: 12px;
+  max-width: 68ch;
+}
+
+strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── Divider ── */
+hr.section-rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin-block: 36px;
+}
+
+/* ── Ownership Cards ── */
+.ownership-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 580px) {
+  .ownership-grid { grid-template-columns: 1fr; }
+}
+
+.owner-card {
+  border-radius: 6px;
+  padding: 20px 22px;
+  border: 1.5px solid;
+}
+
+.owner-card.angel {
+  background: var(--angel-bg);
+  border-color: var(--angel-border);
+}
+
+.owner-card.jordan {
+  background: var(--jordan-bg);
+  border-color: var(--jordan-border);
+}
+
+.owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 3px;
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.owner-card.angel .owner-badge {
+  background: rgba(192,94,82,0.12);
+  color: var(--angel-hue);
+}
+
+.owner-card.jordan .owner-badge {
+  background: rgba(58,142,128,0.12);
+  color: var(--jordan-hue);
+}
+
+.owner-card h3 {
+  font-size: 1rem;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.owner-card.angel h3 { color: var(--angel-hue); }
+.owner-card.jordan h3 { color: var(--jordan-hue); }
+
+.owner-card p {
+  font-size: 0.875rem;
+  margin-bottom: 0;
+  max-width: none;
+}
+
+/* ── Shared Block ── */
+.shared-block {
+  background: var(--shared-bg);
+  border: 1.5px solid var(--shared-border);
+  border-radius: 6px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.shared-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(92,107,192,0.12);
+  color: var(--shared-hue);
+  border-radius: 3px;
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.shared-block h3 {
+  margin-top: 0;
+  color: var(--shared-hue);
+}
+
+/* ── Attribution Table ── */
+.attrib-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  display: block;
+}
+
+.attrib-table thead tr {
+  background: var(--surface-2);
+}
+
+.attrib-table th {
+  text-align: left;
+  padding: 9px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.attrib-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.attrib-table tr:last-child td { border-bottom: none; }
+
+.attrib-table tr:hover td { background: var(--surface-2); }
+
+.tag {
+  display: inline-block;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.tag.angel { background: rgba(192,94,82,0.12); color: var(--angel-hue); }
+.tag.jordan { background: rgba(58,142,128,0.12); color: var(--jordan-hue); }
+.tag.shared { background: rgba(92,107,192,0.12); color: var(--shared-hue); }
+
+.tag.angel-primary {
+  background: var(--angel-hue);
+  color: #fff;
+}
+
+/* ── Component Key ── */
+.component-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.component-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.875rem;
+}
+
+.component-list li .comp-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.component-list li .comp-desc {
+  color: var(--text-muted);
+}
+
+/* ── Timeline ── */
+.timeline {
+  position: relative;
+  padding-left: 24px;
+  border-left: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.tl-item {
+  position: relative;
+  padding: 0 0 20px 20px;
+}
+
+.tl-item:last-child { padding-bottom: 0; }
+
+.tl-item::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--steel);
+}
+
+.tl-item.milestone::before {
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+}
+
+.tl-phase {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 2px;
+}
+
+.tl-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.tl-desc {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  max-width: 56ch;
+}
+
+.tl-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+/* ── Info Box ── */
+.info-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--steel);
+  border-radius: 0 4px 4px 0;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+}
+
+.info-box.warning {
+  border-left-color: var(--gold);
+  background: rgba(184,146,42,0.05);
+}
+
+.info-box strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Signature Block ── */
+.sig-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+@media (max-width: 500px) {
+  .sig-grid { grid-template-columns: 1fr; }
+}
+
+.sig-block {
+  border-top: 2px solid var(--border);
+  padding-top: 12px;
+}
+
+.sig-block .sig-name {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sig-block .sig-role {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.sig-block .sig-line {
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Footer ── */
+footer {
+  margin-top: 52px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Print ── */
+@media print {
+  .theme-toggle { display: none; }
+  body { max-width: none; padding: 0; }
+  .cover { border-radius: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="
+  const r = document.documentElement;
+  const cur = r.dataset.theme;
+  r.dataset.theme = cur === 'dark' ? 'light' : 'dark';
+  this.textContent = r.dataset.theme === 'dark' ? '☀ Light' : '☾ Dark';
+" aria-label="Toggle theme">☾ Dark</button>
+
+<!-- ══════════════════ COVER ══════════════════ -->
+<header class="cover">
+  <p class="cover-eyebrow">Special Implementation Topic — Research Proposal</p>
+  <h1>Sim-to-Sim Imitation Learning for Thin Surgical Instrument Manipulation</h1>
+  <p class="cover-subtitle">Dual-Track Investigation: Diffusion Policy &amp; OpenVLA Approaches on a Shared Simulation Platform</p>
+  <div class="cover-meta">
+    <span class="meta-chip"><span class="dot" style="background:#C05E52"></span> Angel — Track A: Diffusion Policy</span>
+    <span class="meta-chip"><span class="dot" style="background:#3A8E80"></span> Jordan — Track B: OpenVLA</span>
+    <span class="meta-chip"><span class="dot" style="background:#5C6BC0"></span> Shared Infrastructure</span>
+    <span class="meta-chip">Academic Year 2025–2026</span>
+  </div>
+</header>
+
+<!-- ══════════════════ 1. ABSTRACT ══════════════════ -->
+<section>
+  <span class="section-label">§ 01</span>
+  <h2>Abstract</h2>
+  <p>This document presents a coordinated dual-track research proposal investigating imitation learning strategies for autonomous manipulation of thin surgical instruments within a physics-based simulation environment. The central challenge addressed is sim-to-sim transfer: training policies on a source simulation and evaluating generalization to a distinct target simulation, without physical robot deployment. This constraint isolates the policy learning algorithm as the primary variable, enabling rigorous cross-method comparison.</p>
+  <p><strong>Track A</strong> (Angel) applies Diffusion Policy to the task, leveraging a custom Isaac Lab environment, Finite State Machine (FSM) task logic, and a specialized demonstration recorder developed independently by Angel. <strong>Track B</strong> (Jordan) adapts OpenVLA to the same task by extending a subset of Angel's simulation infrastructure, contributing new model integration and language-conditioned training protocols. Each track constitutes a distinct, assessable research contribution; the shared platform is a defined infrastructure layer, not a joint authorship claim.</p>
+  <p>The application domain — minimally invasive surgical instrumentation — carries direct clinical relevance: thin, high-aspect-ratio instruments demand sub-millimeter precision, and improved autonomous or semi-autonomous control can reduce unintended tissue trauma, lower infection risk, and simplify sterilization through reduced human contact cycles.</p>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 2. MOTIVATION ══════════════════ -->
+<section>
+  <span class="section-label">§ 02</span>
+  <h2>Problem Statement &amp; Clinical Motivation</h2>
+  <h3>The Surgical Instrumentation Challenge</h3>
+  <p>Modern minimally invasive surgery (MIS) relies on instruments with shaft diameters between 3 mm and 12 mm and working lengths of 25–45 cm. At these scales, tactile feedback is attenuated, kinematic constraints from trocar ports induce counter-intuitive motion mapping, and any lateral force exceeding tissue tolerances (typically 0.1–2 N for delicate structures) risks perforation or bruising. Manual teleoperation under such constraints is cognitively demanding and fatigue-sensitive.</p>
+  <p>Automation or decision-support at the subtask level — grasping, tissue retraction, clip placement — could reduce operator cognitive load, decrease procedure time, and improve reproducibility. However, real-to-sim gaps and data scarcity make direct learning from physical demonstrations difficult for early research. Sim-to-sim methodology allows algorithm development and benchmarking at low cost and zero biological risk.</p>
+
+  <h3>Why Sim-to-Sim Before Sim-to-Real</h3>
+  <p>The staged research approach adopted here — establishing robust sim-to-sim performance before pursuing sim-to-real transfer — follows established practice in contact-rich manipulation research. A policy that cannot generalize across simulation engines with different physics parameters (stiffness, friction, contact resolution) is unlikely to survive the additional gap to real hardware. Sim-to-sim results thus constitute a meaningful scientific contribution independent of eventual physical deployment.</p>
+
+  <div class="info-box">
+    <strong>Clinical Relevance Metrics</strong>
+    Instrument-related complications in laparoscopic procedures account for approximately 0.3–0.5% of adverse events. Autonomous or AI-assisted subtask execution targeting &lt;0.5 mm positional error and controlled grasping forces below 1.5 N is the operative target for this research track. Every algorithm improvement that reduces commanded position variance or unintended contact force directly maps to reduced patient risk.
+  </div>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 3. SHARED INFRASTRUCTURE ══════════════════ -->
+<section>
+  <span class="section-label">§ 03</span>
+  <h2>Shared Infrastructure Platform</h2>
+
+  <div class="info-box warning">
+    <strong>Authorship &amp; Ownership Notice</strong>
+    The simulation environment, FSM task logic, and demonstration recording pipeline described in this section were designed and implemented in full by <strong>Angel</strong> as part of Track A development. Jordan is granted a defined, read-only interface to these components for Track B use. Use of these components by Jordan does not constitute joint ownership, co-authorship of the infrastructure, or credit for their design. Jordan's independent contribution lies solely in OpenVLA model adaptation, language-conditioned training, and Track B evaluation (see § 05).
+  </div>
+
+  <h3>Isaac Lab Simulation Environment</h3>
+  <p>The primary simulation platform is NVIDIA Isaac Lab (built on Isaac Sim / PhysX), selected for its deformable-body support, GPU-parallel environment instantiation, and active robotics research community. The environment encapsulates:</p>
+
+  <ul class="component-list">
+    <li><span class="comp-name">ScissorGraspEnv</span><span class="comp-desc">Task-level environment class exposing observation and action spaces compatible with both Gym and Isaac Lab APIs.</span></li>
+    <li><span class="comp-name">SurgicalScissorAsset</span><span class="comp-desc">Articulated scissor model with calibrated joint stiffness, damping, and collision geometry matching physical scissor kinematics.</span></li>
+    <li><span class="comp-name">TissuePhantomAsset</span><span class="comp-desc">Deformable mesh tissue phantom with configurable Young's modulus (5–25 kPa) representing soft-tissue compliance range in MIS.</span></li>
+    <li><span class="comp-name">WorkspaceObserver</span><span class="comp-desc">Wrist-mounted and global RGB-D observation streams, with configurable resolution and noise injection for domain randomization.</span></li>
+    <li><span class="comp-name">ContactRewardShaper</span><span class="comp-desc">Reward function components including tissue contact force penalties, target grasp-point proximity, and instrument orientation alignment terms.</span></li>
+  </ul>
+
+  <h3>Finite State Machine (FSM) Task Logic</h3>
+  <p>All structured task decomposition is governed by a multi-stage FSM authored entirely by Angel. The FSM drives expert demonstrations and evaluation episode structure:</p>
+
+  <ul class="component-list">
+    <li><span class="comp-name">APPROACH</span><span class="comp-desc">Pre-grasp approach to target tissue site with velocity ramping and collision avoidance margins.</span></li>
+    <li><span class="comp-name">ORIENT</span><span class="comp-desc">Instrument tip alignment to target cut or grasp axis within ±3° tolerance before contact.</span></li>
+    <li><span class="comp-name">ENGAGE</span><span class="comp-desc">Controlled jaw or blade engagement with force-regulated descent; abort on force threshold breach.</span></li>
+    <li><span class="comp-name">EXECUTE</span><span class="comp-desc">Task-specific action (cut, grasp, retract) with live success criterion monitoring.</span></li>
+    <li><span class="comp-name">WITHDRAW</span><span class="comp-desc">Safe retraction to clear pose; episode success/fail logging and reset trigger.</span></li>
+  </ul>
+
+  <h3>Demonstration Recorder</h3>
+  <p>The demonstration recording pipeline outputs HDF5 files compatible with the Robomimic dataset schema, enabling direct ingestion by both Diffusion Policy (Track A) and, via conversion utilities, OpenVLA's training pipeline (Track B). Fields recorded per timestep include:</p>
+
+  <ul class="component-list">
+    <li><span class="comp-name">obs/images/wrist_rgb</span><span class="comp-desc">480×640 uint8 RGB from wrist-mounted camera.</span></li>
+    <li><span class="comp-name">obs/images/global_rgb</span><span class="comp-desc">480×640 uint8 RGB from fixed overhead camera.</span></li>
+    <li><span class="comp-name">obs/robot_state</span><span class="comp-desc">7-DOF joint positions and velocities; TCP pose as 6D vector.</span></li>
+    <li><span class="comp-name">obs/contact_forces</span><span class="comp-desc">Instrument-tissue contact wrench (6-axis); tip force scalar.</span></li>
+    <li><span class="comp-name">actions</span><span class="comp-desc">Commanded joint deltas in absolute joint-space representation.</span></li>
+    <li><span class="comp-name">fsm/stage_id</span><span class="comp-desc">Current FSM stage integer; enables stage-conditioned filtering and curriculum slicing.</span></li>
+  </ul>
+
+  <div class="shared-block">
+    <span class="shared-badge">⬡ Shared Interface Contract</span>
+    <h3>What Jordan May Use from Angel's Platform</h3>
+    <p style="font-size:0.875rem; margin-bottom:10px; max-width:none;">Jordan's Track B work may import and use the following, unchanged, as infrastructure inputs. Modifications to these components require explicit acknowledgement of the original author and must not be presented as Jordan's independent work.</p>
+    <table class="attrib-table">
+      <thead><tr>
+        <th>Component</th>
+        <th>Usage by Jordan</th>
+        <th>Owner</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><code>ScissorGraspEnv</code></td><td>Environment instantiation and observation collection for OpenVLA rollouts</td><td><span class="tag angel">Angel</span></td></tr>
+        <tr><td>FSM Expert Demonstrations (HDF5)</td><td>Source dataset for OpenVLA fine-tuning; format conversion permitted</td><td><span class="tag angel">Angel</span></td></tr>
+        <tr><td>ContactRewardShaper</td><td>Evaluation metric computation in Track B closed-loop assessment</td><td><span class="tag angel">Angel</span></td></tr>
+        <tr><td>WorkspaceObserver config</td><td>Camera stream configuration reused as-is for visual observation</td><td><span class="tag angel">Angel</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 4. TRACK A ══════════════════ -->
+<section>
+  <span class="section-label">§ 04</span>
+  <h2>Track A — Diffusion Policy for Surgical Manipulation</h2>
+
+  <div class="owner-card angel" style="margin-bottom:20px;">
+    <span class="owner-badge">◆ Sole Author</span>
+    <h3>Angel</h3>
+    <p>All work in this track — environment design, FSM logic, recorder implementation, dataset curation, training pipeline, evaluation protocol, and written analysis — is the independent contribution of Angel. No portion of Track A is co-authored with Jordan.</p>
+  </div>
+
+  <h3>Research Objective</h3>
+  <p>Track A investigates whether Diffusion Policy — a score-based generative model that learns action distributions through denoising diffusion — can acquire robust manipulation skills for thin surgical instruments from a limited number of expert demonstrations (&lt;200 episodes), with sufficient precision to meet clinical-analog accuracy thresholds in simulation.</p>
+
+  <h3>Technical Approach</h3>
+  <p><strong>Policy Architecture.</strong> A DDPM-based (Denoising Diffusion Probabilistic Model) action prediction network conditioned on a 2-frame visual history (wrist + global RGB) and proprioceptive state. The action head predicts a trajectory chunk of length T=16 at each inference step, with re-planning triggered by FSM stage transitions.</p>
+  <p><strong>Dataset Curation.</strong> Expert demonstrations are collected through FSM-driven scripted rollouts with injected Gaussian noise (σ = 0.3 mm, 0.5°) to increase behavioral diversity. Demonstrations failing contact-force thresholds during the ENGAGE state are filtered automatically. Approximately 150–300 successful episodes constitute the training corpus.</p>
+  <p><strong>Training Protocol.</strong> Vision encoder: ResNet-18 pretrained on ImageNet, fine-tuned jointly. Diffusion steps: 100 (training), 20 (inference with DDIM). Optimizer: AdamW, lr = 1×10⁻⁴, cosine schedule. Batch size: 64. Hardware: single NVIDIA RTX 4090.</p>
+
+  <h3>Evaluation Metrics</h3>
+  <p>Success rate across 50 evaluation episodes per configuration; mean positional error at ENGAGE entry (target: &lt;1.5 mm); mean tissue contact force during EXECUTE (target: &lt;1.0 N peak); sim-to-sim transfer score from training domain to held-out physics-parameter variant (±30% stiffness, friction offset).</p>
+
+  <h3>Expected Contributions</h3>
+  <p>Quantitative characterization of Diffusion Policy sample efficiency on contact-rich thin-instrument tasks; ablation of observation modality (vision-only vs. vision + proprioception + contact); open dataset of FSM-curated surgical manipulation demonstrations in Isaac Lab format.</p>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 5. TRACK B ══════════════════ -->
+<section>
+  <span class="section-label">§ 05</span>
+  <h2>Track B — OpenVLA Adaptation for Surgical Manipulation</h2>
+
+  <div class="owner-card jordan" style="margin-bottom:20px;">
+    <span class="owner-badge">◆ Sole Author</span>
+    <h3>Jordan</h3>
+    <p>Jordan's independent contributions are: OpenVLA model integration and fine-tuning pipeline, language prompt engineering for task conditioning, Track B evaluation protocol, and cross-track comparative analysis. Jordan does not own the simulation environment, FSM logic, or recorder.</p>
+  </div>
+
+  <h3>Research Objective</h3>
+  <p>Track B investigates whether OpenVLA — a vision-language-action model pretrained on broad robot manipulation data — can be efficiently fine-tuned for surgical instrument manipulation using the demonstration dataset produced by Angel's recorder, and whether language conditioning enables zero-shot sub-task specialization (e.g., "approach and orient scissor tip to mark A").</p>
+
+  <h3>Technical Approach</h3>
+  <p><strong>Model.</strong> OpenVLA-7B (or OFT-variant), loaded with LoRA fine-tuning adapters targeting attention projection layers (rank 32, α = 64) to reduce VRAM requirements while preserving pretrained visual representations.</p>
+  <p><strong>Dataset Conversion.</strong> Angel's HDF5 demonstrations are converted to the LeRobot/RLDS format required by OpenVLA's fine-tuning scripts. Jordan is responsible for the format conversion utilities and data augmentation pipeline (color jitter, random crop) applied at training time.</p>
+  <p><strong>Language Conditioning.</strong> Each FSM stage maps to a natural-language instruction template authored by Jordan (e.g., "Grasp the tissue phantom at the marked site with controlled force"). Prompt ablations test the sensitivity of policy quality to instruction specificity.</p>
+  <p><strong>Training Protocol.</strong> LoRA fine-tuning for 20,000 steps; batch size 16; gradient accumulation 4; mixed precision (bfloat16). Evaluation checkpoints every 2,000 steps.</p>
+
+  <h3>Evaluation Metrics</h3>
+  <p>Success rate on the same 50-episode evaluation suite used by Track A (enabling direct comparison); language ablation: task success versus instruction type (stage-specific, generic, null); compute efficiency: fine-tuning time and GPU memory versus Track A training cost.</p>
+
+  <h3>Expected Contributions</h3>
+  <p>First characterization of OpenVLA fine-tuning efficiency on thin surgical instrument tasks in simulation; language conditioning sensitivity analysis; direct benchmark comparison against Diffusion Policy on identical evaluation conditions.</p>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 6. ATTRIBUTION TABLE ══════════════════ -->
+<section>
+  <span class="section-label">§ 06</span>
+  <h2>Complete Contribution Attribution</h2>
+  <p>The table below provides an unambiguous mapping of every project component to its author. This record constitutes the official attribution for assessment and publication purposes.</p>
+
+  <div style="overflow-x:auto;">
+  <table class="attrib-table">
+    <thead>
+      <tr>
+        <th>Component / Artifact</th>
+        <th>Category</th>
+        <th>Author</th>
+        <th>Track B Usage</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Isaac Lab Environment (ScissorGraspEnv)</strong></td>
+        <td>Simulation</td>
+        <td><span class="tag angel-primary">Angel — sole</span></td>
+        <td>Read-only use permitted</td>
+      </tr>
+      <tr>
+        <td><strong>SurgicalScissorAsset &amp; TissuePhantomAsset</strong></td>
+        <td>Asset Design</td>
+        <td><span class="tag angel-primary">Angel — sole</span></td>
+        <td>Used as-is, no modification</td>
+      </tr>
+      <tr>
+        <td><strong>FSM Task Logic (5-stage)</strong></td>
+        <td>Task Engineering</td>
+        <td><span class="tag angel-primary">Angel — sole</span></td>
+        <td>Episode structure reference only</td>
+      </tr>
+      <tr>
+        <td><strong>Demonstration Recorder (HDF5 pipeline)</strong></td>
+        <td>Data Infrastructure</td>
+        <td><span class="tag angel-primary">Angel — sole</span></td>
+        <td>Output dataset used by Jordan</td>
+      </tr>
+      <tr>
+        <td><strong>ContactRewardShaper</strong></td>
+        <td>Reward Engineering</td>
+        <td><span class="tag angel-primary">Angel — sole</span></td>
+        <td>Evaluation metric reuse</td>
+      </tr>
+      <tr>
+        <td><strong>Diffusion Policy training pipeline</strong></td>
+        <td>ML Engineering</td>
+        <td><span class="tag angel">Angel</span></td>
+        <td>Not used</td>
+      </tr>
+      <tr>
+        <td><strong>Track A dataset curation &amp; filtering</strong></td>
+        <td>Data Science</td>
+        <td><span class="tag angel">Angel</span></td>
+        <td>Not used</td>
+      </tr>
+      <tr>
+        <td><strong>Track A evaluation protocol &amp; results</strong></td>
+        <td>Research</td>
+        <td><span class="tag angel">Angel</span></td>
+        <td>Comparison benchmark only</td>
+      </tr>
+      <tr>
+        <td><strong>HDF5 → LeRobot/RLDS conversion utility</strong></td>
+        <td>Data Engineering</td>
+        <td><span class="tag jordan">Jordan</span></td>
+        <td>Jordan — sole</td>
+      </tr>
+      <tr>
+        <td><strong>OpenVLA fine-tuning pipeline (LoRA)</strong></td>
+        <td>ML Engineering</td>
+        <td><span class="tag jordan">Jordan</span></td>
+        <td>Jordan — sole</td>
+      </tr>
+      <tr>
+        <td><strong>Language instruction templates &amp; ablations</strong></td>
+        <td>NLP / Prompt Engineering</td>
+        <td><span class="tag jordan">Jordan</span></td>
+        <td>Jordan — sole</td>
+      </tr>
+      <tr>
+        <td><strong>Track B evaluation protocol &amp; results</strong></td>
+        <td>Research</td>
+        <td><span class="tag jordan">Jordan</span></td>
+        <td>Jordan — sole</td>
+      </tr>
+      <tr>
+        <td><strong>Cross-track comparative analysis</strong></td>
+        <td>Research</td>
+        <td><span class="tag shared">Joint (both)</span></td>
+        <td>Jointly authored section</td>
+      </tr>
+      <tr>
+        <td><strong>Isaac Lab base framework</strong></td>
+        <td>Third-Party</td>
+        <td><span class="tag shared">NVIDIA / Open Source</span></td>
+        <td>Dependency, not a contribution</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 7. TIMELINE ══════════════════ -->
+<section>
+  <span class="section-label">§ 07</span>
+  <h2>Project Timeline</h2>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-phase">Phase 1 · Weeks 1–3</div>
+      <div class="tl-title">Environment &amp; Infrastructure Finalization</div>
+      <div class="tl-desc">Angel finalizes ScissorGraspEnv, FSM stages, and recorder. Jordan reviews interface documentation and confirms dataset schema compatibility with OpenVLA ingestion requirements.</div>
+      <div class="tl-tags"><span class="tag angel">Angel</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-phase">Phase 2 · Weeks 4–6</div>
+      <div class="tl-title">Track A Dataset Collection &amp; Track B Conversion</div>
+      <div class="tl-desc">Angel collects 200+ demonstrations via FSM scripting. Jordan develops and validates HDF5→RLDS conversion pipeline on a pilot batch of 20 episodes.</div>
+      <div class="tl-tags"><span class="tag angel">Angel</span><span class="tag jordan">Jordan</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-phase">Phase 3 · Weeks 7–10</div>
+      <div class="tl-title">Parallel Training Runs</div>
+      <div class="tl-desc">Angel trains Diffusion Policy on curated dataset. Jordan fine-tunes OpenVLA-7B with LoRA on converted dataset. Both tracks operate independently on their own hardware.</div>
+      <div class="tl-tags"><span class="tag angel">Angel</span><span class="tag jordan">Jordan</span></div>
+    </div>
+    <div class="tl-item milestone">
+      <div class="tl-phase">Milestone · Week 10</div>
+      <div class="tl-title">Mid-Review Checkpoint</div>
+      <div class="tl-desc">Preliminary evaluation results shared between tracks. Evaluation suite standardized on Angel's 50-episode benchmark protocol.</div>
+      <div class="tl-tags"><span class="tag shared">Joint</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-phase">Phase 4 · Weeks 11–13</div>
+      <div class="tl-title">Ablations &amp; Sim-to-Sim Transfer Evaluation</div>
+      <div class="tl-desc">Both tracks run physics-variant transfer evaluation (±30% stiffness, friction sweep). Jordan conducts language prompt ablations. Angel conducts modality ablations.</div>
+      <div class="tl-tags"><span class="tag angel">Angel</span><span class="tag jordan">Jordan</span></div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-phase">Phase 5 · Weeks 14–15</div>
+      <div class="tl-title">Cross-Track Analysis &amp; Report Writing</div>
+      <div class="tl-desc">Joint cross-track comparison section authored. Individual track reports written separately. Final submission prepared with separate Track A and Track B sections clearly attributed.</div>
+      <div class="tl-tags"><span class="tag shared">Joint (comparison section)</span><span class="tag angel">Angel (Track A report)</span><span class="tag jordan">Jordan (Track B report)</span></div>
+    </div>
+    <div class="tl-item milestone">
+      <div class="tl-phase">Deliverable · Week 16</div>
+      <div class="tl-title">Final Submission</div>
+      <div class="tl-desc">Complete dual-track report, code repositories with clearly labelled ownership per module, demonstration videos, and evaluation datasets submitted.</div>
+      <div class="tl-tags"><span class="tag shared">Joint Submission</span></div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 8. USAGE TERMS ══════════════════ -->
+<section>
+  <span class="section-label">§ 08</span>
+  <h2>Infrastructure Usage Terms &amp; IP Agreement</h2>
+
+  <div class="info-box warning">
+    <strong>Binding Conditions</strong>
+    The following terms govern Jordan's use of Angel's simulation infrastructure. These are not informal expectations — they constitute the agreed research collaboration terms and should be referenced in any joint submission, course documentation, or publication.
+  </div>
+
+  <h3>Permitted Use</h3>
+  <p>Jordan may use Angel's simulation environment, FSM demonstrations, and evaluation infrastructure solely for the purpose of developing and evaluating Track B (OpenVLA) as described in this proposal. Use is limited to the duration of this Special Implementation Topic project.</p>
+
+  <h3>Attribution Requirements</h3>
+  <p>Any paper, report, slide deck, or repository README that uses or describes Angel's infrastructure components must include the statement: <em>"The simulation environment, FSM task logic, and demonstration recording pipeline used in this work were developed by Angel [surname] as an independent contribution to Track A of this project."</em> This statement must appear in a Methods section, Acknowledgements section, or equivalent, not solely in a footnote.</p>
+
+  <h3>Prohibited Actions</h3>
+  <p>Jordan may not: (a) modify Angel's core environment files and submit modified versions as Jordan's own work; (b) represent the shared infrastructure as a jointly designed system in any graded submission without Angel's written agreement; (c) use Angel's demonstration dataset for purposes beyond Track B training and evaluation within this project without prior written consent.</p>
+
+  <h3>Repository Structure</h3>
+  <p>The shared code repository must maintain the following directory-level ownership signaling:</p>
+
+  <table class="attrib-table">
+    <thead><tr><th>Path</th><th>Owner</th><th>Jordan May Modify?</th></tr></thead>
+    <tbody>
+      <tr><td><code>envs/scissor_grasp/</code></td><td><span class="tag angel">Angel</span></td><td>No — read-only import</td></tr>
+      <tr><td><code>fsm/surgical_fsm.py</code></td><td><span class="tag angel">Angel</span></td><td>No — read-only import</td></tr>
+      <tr><td><code>recorder/</code></td><td><span class="tag angel">Angel</span></td><td>No</td></tr>
+      <tr><td><code>training/diffusion_policy/</code></td><td><span class="tag angel">Angel</span></td><td>No</td></tr>
+      <tr><td><code>training/openvla/</code></td><td><span class="tag jordan">Jordan</span></td><td>Yes — Jordan's work</td></tr>
+      <tr><td><code>data_conversion/</code></td><td><span class="tag jordan">Jordan</span></td><td>Yes — Jordan's work</td></tr>
+      <tr><td><code>eval/cross_track/</code></td><td><span class="tag shared">Joint</span></td><td>Both, by agreement</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 9. SIGNIFICANCE ══════════════════ -->
+<section>
+  <span class="section-label">§ 09</span>
+  <h2>Research Significance</h2>
+
+  <div class="ownership-grid">
+    <div class="owner-card angel">
+      <span class="owner-badge">Track A Impact</span>
+      <h3>Diffusion Policy Contributions</h3>
+      <p>Establishes a reproducible baseline for contact-rich thin-instrument manipulation using a state-of-the-art behavior cloning approach. The custom Isaac Lab environment and FSM-curated dataset are independently publishable artifacts that can serve as benchmarks for future work.</p>
+    </div>
+    <div class="owner-card jordan">
+      <span class="owner-badge">Track B Impact</span>
+      <h3>OpenVLA Contributions</h3>
+      <p>Demonstrates the feasibility of adapting large pretrained vision-language-action models to specialized surgical manipulation domains via LoRA fine-tuning. Characterizes the trade-off between pretraining generality and task-specific precision on a clinically motivated benchmark.</p>
+    </div>
+  </div>
+
+  <div class="shared-block">
+    <span class="shared-badge">⬡ Joint Significance</span>
+    <h3>Cross-Track Comparative Value</h3>
+    <p>The parallel experimental design — identical task, identical evaluation suite, shared demonstration data, independent policy architectures — enables a controlled algorithm comparison that neither project could achieve alone. This comparison directly addresses an open question in imitation learning: whether the inductive biases of a generative diffusion model versus a pretrained multimodal transformer lead to meaningfully different failure modes on precision manipulation tasks.</p>
+    <p>Results from both tracks may inform future work on hybrid approaches, e.g., using OpenVLA for high-level task decomposition and Diffusion Policy for low-level motor control, a promising direction for surgical autonomy systems.</p>
+  </div>
+
+  <h3>Customization &amp; Maintenance Advantages</h3>
+  <p>Both approaches are designed with field customization in mind. The modular FSM architecture allows new surgical subtasks to be added by defining additional stages without rewriting the core environment. Fine-tuned models can be updated with new demonstration data without full retraining. This matters in clinical deployment contexts where instrument designs evolve and sterilization-compatible (i.e., low-physical-contact) autonomy is a maintenance advantage over purely manual operation.</p>
+</section>
+
+<hr class="section-rule">
+
+<!-- ══════════════════ 10. SIGNATURES ══════════════════ -->
+<section>
+  <span class="section-label">§ 10</span>
+  <h2>Agreement &amp; Sign-Off</h2>
+  <p>By signing below, both researchers confirm that they have read and agree to the contribution attribution, usage terms, and project scope defined in this proposal. Both parties acknowledge that the simulation environment, FSM logic, and demonstration recorder are the sole intellectual property and academic contribution of Angel, and that Jordan's independent contribution is limited to Track B as defined in § 05.</p>
+
+  <div class="sig-grid">
+    <div class="sig-block">
+      <div class="sig-name">Angel</div>
+      <div class="sig-role">Track A Principal — Environment, FSM, Recorder, Diffusion Policy</div>
+      <div class="sig-line">Signature / Date</div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-name">Jordan</div>
+      <div class="sig-role">Track B Principal — OpenVLA Adaptation &amp; Language Conditioning</div>
+      <div class="sig-line">Signature / Date</div>
+    </div>
+  </div>
+
+  <p style="margin-top:24px; font-size:0.83rem; color:var(--text-muted);">This proposal should be submitted to the supervising professor with both signatures prior to commencing Track B work. A copy should be retained by each researcher and attached as an appendix to the final joint report.</p>
+</section>
+
+<footer>
+  <span>Special Implementation Topic · Sim-to-Sim Surgical Imitation Learning</span>
+  <span>Prepared: September 2026</span>
+</footer>
+
+</body>
+</html>
