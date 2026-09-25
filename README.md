@@ -10,7 +10,7 @@ Native-camera and independent-detector workflow: [training v2](docs/TRAINING_V2.
 `2. Dataset & tray`: choose **Both: DP + detector (recommended)**, recorded image size and save folder. Split and seed are automatic.
 `3. Files & export`: export a completed collection with independent train, valid and test sessions. Recording does not train a model.
 
-Both shares raw data once. All dataset modes support randomized duplicate distractors on the table and tray; the target type appears exactly once. Failed attempts never become training samples. Console details go to `debug/logs/`.
+Both shares raw data once. All dataset modes support randomized duplicate distractors on the table only. Tray objects stay organized in their fixed slots; the target type appears exactly once. Failed attempts never become training samples. Console details go to `debug/logs/`.
 
 <p align="center"><img src="assets/readme/pipeline.svg" alt="Six camera recording pipeline" width="960"></p>
 <p align="center"><img src="assets/readme/camera-contract.svg" alt="Six synchronized camera streams" width="960"></p>
@@ -46,7 +46,7 @@ This makes the intended pick explicit when several instruments are on the table.
 ```mermaid
 flowchart LR
     P[Panel: distractors 12-18] --> S[1 target + random duplicate non-targets]
-    S --> T[Table and tray: safe randomized placement]
+    S --> T[Table: random clutter / Tray: fixed ordered slots]
     T --> R[Native RGB + depth]
     T --> L[Semantic: robot, table, tray, tools, floor, room]
     T --> I[Per-body instance masks]
@@ -54,8 +54,8 @@ flowchart LR
     R --> DP[DP: RGB 224 + robot state + requested target]
 ```
 
-The target type appears once. Repeated distractor types may appear on both table
-and tray. The drape stays green with seeded shade/roughness variation. See the
+The target type appears once. Extra duplicate distractors spawn only on the table;
+the entire tray is reserved for fixed-slot objects. The drape stays green with seeded shade/roughness variation. See the
 [capture and label contract](docs/TRAINING_V2.md) for limits and verification.
 
 <p align="center"><img src="assets/readme/readiness.svg" alt="Dataset readiness" width="960"></p>

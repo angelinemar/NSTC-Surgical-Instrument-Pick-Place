@@ -65,13 +65,20 @@ domain coverage require separate validation. No synthetic image filter is record
 as a new independent episode.
 
 The panel's **Total distractors, random range** excludes the target and includes
-the four base non-target bodies. Extra bodies repeat those four types; one type can
-appear on both table and tray. The target type is excluded from duplicates. Base
-tray choices only control the four original bodies. Extras use randomized placement,
+the four base non-target bodies. Extra bodies repeat those four types on the table
+only. The target type is excluded from duplicates. Base tray choices only control
+the four original bodies, which occupy their ordered fixed slots. Extras use randomized tabletop placement,
 measured footprint rejection and the same pose-stability gates as the originals;
-the target grasp area and its destination lane stay clear. Impossible packing is
+the target grasp area and the entire tray stay clear of extras, including after settling. Impossible packing is
 rejected rather than silently reducing the requested count. Restart the simulator
 after changing the range. CLI equivalents: `--distractor-min 12 --distractor-max 18`.
+
+Table-only correction verified on 2026-09-26: a native-224 scene audit with 12
+total distractors passed settling and fixed-slot checks. All eight extra bodies
+were on the table; three original non-target bodies occupied their ordered tray
+slots, with the target lane empty. Nine clutter tests, nine tray tests and three
+panel tests passed. This preview check is not a learned-policy rollout or a new
+training demonstration; old recordings are not retroactively corrected.
 
 Semantic IDs 0-7 are unchanged; 8=table, 9=floor, 10=room. Every instrument retains
 its class label and a separate rigid-body instance ID. New training heads have 11

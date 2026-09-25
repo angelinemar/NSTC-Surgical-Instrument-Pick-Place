@@ -734,7 +734,7 @@ def install_feedback(ns, other_get):
             other_objects = [n for n in ORDER if n != ns['PHASE3_TARGET_OBJECT']]
             meta.update(distractor_objects=','.join(other_objects),
                         distractor_note='Four base non-targets plus randomized duplicate instances; see scene_clutter',
-                        distractor_policy_note='Repeated non-target types may occur on both table and tray; target type appears once')
+                        distractor_policy_note='Extra duplicate non-targets are table-only; base tray objects use fixed slots; target type appears once')
             meta.update(tray_contract=VERSION,tray_slot_id=evidence.spec['slot_id'],
                         tray_slot_order=json.dumps(ORDER),
                         initial_tray_occupancy=json.dumps([int(n in ns.get('_p4_tray_objects',[])) for n in ORDER]),

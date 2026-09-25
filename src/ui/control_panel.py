@@ -139,7 +139,7 @@ class Panel:
             ttk.Label(tray_controls,text=n).grid(row=i,column=0,sticky='w',padx=8,pady=4)
             widget=ttk.Spinbox(tray_controls,from_=0,to=1,textvariable=self.tray_counts[n],width=5)
             widget.grid(row=i,column=1,sticky='w'); self.controls.append(widget)
-        ttk.Label(tray_controls,text='Base objects: 0 = table, 1 = tray (manual mode).\nExtra distractors repeat non-target types on table/tray.\nTarget type appears exactly once; its tray lane stays free.',justify='left').grid(row=1,column=2,rowspan=3,sticky='nw',padx=20)
+        ttk.Label(tray_controls,text='Base objects: 0 = table, 1 = fixed tray slot (manual mode).\nExtra duplicate distractors: TABLE ONLY. Tray stays ordered.\nTarget type appears exactly once; its tray lane stays free.',justify='left').grid(row=1,column=2,rowspan=3,sticky='nw',padx=20)
         clutter = ttk.Frame(tray_controls)
         clutter.grid(row=4,column=2,rowspan=2,sticky='w',padx=20)
         ttk.Label(clutter,text='Total distractors, random range:').pack(side='left')

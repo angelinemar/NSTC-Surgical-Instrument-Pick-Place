@@ -6,13 +6,29 @@ import unittest
 from unittest.mock import patch
 import numpy as np
 import h5py
-from src.recorder.scene_clutter import limits, pool, disjoint
+from src.recorder.scene_clutter import limits, pool, disjoint, table_footprint_allowed, validate
 from src.recorder.instance_labels import body_mask, append_segment, audit_instances, CAMERAS
 from src.recorder.domain_randomization import sample_background
 from training.export_detection import visible_boxes
 
 
 class ClutterTests(unittest.TestCase):
+    def test_entire_tray_is_reserved_even_inside_table_grid(self):
+        layout = dict(grid_x=[-2,2], grid_y=[-2,2], tray_xy=[0,0],
+                      tray_yaw_deg=0, tray_dimensions_local_xy=[.4,.8])
+        for yaw in (0,45,90):
+            layout['tray_yaw_deg'] = yaw
+            self.assertFalse(table_footprint_allowed(np.array([[-.01,-.01,0],[.01,.01,0]]),layout))
+            self.assertTrue(table_footprint_allowed(np.array([[1,1,0],[1.1,1.1,0]]),layout))
+        layout['tray_yaw_deg'] = 0
+        # Center outside tray, but body overlaps its edge: still forbidden.
+        self.assertFalse(table_footprint_allowed(np.array([[.19,-.01,0],[.3,.01,0]]),layout))
+        self.assertFalse(table_footprint_allowed(np.array([[1.9,1.9,0],[2.1,2.1,0]]),layout))
+
+    def test_settle_validation_rejects_legacy_tray_clutter(self):
+        with self.assertRaisesRegex(RuntimeError,'CLUTTER_TRAY_FORBIDDEN'):
+            validate(None, {'_p4_clutter':{'instances':[{'instance':'clutter_00','region':'tray'}]}})
+
     def test_default_pool_repeats_only_non_targets(self):
         with patch.dict(os.environ, {'P4_DISTRACTOR_MIN':'12','P4_DISTRACTOR_MAX':'18','P4_RANDOMIZATION_SEED':'17'}), patch('phase4_session.load_session', return_value=None):
             for target in ('scalpel','scissor','love_retractor','kelly','scalpel_type2'):
