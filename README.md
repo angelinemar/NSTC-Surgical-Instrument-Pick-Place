@@ -7,7 +7,7 @@ Native-camera and independent-detector workflow: [training v2](docs/TRAINING_V2.
 ## Control panel
 
 `1. Record & live log`: choose **Pick / Place / Both**, instrument and spawn mode.
-`2. Dataset & tray`: choose **Detection only / DP + detection (joint) / Both**, native resolution, session split, seed and save folder.
+`2. Dataset & tray`: choose **Both: DP joint + standalone detector (recommended)** for the complete capture path, native resolution, session split, seed and save folder.
 `3. Files & export`: export a completed collection with independent train, valid and test sessions. Recording does not train a model.
 
 Both shares raw data once; DP-compatible runs keep four non-target instruments in the tray. Detection-only can randomize tray occupancy. Failed attempts never become training samples. Console details go to `debug/logs/`.

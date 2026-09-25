@@ -78,10 +78,11 @@ python scripts\collect_training.py --track perception --output '<NEW_DETECTION_R
 
 1. **Record & live log**: choose saved motion `pick`, `place`, or `both` independently
    from the dataset purpose. Choose target, manual/auto, and successful episode goal.
-2. **Dataset & tray**: choose `Detection only`, `DP + detection (joint)`, or
-   `Both (shared raw, separate models)`. Select native 224/448, a destination on the
-   desired drive, a whole-session split, and a seed. Use different seeds across
-   train/valid/test. Manual spawn does not automatically add XY/yaw jitter; choose auto.
+2. **Dataset & tray**: choose `Both: DP joint + standalone detector (recommended)`
+   for the complete capture path, or select detector-only / DP-only for narrower
+   experiments. Select native 224/448, a destination on the desired drive, a
+   whole-session split, and a seed. Use different seeds across train/valid/test.
+   Manual spawn does not automatically add XY/yaw jitter; choose auto.
 3. DP/Both require a full non-target tray. Detection-only defaults to random tray
    occupancy. Each saved skill retains RGB/masks/robot evidence; purpose describes
    the consumers in `capture_contract.json`, not a separately trained model.

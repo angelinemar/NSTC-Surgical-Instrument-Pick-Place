@@ -4,8 +4,11 @@ import shutil
 
 PURPOSES = {'detection': ['detection'], 'dp': ['dp_joint'],
             'both': ['detection', 'dp_joint']}
-LABELS = {'Detection only': 'detection', 'DP + detection (joint)': 'dp',
-          'Both (shared raw, separate models)': 'both'}
+LABELS = {
+    'Both: DP joint + standalone detector (recommended)': 'both',
+    'Detection only: standalone object detector': 'detection',
+    'DP + detection: joint perception inside DP': 'dp',
+}
 
 
 def capture_contract(purpose, skill, size, seed, split='unassigned'):

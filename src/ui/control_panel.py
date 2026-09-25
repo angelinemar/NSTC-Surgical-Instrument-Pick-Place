@@ -59,7 +59,7 @@ class Panel:
         self.log_filter=LogFilter(); self.log_tail=LogTail()
         self.mode = tk.StringVar(value='manual')
         self.skill = tk.StringVar(value='both')
-        self.dataset_purpose = tk.StringVar(value='Both (shared raw, separate models)')
+        self.dataset_purpose = tk.StringVar(value='Both: DP joint + standalone detector (recommended)')
         self.camera_size = tk.StringVar(value='448')
         self.dataset_split = tk.StringVar(value='unassigned')
         self.session_seed = tk.IntVar(value=int(datetime.now().timestamp()))
@@ -111,11 +111,11 @@ class Panel:
         dataset = ttk.LabelFrame(traypage,text='Dataset output - independent of Pick / Place / Both',padding=8)
         dataset.pack(fill='x',pady=4)
         for row,(label,var,values) in enumerate((
-            ('Use recording for',self.dataset_purpose,tuple(LABELS)),
+            ('Training outputs to make later',self.dataset_purpose,tuple(LABELS)),
             ('Native camera pixels',self.camera_size,('224','448')),
-            ('Whole-session split',self.dataset_split,('unassigned','train','valid','test')))):
+            ('Put this whole session in split',self.dataset_split,('unassigned','train','valid','test')))):
             ttk.Label(dataset,text=label).grid(row=row,column=0,sticky='w',padx=4)
-            widget=ttk.Combobox(dataset,textvariable=var,values=values,state='readonly',width=38)
+            widget=ttk.Combobox(dataset,textvariable=var,values=values,state='readonly',width=56)
             widget.grid(row=row,column=1,sticky='ew',pady=2); self.controls.append(widget)
         ttk.Label(dataset,text='Session seed').grid(row=3,column=0,sticky='w',padx=4)
         widget=ttk.Entry(dataset,textvariable=self.session_seed,width=20)
@@ -440,11 +440,11 @@ class Panel:
         purpose=LABELS[self.dataset_purpose.get()]
         if purpose in ('dp','both'):
             self.tray_mode.set('full')
-            text='DP-compatible: one target on table, four other instruments in tray. '
+            text='Use this for DP training: one target on table, four other instruments in tray. '
         else:
             self.tray_mode.set('random')
-            text='Detection-only: random tray occupancy allows tabletop distractors. '
-        self.dataset_hint.set(text+'Lighting randomizes each episode. 448 = sharper native detail; 224 = less storage. Both = one raw source, two export targets, not twice the storage. Use distinct seeds across train / valid / test.')
+            text='Use this only for a flexible standalone object detector; random tray occupancy allows tabletop distractors. '
+        self.dataset_hint.set(text+'Recommended: Both. It records raw RGB once, then export makes two datasets/models: DP joint perception and standalone detector. Split means the entire session goes to train, valid, or test; never split frames inside one session. Use unassigned only for quick tests. Use a different seed for every train / valid / test session.')
 
     def prepare(self,start=True):
         try:
