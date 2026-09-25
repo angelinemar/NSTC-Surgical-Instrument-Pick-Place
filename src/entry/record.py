@@ -15,7 +15,7 @@ def main() -> None:
     parser.add_argument("--list-objects", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument('--camera-size', type=int, choices=(224, 448), default=224,
-                        help='Native square sensor, same framing; no crop. 448 retains more detail.')
+                        help='Recorded square RGB size. Native sensor, wider table view, no crop. 448 retains more detail.')
     parser.add_argument('--randomization', choices=('off', 'train'), default='train')
     parser.add_argument('--randomization-seed', type=int, default=17)
     parser.add_argument('--dataset-purpose', choices=('detection','dp','both'), default='detection')

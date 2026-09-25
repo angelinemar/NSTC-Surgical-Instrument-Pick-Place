@@ -61,12 +61,12 @@ def write_run_manifest(object_name, forwarded_args):
         'scene_layout': LAYOUT,
         'camera_layout': json.loads((ROOT/'env'/'camera_layout.json').read_text(encoding='utf-8')),
         'asset_and_config_sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
-        'camera_contract': 'native_square_same_fov_v1',
+        'camera_contract': 'native_square_wide_table_v2',
         'render_contract': 'native_no_dlss_no_frame_generation_4spp_v1',
         'camera_size': int(os.environ.get('P4_CAMERA_SIZE', '224')),
         'randomization': os.environ.get('P4_RANDOMIZATION', 'train'),
         'randomization_seed': int(os.environ.get('P4_RANDOMIZATION_SEED', '17')),
-        'note': 'Native square RGB/depth/semantic; no crop or resize in recorder. Same angular framing as historical center crop.'
+        'note': 'Native square RGB/depth/semantic; no crop or resize in recorder. Wider FOV than the historical crop to keep table edges in 224 recordings.'
     }
     (output/'scene_manifest.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
 

@@ -1,4 +1,4 @@
-"""Display the recorder's actual 224x224 sensor crop, not a resized viewport."""
+"""Display the recorder's actual recorded square RGB view."""
 import time
 import json
 from pathlib import Path
@@ -49,7 +49,7 @@ class RecorderPreview:
                                 ui.ImageWithProvider(provider,width=224,height=224,pixel_aligned=True,
                                     fill_policy=ui.IwpFillPolicy.IWP_PRESERVE_ASPECT_FIT)
         self.subscription = omni.kit.app.get_app().get_update_event_stream().create_subscription_to_pop(self.update,name='P4 recorder RGB crop preview')
-        print('[P4 EXACT PREVIEW] six 224x224 sensor crops, native camera sizes unchanged',flush=True)
+        print('[P4 EXACT PREVIEW] six recorded square RGB views; no center crop',flush=True)
 
     def update(self, event=None):
         if not self.window.visible or time.monotonic()-self.last_update<0.15:
@@ -82,7 +82,7 @@ def tune_cameras(env, stage, scope, frames=0, save_file=None):
     destination=Path(save_file) if save_file else Path(__file__).parent / 'env' / 'camera_layout.json'
     destination.parent.mkdir(parents=True,exist_ok=True)
     def save():
-        payload={'format_version':1,'preview':'224x224_h5_center_crop','cameras':{}}
+        payload={'format_version':1,'preview':'native_square_no_center_crop','cameras':{}}
         for name,path in PATHS.items():
             if not stage.GetPrimAtPath(path).IsValid():
                 raise RuntimeError(f'Missing camera: {path}; layout not saved')
