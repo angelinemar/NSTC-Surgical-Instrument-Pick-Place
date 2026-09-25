@@ -38,14 +38,16 @@ class Contracts(unittest.TestCase):
                 self.assertTrue(.12 <= light['target'][0] <= .52)
                 self.assertTrue(-.89 <= light['target'][1] <= .31)
 
-    def test_native_camera_has_same_projection(self):
-        # 448x336 centered to 224 gives exactly the new 224 square pinhole K.
+    def test_native_camera_has_wider_projection_than_old_crop(self):
+        # Native square recording keeps the no-crop path but uses a wider FOV
+        # than the historical 224 crop so table edges are not clipped.
         old_fx = 16. / 20.955 * 448
-        new_fx = 16. / (20.955 * .5) * 224
-        self.assertAlmostEqual(old_fx, new_fx)
+        new_fx = 16. / (20.955 * .65) * 224
+        self.assertLess(new_fx, old_fx)
+        self.assertGreater(new_fx, 16. / 20.955 * 224)
         self.assertEqual(448/2 - (448-224)/2, 112)
         self.assertEqual(336/2 - (336-224)/2, 112)
-        self.assertAlmostEqual(16./(20.955*.5)*448, old_fx*2)
+        self.assertAlmostEqual(16./(20.955*.65)*448, new_fx*2)
 
     def test_collection_plan_keeps_sessions_and_targets_separate(self):
         from scripts.collect_training import plan

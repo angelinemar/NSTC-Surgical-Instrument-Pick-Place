@@ -72,11 +72,14 @@ PHASE3_CAMERAS = {
     },
 }
 
-# Preserve exactly the angular field of the old 224-pixel crop from a
-# 448-wide sensor. Native square rendering keeps all pixels; 448 doubles
-# sampling density at the same framing, not the field of view.
+# Use native square sensors without the old center crop, but keep a wider view
+# than the historical crop so the front/table cameras do not clip table edges.
+# 448 still gives sharper recorded RGB than 224 because it stores more pixels.
+CAMERA_FOV_SCALE = float(os.environ.get('P4_CAMERA_FOV_SCALE', '0.65'))
+if not 0.5 <= CAMERA_FOV_SCALE <= 1.0:
+    raise ValueError('P4_CAMERA_FOV_SCALE must be between 0.5 and 1.0')
 for _camera in PHASE3_CAMERAS.values():
-    _camera['horizontal_aperture'] *= 224.0 / 448.0
+    _camera['horizontal_aperture'] *= CAMERA_FOV_SCALE
 
 
 # GUI camera tuner writes only poses here. Keeping it separate from this file
