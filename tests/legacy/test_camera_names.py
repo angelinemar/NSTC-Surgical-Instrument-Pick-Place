@@ -9,7 +9,8 @@ root=next(p for p in Path(__file__).resolve().parents if (p/'record.py').exists(
 active=sensor_names(json.loads((root/'camera_layout.json').read_text())['cameras'])
 assert len(tuning.PHASE3_CAMERAS)==6
 assert tuning.PHASE3_CAMERAS['camera']['prim_path']=='{ENV_REGEX_NS}/cam_front'
-assert tuning.CAMERA_WIDTH==448 and tuning.CAMERA_HEIGHT==336 and tuning.CAMERA_OUTPUT_CROP_SIZE==224
+assert tuning.CAMERA_WIDTH in (224,448) and tuning.CAMERA_HEIGHT==tuning.CAMERA_WIDTH
+assert all(abs(c['horizontal_aperture']-20.955/2)<1e-6 for c in tuning.PHASE3_CAMERAS.values())
 for name,pose in active.items():
     assert tuple(pose['pos'])==tuning.PHASE3_CAMERAS[name]['pos']
     assert tuple(pose['rot'])==tuning.PHASE3_CAMERAS[name]['rot']

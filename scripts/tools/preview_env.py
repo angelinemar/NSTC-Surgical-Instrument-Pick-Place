@@ -144,7 +144,7 @@ def main():
                         if rgb is not None:
                             print('[P4 RGB]', label, name, rgb.shape, rgb.min(), rgb.max(), float(rgb.mean()), flush=True)
                             h, w = rgb.shape[:2]
-                            Image.fromarray(rgb[(h-224)//2:(h+224)//2, (w-224)//2:(w+224)//2]).save(output/f'{label}_{name}.png')
+                            Image.fromarray(rgb).save(output/f'{label}_{name}.png')
                 capture('baseline')
                 if args.lighting_compare:
                     paths = {'/World/SharedAmbientLight':1800.,

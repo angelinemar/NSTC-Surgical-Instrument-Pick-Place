@@ -105,6 +105,8 @@ def run_handler(handler: ObjectHandler, forwarded_args: list[str]) -> None:
         # extension startup. Enter the unchanged recorder main afterwards,
         # matching the working preview/direct-backend initialization path.
         loaded = runpy.run_path(str(backend), run_name=f"p4_{handler.name}_backend")
+        import os
+        loaded['main'].__globals__['RANDOM_SEED'] = int(os.environ.get('P4_RANDOMIZATION_SEED', '17'))
         app=loaded.get('simulation_app')
         original_close=app.close if app else None
         if app:
@@ -116,6 +118,13 @@ def run_handler(handler: ObjectHandler, forwarded_args: list[str]) -> None:
                 metrics.finish()
                 terminal_status('complete','Requested saved-success goal reached; closing simulator')
                 sys.stdout.flush(); sys.stderr.flush()
+                if os.environ.get('P4_SHUTDOWN_MODE')=='verified-exit' and not any(
+                        flag in forwarded_args for flag in ('--camera_tuner','--workspace_tuner','--layout_tuner')):
+                    from src.recorder.verified_exit import verify_and_exit
+                    from phase3_run_metrics import _forwarded_value
+                    verify_and_exit(metrics.out_dir,handler.name,
+                        _forwarded_value(forwarded_args,('--record_mode',),'both'),
+                        int(_forwarded_value(forwarded_args,('--episodes',),'1')))
                 return original_close(*args,**kwargs)
             app.close=checked_close
         with metrics.observe_stdout():
@@ -126,6 +135,9 @@ def run_handler(handler: ObjectHandler, forwarded_args: list[str]) -> None:
         if isinstance(error,SystemExit) and error.code in (None,0):
             try:
                 require_saved_goal(metrics,forwarded_args)
+                coverage_report(require_complete=True)
+                terminal_status('complete','Validated saved-success goal reached')
+                return
             except RuntimeError as incomplete:
                 error = incomplete
         runtime_error = error

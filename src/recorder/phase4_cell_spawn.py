@@ -105,6 +105,10 @@ def install_cell_spawn(namespace):
     original_metadata = namespace['build_settle_metadata']
     def cell_metadata(spawn, before, report, drift):
         meta=original_metadata(spawn,before,report,drift)
+        meta['domain_randomization'] = json.dumps(namespace.get('_p4_domain_randomization', {}), sort_keys=True)
+        import os
+        meta['dataset_purpose'] = os.environ.get('P4_DATASET_PURPOSE','detection')
+        meta['dataset_split'] = os.environ.get('P4_DATASET_SPLIT','unassigned')
         meta.update(cell_recenter_passes=int(report.get('cell_recenter_passes',0)),
                     cell_fit_rule='settled_rotated_asset_bbox_in_assigned_cell',
                     cell_assignments_requested=spawn.get('grid',{}).get('object_cell_assignments','{}'))

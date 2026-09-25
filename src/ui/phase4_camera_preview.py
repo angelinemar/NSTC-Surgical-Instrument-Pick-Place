@@ -18,7 +18,12 @@ def recorded_crop(env, scope, name):
     h,w = rgb.shape[:2]
     if min(h,w)<224:
         raise ValueError(f'{name}: sensor resolution smaller than recorder crop')
-    return np.ascontiguousarray(rgb[(h-224)//2:(h-224)//2+224,(w-224)//2:(w-224)//2+224,:3])
+    if h != w:
+        raise ValueError('Expected native square P4 image')
+    if h != 224:
+        from PIL import Image
+        rgb = np.asarray(Image.fromarray(rgb[:,:,:3]).resize((224,224), Image.Resampling.LANCZOS))
+    return np.ascontiguousarray(rgb[:,:,:3])
 
 
 class RecorderPreview:
@@ -33,7 +38,7 @@ class RecorderPreview:
         self.window = ui.Window('P4 Recording RGB | 224 x 224 | LIVE',width=710,height=550)
         with self.window.frame:
             with ui.VStack(spacing=4):
-                ui.Label('Actual sensor center crop; no resize. Wrist = gripper.',height=20)
+                ui.Label('Full native view; 448 preview downsampled for display. Wrist = gripper.',height=20)
                 for row in range(2):
                     with ui.HStack(height=248,spacing=8):
                         for name in CAMERAS[row*3:row*3+3]:

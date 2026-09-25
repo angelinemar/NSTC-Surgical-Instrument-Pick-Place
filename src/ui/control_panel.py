@@ -10,6 +10,7 @@ from datetime import datetime
 from phase4_panel_log import LogFilter,LogTail
 from phase4_panel_state import Dashboard,rotate_outline
 from phase4_panel_widgets import Tooltip,cell_style
+from src.recorder.capture_contract import LABELS, capture_contract, storage_budget
 
 ROOT = Path(__file__).resolve().parent
 NAMES = ('scalpel','scissor','love_retractor','kelly','scalpel_type2')
@@ -33,6 +34,8 @@ class Panel:
         self.session = None
         self.session_path = None
         self.output_dir = None
+        self.export_process = None
+        self.export_log = None
         self.output_text = tk.StringVar(value='No run selected - Launch a run or browse an existing run folder.')
         self._poll_id=None
         self.dashboard=Dashboard(); self.live_geometry=None
@@ -56,8 +59,13 @@ class Panel:
         self.log_filter=LogFilter(); self.log_tail=LogTail()
         self.mode = tk.StringVar(value='manual')
         self.skill = tk.StringVar(value='both')
+        self.dataset_purpose = tk.StringVar(value='Both (shared raw, separate models)')
+        self.camera_size = tk.StringVar(value='448')
+        self.dataset_split = tk.StringVar(value='unassigned')
+        self.session_seed = tk.IntVar(value=int(datetime.now().timestamp()))
+        self.destination = tk.StringVar(value=str(ROOT/'datasets'/'panel_runs'))
         self.episodes = tk.IntVar(value=1)
-        self.tray_mode = tk.StringVar(value='random')
+        self.tray_mode = tk.StringVar(value='full')
         self.tray_counts = {n:tk.IntVar(value=0) for n in NAMES}
         self.status = tk.StringVar(value='Choose target, drag instrument footprints, then Launch / Prepare.')
         self.selected = tk.StringVar(value='scalpel')
@@ -73,7 +81,7 @@ class Panel:
         style.configure('TNotebook.Tab',padding=(16,8))
         style.map('TNotebook.Tab',background=[('selected','#28506b')],foreground=[('selected','#ffffff')])
         self.pages={}
-        for key,title in (('workspace','1. Workspace & live log'),('tray','2. Tray & instructions'),('results','3. Recordings & files')):
+        for key,title in (('workspace','1. Record & live log'),('tray','2. Dataset & tray'),('results','3. Files & export')):
             page=ttk.Frame(self.notebook,padding=8); self.pages[key]=page; self.notebook.add(page,text=title)
         main=self.pages['workspace']; traypage=self.pages['tray']; results=self.pages['results']
         self.tooltips=[]; self.action_buttons={}
@@ -97,6 +105,29 @@ class Panel:
             widget.pack(side='left'); self.controls.append(widget)
         self.coverage_text=tk.StringVar(value='Single mode: saved successes, no per-cell quota.')
         ttk.Label(main,textvariable=self.coverage_text,padding=(3,6),wraplength=1050).pack(fill='x')
+        dataset_summary=ttk.Frame(main); dataset_summary.pack(fill='x')
+        ttk.Label(dataset_summary,textvariable=self.dataset_purpose).pack(side='left',padx=4)
+        ttk.Button(dataset_summary,text='Dataset / camera / save folder...',command=lambda:self.notebook.select(traypage)).pack(side='right')
+        dataset = ttk.LabelFrame(traypage,text='Dataset output - independent of Pick / Place / Both',padding=8)
+        dataset.pack(fill='x',pady=4)
+        for row,(label,var,values) in enumerate((
+            ('Use recording for',self.dataset_purpose,tuple(LABELS)),
+            ('Native camera pixels',self.camera_size,('224','448')),
+            ('Whole-session split',self.dataset_split,('unassigned','train','valid','test')))):
+            ttk.Label(dataset,text=label).grid(row=row,column=0,sticky='w',padx=4)
+            widget=ttk.Combobox(dataset,textvariable=var,values=values,state='readonly',width=38)
+            widget.grid(row=row,column=1,sticky='ew',pady=2); self.controls.append(widget)
+        ttk.Label(dataset,text='Session seed').grid(row=3,column=0,sticky='w',padx=4)
+        widget=ttk.Entry(dataset,textvariable=self.session_seed,width=20)
+        widget.grid(row=3,column=1,sticky='w'); self.controls.append(widget)
+        ttk.Label(dataset,text='Save raw to').grid(row=4,column=0,sticky='w',padx=4)
+        widget=ttk.Entry(dataset,textvariable=self.destination,width=55)
+        widget.grid(row=4,column=1,sticky='ew'); self.controls.append(widget)
+        self.help_button(dataset,'Choose drive / folder',self.choose_destination,'Choose storage before launch. Existing recordings are never deleted.').grid(row=4,column=2,padx=4)
+        self.dataset_hint=tk.StringVar()
+        ttk.Label(dataset,textvariable=self.dataset_hint,wraplength=1000,justify='left').grid(row=5,column=0,columnspan=3,sticky='w',pady=5)
+        self.dataset_purpose.trace_add('write',self.dataset_changed)
+        self.dataset_changed()
         tray_controls=ttk.LabelFrame(traypage,text='Initial tray occupancy',padding=12)
         tray_controls.pack(fill='x',pady=6)
         ttk.Label(tray_controls,text='Mode').grid(row=0,column=0,sticky='w',padx=8)
@@ -145,11 +176,12 @@ class Panel:
             button=self.help_button(buttons,label,command,hint); button.pack(side='left',padx=4); self.action_buttons[label]=button
         ttk.Label(traypage,text='GRID CYCLES\n1 round = one saved success in each cell. 2 rounds = two per cell.\nCells run in order 0-9; offset, yaw and distractors randomize. A failure never advances the cell.\n\nMAP LEGEND\nBlue CURRENT = active cell. Green DONE = full quota. PARTIAL = some rounds completed.\nMarkers exist only in this panel, not in recorded RGB/semantic images.\n\nREACHABILITY\nCoverage is a requested schedule, not proof every pose is reachable. Near-base cells can fail.\nThe yellow circle is hidden; existing safety validation is unchanged.',justify='left',padding=8).pack(anchor='w')
         ttk.Label(results,text='Files from the active or selected run',font=('Segoe UI',13,'bold'),padding=8).pack(anchor='w')
-        ttk.Label(results,text='Only successful saved episodes belong in pick_policy / place_policy.\nFailure previews are diagnostics, not training samples. GIF export may be separate.',padding=8).pack(anchor='w')
+        ttk.Label(results,text='Saved skill selects pick_policy / place_policy. Dataset purpose selects downstream consumers.\nBoth consumers share raw RGB once; exporters create separate training artifacts. No model is trained by Record.\nFailure previews are diagnostics, not training samples. capture_contract.json records your choices.',padding=8).pack(anchor='w')
         output_bar=ttk.LabelFrame(results,text='Open in File Explorer',padding=12); output_bar.pack(fill='x',pady=8)
         for label,kind in (('Run folder','run'),('Pick H5','pick'),('Place H5','place'),('GIF / previews','gif'),('Failure previews','failure')):
             self.help_button(output_bar,label,lambda k=kind:self.open_output(k),'Open '+label+' for the active/selected run. Missing outputs are explained; files are never fabricated.').pack(side='left',padx=3)
         self.help_button(results,'Browse saved run...',self.choose_output,'Select an older run/object folder to inspect its H5, GIF and failure previews. Available when no run is active.').pack(anchor='w',pady=8)
+        self.help_button(results,'Export collection for training...',self.export_collection,'Select the parent folder containing completed train / valid / test sessions. Exports selected dataset purpose without recording again.').pack(anchor='w',pady=4)
         ttk.Label(results,text='Selected output path (copyable):',padding=6).pack(anchor='w')
         ttk.Entry(results,textvariable=self.output_text,state='readonly').pack(fill='x',pady=4)
         ttk.Separator(footer,orient='horizontal').pack(fill='x',pady=5)
@@ -220,7 +252,8 @@ class Panel:
 
     def pump_log(self):
         if not self.session_path: return
-        for line in self.log_tail.read(self.session_path.parent/'console.log'):
+        path=Path((self.session or {}).get('console_log',self.session_path.parent/'console.log'))
+        for line in self.log_tail.read(path):
             self.dashboard.feed(line)
             event=self.log_filter.feed(line)
             if event: self.add_log(*event)
@@ -366,8 +399,60 @@ class Panel:
         tmp=self.session_path.with_suffix('.tmp')
         tmp.write_text(json.dumps(self.session,indent=2),encoding='utf-8'); os.replace(tmp,self.session_path)
 
+    def choose_destination(self):
+        if self.process and self.process.poll() is None: return
+        folder=filedialog.askdirectory(title='Destination for new recordings (existing data stays untouched)')
+        if folder: self.destination.set(folder)
+
+    def export_collection(self):
+        if self.process or self.export_process:
+            messagebox.showinfo('Busy','Finish the active recording or export first.'); return
+        source=filedialog.askdirectory(title='Collection root containing completed train / valid / test sessions')
+        if not source: return
+        parent=filedialog.askdirectory(title='Export destination (outside the raw collection)')
+        if not parent: return
+        stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        output=Path(parent)/('training_export_'+stamp)
+        purpose=LABELS[self.dataset_purpose.get()]
+        log=ROOT/'debug'/'logs'/('export_'+stamp+'.log'); log.parent.mkdir(parents=True,exist_ok=True)
+        self.export_log=log.open('w',encoding='utf-8')
+        launcher=ROOT.parents[3]/'_isaac_sim'/'python.bat'
+        try:
+            self.export_process=subprocess.Popen([str(launcher),str(ROOT/'training/export_recordings.py'),
+                '--source',source,'--output',str(output),'--purpose',purpose],cwd=ROOT,
+                stdout=self.export_log,stderr=subprocess.STDOUT)
+        except Exception:
+            self.export_log.close(); self.export_log=None
+            raise
+        self.status.set(f'Exporting {purpose}. Output: {output}. Log: {log}')
+        self.root.after(500,lambda:self.poll_export(output,log))
+
+    def poll_export(self,output,log):
+        if self.export_process.poll() is None:
+            self.root.after(500,lambda:self.poll_export(output,log)); return
+        code=self.export_process.returncode
+        self.export_log.close(); self.export_log=None; self.export_process=None
+        valid=code==0 and (output/'export_complete.json').is_file()
+        self.status.set(f"Export {'complete (not accuracy-certified)' if valid else 'FAILED'}: {output}. Log: {log}")
+        self.add_log('success' if valid else 'error',self.status.get())
+
+    def dataset_changed(self,*args):
+        purpose=LABELS[self.dataset_purpose.get()]
+        if purpose in ('dp','both'):
+            self.tray_mode.set('full')
+            text='DP-compatible: one target on table, four other instruments in tray. '
+        else:
+            self.tray_mode.set('random')
+            text='Detection-only: random tray occupancy allows tabletop distractors. '
+        self.dataset_hint.set(text+'Lighting randomizes each episode. 448 = sharper native detail; 224 = less storage. Both = one raw source, two export targets, not twice the storage. Use distinct seeds across train / valid / test.')
+
     def prepare(self,start=True):
         try:
+            if self.export_process:
+                raise ValueError('Finish the active export before launching another recorder.')
+            purpose=LABELS[self.dataset_purpose.get()]
+            if purpose in ('dp','both') and self.tray_mode.get()!='full':
+                raise ValueError('DP / Both require Full tray. For variable tabletop distractors select Detection only.')
             tray_objects=[n for n in NAMES if self.tray_counts[n].get()==1]
             if any(self.tray_counts[n].get() not in (0,1) for n in NAMES):
                 raise ValueError('Currently one physical instance per class: tray count must be 0 or 1.')
@@ -390,12 +475,19 @@ class Panel:
                 episodes*=self.layout['grid_rows']*self.layout['grid_cols']
                 self.mode.set('auto')
             stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-            output=ROOT/'datasets'/'panel_runs'/stamp/self.target.get(); output.mkdir(parents=True)
+            contract=capture_contract(purpose,self.skill.get(),int(self.camera_size.get()),self.session_seed.get(),self.dataset_split.get())
+            output=Path(self.destination.get()).resolve()/stamp/self.target.get()
+            budget=storage_budget(output,episodes,int(self.camera_size.get()))
+            if not budget['capacity_pass']:
+                raise ValueError(f"Not enough storage: estimate {budget['estimated_bytes']/1e9:.1f} GB + 30 GB reserve, free {budget['free_bytes']/1e9:.1f} GB. Choose another folder, fewer episodes or native 224.")
+            output.mkdir(parents=True)
+            (output/'capture_contract.json').write_text(json.dumps(contract,indent=2),encoding='utf-8')
             self.session_path=output/'session.json'
             self.output_dir=output; self.output_text.set(str(output))
             self.session=dict(target=self.target.get(),mode=self.mode.get(),positions=json.loads(json.dumps(self.positions)),prepare_id=1,start_id=0,discard_id=0,stop=False,auto_start=start)
             self.session.update(tray_mode=self.tray_mode.get(),tray_objects=tray_objects)
             self.session.update(collection=self.collection.get(),cycles=cycles)
+            self.session.update(dataset_purpose=purpose,dataset_split=self.dataset_split.get(),session_seed=self.session_seed.get())
             self.write()
             self.log_filter=LogFilter(); self.log_tail=LogTail()
             self.live_positions=None; self.live_tray=None
@@ -404,8 +496,13 @@ class Panel:
             self.add_log('info',f'Launching {self.target.get()}: goal {episodes} saved successes; no attempt limit.')
             launcher=ROOT.parents[3]/'_isaac_sim'/'python.bat'
             args=[str(launcher),str(ROOT/'record.py'),'--object',self.target.get(),'--episodes',str(episodes),
-                  '--max-attempts','0','--record_mode',self.skill.get(),'--out_dir',str(output),'--session-config',str(self.session_path)]
-            self.log_file=(output/'console.log').open('w',encoding='utf-8')
+                  '--max-attempts','0','--record_mode',self.skill.get(),'--out_dir',str(output),'--session-config',str(self.session_path),
+                  '--camera-size',self.camera_size.get(),'--randomization-seed',str(self.session_seed.get()),
+                  '--dataset-purpose',purpose,'--dataset-split',self.dataset_split.get(),'--tray-occupancy','full' if purpose in ('dp','both') else 'random']
+            log=ROOT/'debug'/'logs'/'panel_runs'/stamp/(self.target.get()+'.log')
+            log.parent.mkdir(parents=True,exist_ok=True)
+            self.log_file=log.open('w',encoding='utf-8')
+            self.session['console_log']=str(log); self.write()
             env=os.environ.copy(); env.pop('P4_SYMMETRIC_GRASP',None)
             self.process=subprocess.Popen(args,cwd=ROOT,stdout=self.log_file,stderr=subprocess.STDOUT,env=env)
             for control in self.controls: control.configure(state='disabled')
@@ -501,6 +598,8 @@ class Panel:
             self.add_log('error',f'Cannot open folder: {exc}'); messagebox.showerror('Cannot open folder',str(exc))
 
     def close(self):
+        if self.export_process and self.export_process.poll() is None:
+            messagebox.showinfo('Export active','Wait for export to finish before closing the panel.'); return
         self.stop()
         if self._poll_id: self.root.after_cancel(self._poll_id)
         self.root.destroy()

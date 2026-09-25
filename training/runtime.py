@@ -92,8 +92,10 @@ def read_live_sensors(env):
     for public, sensor in zip(CAMERAS, ('camera', 'grip_cam_b', 'cam_top', 'cam_left', 'cam_right', 'cam_tray')):
         frame = env.scene[sensor].data.output['rgb'][0].detach().cpu().numpy()[..., :3]
         h, w = frame.shape[:2]
-        if h < 224 or w < 224:
-            raise ValueError('Camera image is smaller than training crop')
-        y, x = (h - 224) // 2, (w - 224) // 2
-        result[public + '_rgb'] = frame[y:y + 224, x:x + 224].copy()
+        if (h,w) not in ((224,224),(448,448)):
+            raise ValueError('Expected native square P4 camera; legacy wide sensors need explicit migration')
+        if (h,w) == (448,448):
+            from PIL import Image
+            frame = np.asarray(Image.fromarray(frame).resize((224,224), Image.Resampling.LANCZOS))
+        result[public + '_rgb'] = frame.copy()
     return result

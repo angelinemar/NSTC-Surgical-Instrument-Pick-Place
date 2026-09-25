@@ -1,11 +1,14 @@
 
 import json
+import os
 from pathlib import Path
 from phase4_camera_names import sensor_names
 
 
-CAMERA_WIDTH  = 448
-CAMERA_HEIGHT = 336
+CAMERA_WIDTH = int(os.environ.get('P4_CAMERA_SIZE', '224'))
+if CAMERA_WIDTH not in (224, 448):
+    raise ValueError('P4_CAMERA_SIZE must be 224 or 448')
+CAMERA_HEIGHT = CAMERA_WIDTH
 CAMERA_OUTPUT_CROP_SIZE = 224
 CAMERA_DATA_TYPES = ["rgb", "distance_to_image_plane", "semantic_segmentation"]
 
@@ -68,6 +71,12 @@ PHASE3_CAMERAS = {
         "rot": (0.00503358, 0.70555958, 0.70859880, -0.00693478),
     },
 }
+
+# Preserve exactly the angular field of the old 224-pixel crop from a
+# 448-wide sensor. Native square rendering keeps all pixels; 448 doubles
+# sampling density at the same framing, not the field of view.
+for _camera in PHASE3_CAMERAS.values():
+    _camera['horizontal_aperture'] *= 224.0 / 448.0
 
 
 # GUI camera tuner writes only poses here. Keeping it separate from this file

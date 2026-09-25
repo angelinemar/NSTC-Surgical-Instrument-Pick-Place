@@ -22,9 +22,16 @@ def write_run_manifest(object_name, forwarded_args):
     session_config=load_session()
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--out_dir', default='datasets/phase3_grid_split')
+    parser.add_argument('--record_mode', default='both')
     args, _ = parser.parse_known_args(forwarded_args)
     output = Path(args.out_dir)
     output.mkdir(parents=True, exist_ok=True)
+    from src.recorder.capture_contract import capture_contract
+    contract = capture_contract(os.environ.get('P4_DATASET_PURPOSE','detection'),
+                                args.record_mode, int(os.environ.get('P4_CAMERA_SIZE','224')),
+                                int(os.environ.get('P4_RANDOMIZATION_SEED','17')),
+                                os.environ.get('P4_DATASET_SPLIT','unassigned'))
+    (output/'capture_contract.json').write_text(json.dumps(contract,indent=2),encoding='utf-8')
     files = [ROOT/'env'/'scene_layout.json', ROOT/'env'/'camera_layout.json',
              ROOT/'phase4_feedback.py', ROOT/'phase4_grasp_validation.py', ROOT/'phase4_session.py', ROOT/'phase4_metrics.py', ROOT/'runner.py', ROOT/'record.py',
              ROOT/'phase4_scene.py', ROOT/'phase4_runtime.py', ROOT/'phase4_fsm.py', ROOT/'phase4_camera_names.py', ROOT/'phase4_cell_spawn.py', ROOT/'phase3_shared_env_cfg.py',
@@ -39,6 +46,7 @@ def write_run_manifest(object_name, forwarded_args):
     files.append(ROOT/'_p4_compat.py')
     payload = {
         'project': 'P4', 'object': object_name,
+        'capture_contract': contract,
         'feedback_version': '20260916-tray-slots-v1',
         'tray_contract': 'tray_slots_v1',
         'tray_occupancy': (session_config or {}).get('tray_mode',os.environ.get('P4_TRAY_OCCUPANCY','random')),
@@ -53,7 +61,12 @@ def write_run_manifest(object_name, forwarded_args):
         'scene_layout': LAYOUT,
         'camera_layout': json.loads((ROOT/'env'/'camera_layout.json').read_text(encoding='utf-8')),
         'asset_and_config_sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
-        'note': 'P3 instrument handlers preserved; different hospital/workspace. Native 448x336, centered 224x224 H5 crop by default.'
+        'camera_contract': 'native_square_same_fov_v1',
+        'render_contract': 'native_no_dlss_no_frame_generation_4spp_v1',
+        'camera_size': int(os.environ.get('P4_CAMERA_SIZE', '224')),
+        'randomization': os.environ.get('P4_RANDOMIZATION', 'train'),
+        'randomization_seed': int(os.environ.get('P4_RANDOMIZATION_SEED', '17')),
+        'note': 'Native square RGB/depth/semantic; no crop or resize in recorder. Same angular framing as historical center crop.'
     }
     (output/'scene_manifest.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
 
@@ -190,6 +203,11 @@ def spawn_sensor_safe_light(prim_path, cfg, translation=None, orientation=None, 
 
 
 def apply_scene(env_cfg):
+    # DLSS rendered the old small sensors below output resolution. Preserve
+    # actual native samples; higher-res recordings can be downsampled in export.
+    env_cfg.sim.render.antialiasing_mode = 'Off'
+    env_cfg.sim.render.enable_dlssg = False
+    env_cfg.sim.render.samples_per_pixel = 4
     # Headless and GUI must provide identical physical tray raycast support.
     env_cfg.sim.enable_scene_query_support = True
     # Upstream IK TCP=107 mm but observed EE TCP=103.4 mm. A hold command

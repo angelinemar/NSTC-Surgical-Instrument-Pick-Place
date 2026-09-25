@@ -83,6 +83,12 @@ def main():
                       input_contract='p4_sensor_only_v1', smoke_only=args.smoke)
     checkpoint['controller_contract'] = json.loads((args.dataset / 'manifest.json').read_text())['controller_contract']
     torch.save(checkpoint, args.output / 'checkpoint.pt')
+    # Independently loadable perception artifact even when trained jointly.
+    if __package__:
+        from .perception import save_from_joint
+    else:
+        from perception import save_from_joint
+    save_from_joint(model, args.output / 'perception.pt', args.smoke)
     report = dict(smoke_only=args.smoke, training_steps=args.steps, history=history,
                   validation_batches=len(metrics), validation_loss=np.mean(metrics, axis=0).tolist(),
                   validation_iou_by_semantic_id=iou, confusion_matrix=confusion.tolist(),

@@ -49,6 +49,15 @@ def install_runtime_hooks(namespace):
     original_capture = namespace['capture_object_states']
     namespace['_p4_capture_before'] = original_capture
     def remember_force(env, spawn, pose_mode):
+        from src.recorder.capture_contract import storage_budget
+        import os
+        args=namespace.get('args_cli')
+        if args is not None:
+            budget=storage_budget(args.out_dir,1,int(os.environ.get('P4_CAMERA_SIZE','224')))
+            if not budget['capacity_pass']:
+                raise RuntimeError('DISK_RESERVE: stopped before next attempt; saved episodes preserved')
+        from src.recorder.domain_randomization import apply_episode_lighting
+        apply_episode_lighting(env, namespace)
         namespace.pop('_p4_panel_geometry',None)
         namespace['_p4_force_args'] = (env,spawn,pose_mode)
         from phase4_reset import reset_robot,restore_objects

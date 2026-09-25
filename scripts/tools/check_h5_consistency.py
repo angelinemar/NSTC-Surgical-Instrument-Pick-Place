@@ -117,8 +117,8 @@ def main() -> None:
                 failures.append(f"{path}: action shape {action_shape}, expected {(steps, EXPECTED_ACTION_DIM)}")
 
             rgb_shape = ds["observations/front_rgb"].shape if "observations/front_rgb" in ds else ()
-            if rgb_shape[1:3] != EXPECTED_RESOLUTION:
-                failures.append(f"{path}: RGB resolution {rgb_shape[1:3]}, expected {EXPECTED_RESOLUTION}")
+            if rgb_shape[1:3] not in ((224,224),(448,448)):
+                failures.append(f"{path}: unsupported native RGB resolution {rgb_shape[1:3]}")
 
             if obj in OBJECT_IDS and int(h5.attrs.get("object_type_id", -1)) != OBJECT_IDS[obj]:
                 failures.append(f"{path}: wrong object_type_id for {obj}")

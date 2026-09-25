@@ -52,6 +52,7 @@ class PanelTests(unittest.TestCase):
             panel.collection.set('grid_cycles'); panel.episodes.set(3)
             proc=Mock(); proc.poll.return_value=None
             with tempfile.TemporaryDirectory() as tmp,patch.object(ui,'ROOT',Path(tmp)),patch.object(ui.subprocess,'Popen',return_value=proc) as launch,patch.object(ui.messagebox,'showerror') as error:
+                panel.destination.set(tmp)
                 panel.prepare()
                 error.assert_not_called()
                 args=launch.call_args.args[0]

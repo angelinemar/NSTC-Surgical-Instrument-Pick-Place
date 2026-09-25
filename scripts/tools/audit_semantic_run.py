@@ -55,6 +55,8 @@ def audit_file(path_string, output_string, previous=None):
             assert h['supervision_gt'].attrs['conditioning_semantic_id'] == conditioning_id, 'Conditioning ID differs from phase contract'
             assert h['supervision_gt'].attrs['conditioning_class'] == conditioning_class, 'Conditioning class differs from phase contract'
             n = len(h['actions'])
+            image_hw = tuple(h['observations/front_rgb'].shape[1:3])
+            assert image_hw in ((224,224),(448,448))
             report.update(frames=n, target=target, skill=str(h.attrs['policy_skill']),
                           cell=int(h.attrs['coverage_cell_id']),
                           transaction_id=str(h.attrs['pair_transaction_id']), cameras={})
@@ -63,7 +65,7 @@ def audit_file(path_string, output_string, previous=None):
                 mask = h[f'observations/{semantic_name}_semantic']
                 depth = h[f'observations/{camera}_depth']
                 supervision = h[f'supervision_gt/conditioning_mask_{semantic_name}']
-                assert mask.shape == depth.shape == supervision.shape == (n, 224, 224)
+                assert mask.shape == depth.shape == supervision.shape == (n, *image_hw)
                 assert mask.dtype == np.uint16 and supervision.dtype == np.uint8
                 counts = np.zeros(8, dtype=np.int64)
                 visible_frames = np.zeros(8, dtype=np.int64)
@@ -95,8 +97,8 @@ def audit_file(path_string, output_string, previous=None):
                 semantic_name = 'grip_b' if camera == 'wrist' else camera
                 x, y = (i % 3) * 224, 30 + (i // 3) * 490
                 draw.text((x+5, y), camera, fill='white')
-                canvas.paste(Image.fromarray(h[f'observations/{camera}_rgb'][index]), (x, y+20))
-                canvas.paste(Image.fromarray(COLORS[h[f'observations/{semantic_name}_semantic'][index]]), (x, y+248))
+                canvas.paste(Image.fromarray(h[f'observations/{camera}_rgb'][index]).resize((224,224),Image.Resampling.LANCZOS), (x, y+20))
+                canvas.paste(Image.fromarray(COLORS[h[f'observations/{semantic_name}_semantic'][index]]).resize((224,224),Image.Resampling.NEAREST), (x, y+248))
             for label, cid in CLASSES.items():
                 x, y = (cid % 4) * 168, 1014 + (cid // 4) * 22
                 draw.rectangle((x+4, y, x+16, y+12), fill=tuple(map(int, COLORS[cid])))

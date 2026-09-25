@@ -21,6 +21,8 @@ def audit(path):
     with h5py.File(path, 'r') as h5:
         actions = h5['actions'][:]
         total = len(actions)
+        image_hw = tuple(h5['observations/front_rgb'].shape[1:3])
+        assert image_hw in ((224, 224), (448, 448)), (path, image_hw)
         assert bool(h5.attrs['success']), (path,'failed episode saved')
         assert total > 0 and actions.shape == (total,8), (path,actions.shape)
         assert np.isfinite(actions).all(), (path,'nonfinite actions')
@@ -56,7 +58,7 @@ def audit(path):
                 if name.startswith(('observations/','camera_calibration/')) and node.ndim:
                     assert len(node) == total, (path,name,node.shape,total)
                 if name.endswith('_rgb'):
-                    assert node.shape == (total,224,224,3), (path,name,node.shape)
+                    assert node.shape == (total,*image_hw,3), (path,name,node.shape)
                     assert node.dtype == np.uint8, (path,name,node.dtype)
                     # A stream can initialize correctly then become a flat
                     # gray render buffer. Check EVERY recorded/cropped frame.
@@ -64,7 +66,7 @@ def audit(path):
                     assert not bad, (path,name,'flat RGB frames',bad[:20],len(bad))
                     rgb.append(name)
                 if name.endswith('_semantic'):
-                    assert node.shape == (total,224,224), (path,name,node.shape)
+                    assert node.shape == (total,*image_hw), (path,name,node.shape)
                     assert node.dtype == np.uint16, (path,name,node.dtype)
                     ids = set()
                     for i in {0,total//2,total-1}:

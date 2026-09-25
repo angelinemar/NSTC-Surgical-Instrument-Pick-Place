@@ -55,10 +55,6 @@ def phase3_apply_final_cameras_to_env_cfg(env_cfg, preview_output_crop=False):
         c = cams[name]
         focal_length = float(c.get("focal_length", 16.0))
         horizontal_aperture = float(c.get("horizontal_aperture", 20.955))
-        if preview_output_crop:
-            # A square render with aperture scaled by crop/native width is
-            # optically equivalent to the recorder's symmetric center crop.
-            horizontal_aperture *= output_crop / float(width)
         setattr(
             env_cfg.scene,
             name,
@@ -69,8 +65,8 @@ def phase3_apply_final_cameras_to_env_cfg(env_cfg, preview_output_crop=False):
                     horizontal_aperture=horizontal_aperture,
                     clipping_range=tuple(c.get("clipping_range", (0.01, 10.0))),
                 ),
-                width=output_crop if preview_output_crop else width,
-                height=output_crop if preview_output_crop else height,
+                width=width,
+                height=height,
                 data_types=data_types,
                 update_period=0,
                 offset=CameraCfg.OffsetCfg(
@@ -82,7 +78,7 @@ def phase3_apply_final_cameras_to_env_cfg(env_cfg, preview_output_crop=False):
 
     print("[PHASE3 CAMERA TUNING APPLIED]")
     if preview_output_crop:
-        print(f"  preview_output_crop={output_crop}x{output_crop} (matches H5 center crop framing)")
+        print(f"  native_square={width}x{height} (same framing as saved H5)")
     print("  workspace_offset=", WORKSPACE.offset)
     print("  cam_front (legacy sensor key=camera) =", resolved_pos("camera", cams["camera"]["pos"]), cams["camera"]["rot"])
     for name in PHASE3_EXTRA_CAMERA_NAMES:

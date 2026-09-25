@@ -315,8 +315,8 @@ parser.add_argument("--task_text",     type=str,
 parser.add_argument("--debug_every",   type=int, default=25)
 parser.add_argument("--resume",        action="store_true")
 parser.add_argument("--save_every",    type=int, default=50)
-parser.add_argument("--center_crop_size", type=int, default=224,
-                    help="Square center crop saved directly to H5; default 224, use 0 for native camera image.")
+parser.add_argument("--center_crop_size", type=int, default=0,
+                    help="Legacy crop override; P4 defaults to native square pixels without crop.")
 parser.add_argument("--wandb",         action="store_true")
 parser.add_argument("--wandb_project", type=str, default="dual-tray-recording")
 parser.add_argument("--wandb_run",     type=str, default="dual_demos")
@@ -329,7 +329,7 @@ print(f"[PHASE3 RECORD_MODE SET] {globals().get('PHASE3_RECORD_MODE', 'both')}")
 print(f"[PHASE3 RECORD_MODE ARGV] {phase3_get_record_mode()}")
 args_cli.enable_cameras = True
 
-app_launcher   = AppLauncher(args_cli)
+app_launcher   = AppLauncher(args_cli, fast_shutdown=False)
 simulation_app = app_launcher.app
 
 import gymnasium as gym

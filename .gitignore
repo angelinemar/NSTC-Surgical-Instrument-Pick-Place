@@ -22,3 +22,12 @@ __pycache__/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Never publish credentials, even to a private repository.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
