@@ -78,11 +78,11 @@ python scripts\collect_training.py --track perception --output '<NEW_DETECTION_R
 
 1. **Record & live log**: choose saved motion `pick`, `place`, or `both` independently
    from the dataset purpose. Choose target, manual/auto, and successful episode goal.
-2. **Dataset & tray**: choose `Both: DP joint + standalone detector (recommended)`
-   for the complete capture path, or select detector-only / DP-only for narrower
-   experiments. Select native 224/448, a destination on the desired drive, a
-   whole-session split, and a seed. Use different seeds across train/valid/test.
-   Manual spawn does not automatically add XY/yaw jitter; choose auto.
+2. **Dataset & tray**: choose `Both: DP + detector (recommended)` for the complete
+   capture path, or select detector-only / DP-only for narrower experiments. Select
+   recorded image size and a destination on the desired drive. The GUI assigns seed
+   and train/valid/test automatically with a 70/20/10 session ratio. Manual spawn
+   does not automatically add XY/yaw jitter; choose auto.
 3. DP/Both require a full non-target tray. Detection-only defaults to random tray
    occupancy. Each saved skill retains RGB/masks/robot evidence; purpose describes
    the consumers in `capture_contract.json`, not a separately trained model.
@@ -91,7 +91,7 @@ python scripts\collect_training.py --track perception --output '<NEW_DETECTION_R
 5. Collect independent train, valid and test sessions beneath one collection root.
    **Files & export -> Export collection for training...** validates the sessions
    and writes separate `detection/` and/or `dp/` artifacts to a new folder. An
-   unassigned split or seed leakage is rejected, never silently split by frame.
+   missing split or seed leakage is rejected, never silently split by frame.
    Pick-only/place-only sessions are supported; train only the skills you collected.
 
 Equivalent GUI-collection export:

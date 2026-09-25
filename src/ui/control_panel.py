@@ -59,9 +59,9 @@ class Panel:
         self.log_filter=LogFilter(); self.log_tail=LogTail()
         self.mode = tk.StringVar(value='manual')
         self.skill = tk.StringVar(value='both')
-        self.dataset_purpose = tk.StringVar(value='Both: DP joint + standalone detector (recommended)')
+        self.dataset_purpose = tk.StringVar(value='Both: DP + detector (recommended)')
         self.camera_size = tk.StringVar(value='448')
-        self.dataset_split = tk.StringVar(value='unassigned')
+        self.dataset_split = tk.StringVar(value='auto')
         self.session_seed = tk.IntVar(value=int(datetime.now().timestamp()))
         self.destination = tk.StringVar(value=str(ROOT/'datasets'/'panel_runs'))
         self.episodes = tk.IntVar(value=1)
@@ -112,20 +112,19 @@ class Panel:
         dataset.pack(fill='x',pady=4)
         for row,(label,var,values) in enumerate((
             ('Training outputs to make later',self.dataset_purpose,tuple(LABELS)),
-            ('Native camera pixels',self.camera_size,('224','448')),
-            ('Put this whole session in split',self.dataset_split,('unassigned','train','valid','test')))):
+            ('Recorded image size',self.camera_size,('448','224')))):
             ttk.Label(dataset,text=label).grid(row=row,column=0,sticky='w',padx=4)
-            widget=ttk.Combobox(dataset,textvariable=var,values=values,state='readonly',width=56)
+            widget=ttk.Combobox(dataset,textvariable=var,values=values,state='readonly',width=36)
             widget.grid(row=row,column=1,sticky='ew',pady=2); self.controls.append(widget)
-        ttk.Label(dataset,text='Session seed').grid(row=3,column=0,sticky='w',padx=4)
-        widget=ttk.Entry(dataset,textvariable=self.session_seed,width=20)
-        widget.grid(row=3,column=1,sticky='w'); self.controls.append(widget)
-        ttk.Label(dataset,text='Save raw to').grid(row=4,column=0,sticky='w',padx=4)
+        self.split_preview=tk.StringVar(value='Split: auto 70/20/10   Seed: auto')
+        ttk.Label(dataset,textvariable=self.split_preview).grid(row=2,column=0,columnspan=3,sticky='w',padx=4,pady=2)
+        ttk.Label(dataset,text='Save raw to').grid(row=3,column=0,sticky='w',padx=4)
         widget=ttk.Entry(dataset,textvariable=self.destination,width=55)
-        widget.grid(row=4,column=1,sticky='ew'); self.controls.append(widget)
-        self.help_button(dataset,'Choose drive / folder',self.choose_destination,'Choose storage before launch. Existing recordings are never deleted.').grid(row=4,column=2,padx=4)
+        widget.grid(row=3,column=1,sticky='ew'); self.controls.append(widget)
+        self.help_button(dataset,'Choose folder',self.choose_destination,'Choose storage before launch. Existing recordings are never deleted.').grid(row=3,column=2,padx=4)
         self.dataset_hint=tk.StringVar()
-        ttk.Label(dataset,textvariable=self.dataset_hint,wraplength=1000,justify='left').grid(row=5,column=0,columnspan=3,sticky='w',pady=5)
+        ttk.Label(dataset,textvariable=self.dataset_hint,wraplength=760,justify='left').grid(row=4,column=0,columnspan=2,sticky='w',pady=5)
+        dataset.columnconfigure(1,weight=1)
         self.dataset_purpose.trace_add('write',self.dataset_changed)
         self.dataset_changed()
         tray_controls=ttk.LabelFrame(traypage,text='Initial tray occupancy',padding=12)
@@ -440,11 +439,32 @@ class Panel:
         purpose=LABELS[self.dataset_purpose.get()]
         if purpose in ('dp','both'):
             self.tray_mode.set('full')
-            text='Use this for DP training: one target on table, four other instruments in tray. '
+            text='Complete mode: records DP data and standalone detector data from one raw run.'
         else:
             self.tray_mode.set('random')
-            text='Use this only for a flexible standalone object detector; random tray occupancy allows tabletop distractors. '
-        self.dataset_hint.set(text+'Recommended: Both. It records raw RGB once, then export makes two datasets/models: DP joint perception and standalone detector. Split means the entire session goes to train, valid, or test; never split frames inside one session. Use unassigned only for quick tests. Use a different seed for every train / valid / test session.')
+            text='Detector-only mode: records flexible object-detection data, no DP policy data.'
+        self.dataset_hint.set(text+' Image size is the RGB size saved in H5; 448 is sharper, 224 is smaller.')
+
+    def choose_auto_split(self,destination):
+        counts={s:0 for s in ('train','valid','test')}
+        for path in Path(destination).resolve().rglob('capture_contract.json'):
+            try:
+                split=json.loads(path.read_text(encoding='utf-8')).get('split')
+            except (OSError,ValueError):
+                continue
+            if split in counts:
+                counts[split]+=1
+        total=sum(counts.values())+1
+        desired=dict(train=max(1,round(total*.7)),valid=round(total*.2),test=0)
+        desired['test']=max(0,total-desired['train']-desired['valid'])
+        if total>=3 and desired['test']==0:
+            desired['test']=1; desired['train']=max(1,desired['train']-1)
+        if total>=5 and desired['valid']==0:
+            desired['valid']=1; desired['train']=max(1,desired['train']-1)
+        for split in ('train','valid','test'):
+            if counts[split]<desired[split]:
+                return split
+        return min(counts,key=lambda s:counts[s]/(.7 if s=='train' else .2 if s=='valid' else .1))
 
     def prepare(self,start=True):
         try:
@@ -475,8 +495,13 @@ class Panel:
                 episodes*=self.layout['grid_rows']*self.layout['grid_cols']
                 self.mode.set('auto')
             stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-            contract=capture_contract(purpose,self.skill.get(),int(self.camera_size.get()),self.session_seed.get(),self.dataset_split.get())
-            output=Path(self.destination.get()).resolve()/stamp/self.target.get()
+            auto_split=self.dataset_split.get()=='auto'
+            seed=int(datetime.now().timestamp()*1000)%2_147_483_647 if auto_split else self.session_seed.get()
+            split=self.choose_auto_split(self.destination.get()) if auto_split else self.dataset_split.get()
+            self.session_seed.set(seed)
+            self.split_preview.set(f'Split: {split} (auto 70/20/10)   Seed: {seed} (auto)')
+            contract=capture_contract(purpose,self.skill.get(),int(self.camera_size.get()),seed,split)
+            output=Path(self.destination.get()).resolve()/split/stamp/self.target.get()
             budget=storage_budget(output,episodes,int(self.camera_size.get()))
             if not budget['capacity_pass']:
                 raise ValueError(f"Not enough storage: estimate {budget['estimated_bytes']/1e9:.1f} GB + 30 GB reserve, free {budget['free_bytes']/1e9:.1f} GB. Choose another folder, fewer episodes or native 224.")
@@ -487,7 +512,7 @@ class Panel:
             self.session=dict(target=self.target.get(),mode=self.mode.get(),positions=json.loads(json.dumps(self.positions)),prepare_id=1,start_id=0,discard_id=0,stop=False,auto_start=start)
             self.session.update(tray_mode=self.tray_mode.get(),tray_objects=tray_objects)
             self.session.update(collection=self.collection.get(),cycles=cycles)
-            self.session.update(dataset_purpose=purpose,dataset_split=self.dataset_split.get(),session_seed=self.session_seed.get())
+            self.session.update(dataset_purpose=purpose,dataset_split=split,session_seed=seed)
             self.write()
             self.log_filter=LogFilter(); self.log_tail=LogTail()
             self.live_positions=None; self.live_tray=None
@@ -497,8 +522,8 @@ class Panel:
             launcher=ROOT.parents[3]/'_isaac_sim'/'python.bat'
             args=[str(launcher),str(ROOT/'record.py'),'--object',self.target.get(),'--episodes',str(episodes),
                   '--max-attempts','0','--record_mode',self.skill.get(),'--out_dir',str(output),'--session-config',str(self.session_path),
-                  '--camera-size',self.camera_size.get(),'--randomization-seed',str(self.session_seed.get()),
-                  '--dataset-purpose',purpose,'--dataset-split',self.dataset_split.get(),'--tray-occupancy','full' if purpose in ('dp','both') else 'random']
+                  '--camera-size',self.camera_size.get(),'--randomization-seed',str(seed),
+                  '--dataset-purpose',purpose,'--dataset-split',split,'--tray-occupancy','full' if purpose in ('dp','both') else 'random']
             log=ROOT/'debug'/'logs'/'panel_runs'/stamp/(self.target.get()+'.log')
             log.parent.mkdir(parents=True,exist_ok=True)
             self.log_file=log.open('w',encoding='utf-8')

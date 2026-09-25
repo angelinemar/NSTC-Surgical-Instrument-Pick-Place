@@ -45,5 +45,21 @@ class DatasetPanelTests(unittest.TestCase):
                 panel.prepare();error.assert_called_once();launch.assert_not_called()
         finally: panel.close()
 
+    def test_gui_defaults_auto_split_and_seed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=tk.Tk();root.withdraw();panel=ui.Panel(root)
+            try:
+                panel.destination.set(tmp);panel.mode.set('auto')
+                proc=Mock();proc.poll.return_value=None
+                with patch.object(ui,'ROOT',Path(tmp)),patch.object(ui.subprocess,'Popen',return_value=proc) as launch,patch.object(ui.messagebox,'showerror') as error:
+                    panel.prepare();error.assert_not_called()
+                    args=launch.call_args.args[0]
+                    self.assertEqual(args[args.index('--dataset-split')+1],'train')
+                    self.assertNotEqual(args[args.index('--randomization-seed')+1],'')
+                    self.assertEqual(panel.output_dir.parents[1],Path(tmp)/'train')
+            finally:
+                if panel.log_file: panel.log_file.close()
+                panel.log_file=None;panel.process=None;panel.close()
+
 
 if __name__=='__main__': unittest.main()

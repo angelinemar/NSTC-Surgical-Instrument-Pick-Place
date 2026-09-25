@@ -5,16 +5,16 @@ import shutil
 PURPOSES = {'detection': ['detection'], 'dp': ['dp_joint'],
             'both': ['detection', 'dp_joint']}
 LABELS = {
-    'Both: DP joint + standalone detector (recommended)': 'both',
-    'Detection only: standalone object detector': 'detection',
-    'DP + detection: joint perception inside DP': 'dp',
+    'Both: DP + detector (recommended)': 'both',
+    'Detector only': 'detection',
+    'DP joint only': 'dp',
 }
 
 
 def capture_contract(purpose, skill, size, seed, split='unassigned'):
     if purpose not in PURPOSES or skill not in ('pick', 'place', 'both'):
         raise ValueError('Unknown dataset purpose or saved skill')
-    if size not in (224, 448) or split not in ('train', 'valid', 'test', 'unassigned'):
+    if size not in (224, 448) or split not in ('train', 'valid', 'test', 'unassigned', 'auto'):
         raise ValueError('Invalid camera size or session split')
     return dict(contract='shared_raw_consumers_v1', purpose=purpose,
                 consumers=PURPOSES[purpose], saved_skill=skill, camera_size=size,
