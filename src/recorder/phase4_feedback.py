@@ -13,6 +13,7 @@ from pathlib import Path
 
 CONTROL_TCP = {}
 FEEDBACK_VERSION = '20260916-tray-slots-v1'
+POLICY_WINDOW_CONTRACT = 'lower_pre_to_lift_clear__lower_place_to_retreat_v1'
 
 
 def rgb_has_spatial_detail(frame):
@@ -71,6 +72,7 @@ def completed_episode_count(out_dir, object_name, mode):
                 require_commit(path, h5)
                 evidence=json.loads(h5.attrs.get('expert_grasp_evidence','{}'))
                 if (h5.attrs.get('p4_feedback_version') != FEEDBACK_VERSION
+                        or h5.attrs.get('policy_window_contract') != POLICY_WINDOW_CONTRACT
                         or evidence.get('geometry_source') != 'mesh_vertices_physx_link_v1'
                         or not evidence.get('lift_verified') or not evidence.get('place_verified')
                         or evidence.get('tray_contract') != 'tray_slots_v1'
@@ -717,6 +719,10 @@ def install_feedback(ns, other_get):
                 raise FileExistsError(f'Refusing to overwrite {destination}; resume or choose a fresh output directory')
             meta = dict(bound.arguments.get('meta') or {})
             meta.update(rgb_frame_qc='all_frames_spatial_v1',rgb_qc_episode_frames=checked)
+            meta.update(policy_window_contract=POLICY_WINDOW_CONTRACT,
+                        policy_window_start='LOWER_PRE' if bound.arguments['segment']=='pick' else 'LOWER_PLACE',
+                        policy_window_end='LIFT_CLEAR' if bound.arguments['segment']=='pick' else 'RETREAT',
+                        excluded_policy_stages='OPEN_HOVER,MOVE_TO_TARGET')
             meta.update(approach_controller='tcp_frame_correct_bounded_place_integral_v6',
                         precision_feedback_scope='place_skill_robot_tcp_only',
                         near_base_approach=bool(ns.get('_p4_near_base_approach')),

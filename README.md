@@ -31,6 +31,21 @@ Both shares raw data once. All dataset modes support randomized duplicate distra
 
 ## What is recorded
 
+Policy recording windows (all five instruments):
+
+```mermaid
+flowchart LR
+    A[Setup: OPEN_HOVER - not saved] --> B[Pick: LOWER_PRE → LOWER_GRASP → optional LOWER_EXTRA → CLOSE → LIFT_CLEAR]
+    B --> C[Transfer: MOVE_TO_TARGET - not saved]
+    C --> D[Place: LOWER_PLACE → OPEN → RETREAT]
+```
+
+Setup and transfer still run under the controller, but are excluded from saved
+policy H5 files and their exports. `OPEN` remains in Place to release the object.
+Deployment must position the robot at the corresponding start pose before each
+policy. Use a new recording folder: older full-motion datasets are not modified
+and cannot be resumed into this new window contract.
+
 | Six synchronized views | Per-view supervision | Robot / task evidence | DP uses |
 | --- | --- | --- | --- |
 | front · wrist · top · left · right · tray | RGB · depth · semantic + instance masks · camera calibration | 16-D robot proprioception · 8-D action · success/physical gates · episode commit | RGB + proprioception + requested target; learns robot-base actions |

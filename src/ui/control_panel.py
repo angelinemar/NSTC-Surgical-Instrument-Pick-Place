@@ -92,7 +92,7 @@ class Panel:
         hints=('Single: requested successful episodes. Grid cycles: one success in every cell per round.',
                'Instrument to pick. Its assigned tray slot must initially be empty.',
                'Manual: positions from this map. Auto: randomized spawn. Grid cycles always uses auto.',
-               'Choose which H5 segments to save. This does not change the physical success checks.')
+               'Pick: LOWER_PRE through LIFT_CLEAR. Place: LOWER_PLACE through OPEN and RETREAT. OPEN_HOVER and MOVE_TO_TARGET run as setup only and are not saved. Physical success checks remain enabled.')
         for index,(label,var,values) in enumerate((('Collection',self.collection,('single','grid_cycles')),('Target',self.target,NAMES),('Spawn',self.mode,('manual','auto')),('Save skill',self.skill,('both','pick','place')))):
             row,col=divmod(index,2); col*=2
             ttk.Label(settings,text=label).grid(row=row,column=col,sticky='w',padx=5,pady=3)

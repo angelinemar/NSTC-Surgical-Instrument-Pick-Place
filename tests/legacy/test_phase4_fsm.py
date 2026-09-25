@@ -153,7 +153,9 @@ class FeedbackTests(unittest.TestCase):
                 path = Path(folder)/(skill+'_policy')/'scissor'/'episode_000000.h5'
                 path.parent.mkdir(parents=True)
                 with h5py.File(path,'w') as h5:
+                    from phase4_feedback import POLICY_WINDOW_CONTRACT
                     h5.attrs.update(p4_feedback_version=FEEDBACK_VERSION,success=True,
+                        policy_window_contract=POLICY_WINDOW_CONTRACT,
                         expert_grasp_evidence='{"geometry_source":"mesh_vertices_physx_link_v1","lift_verified":true,"place_verified":true,"tray_contract":"tray_slots_v1","slot":{"object":"scissor"},"initial_tray_objects":[]}',
                         control_tcp_matches_observed_ee=True,control_tcp_offset_m='[0.0, 0.0, 0.1034]',num_samples=1,
                         rgb_frame_qc='all_frames_spatial_v1')
@@ -163,6 +165,12 @@ class FeedbackTests(unittest.TestCase):
                         h5.create_dataset(key,data=[0.])
                 paths.append(path)
             self.assertEqual(completed_episode_count(folder,'scissor','both'),1)
+            with h5py.File(paths[0],'r+') as h5:
+                del h5.attrs['policy_window_contract']
+            with self.assertRaisesRegex(RuntimeError,'Incompatible'):
+                completed_episode_count(folder,'scissor','both')
+            with h5py.File(paths[0],'r+') as h5:
+                h5.attrs['policy_window_contract'] = POLICY_WINDOW_CONTRACT
             with self.assertRaisesRegex(RuntimeError,'pruned'):
                 completed_episode_count(folder,'scissor','pick')
             with h5py.File(paths[0],'r+') as h5:

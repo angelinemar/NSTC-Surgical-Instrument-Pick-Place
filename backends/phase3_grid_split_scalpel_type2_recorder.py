@@ -168,11 +168,11 @@ REALCOMPAT_STATE_KEYS = [
 REALCOMPAT_STATE_DIM = len(REALCOMPAT_STATE_KEYS)
 
 PICK_STAGE_SUFFIXES = {
-    "OPEN_HOVER", "LOWER_PRE", "LOWER_GRASP", "LOWER_EXTRA",
+    "LOWER_PRE", "LOWER_GRASP", "LOWER_EXTRA",
     "CLOSE", "LIFT_CLEAR",
 }
 PLACE_STAGE_SUFFIXES = {
-    "MOVE_TO_TARGET", "LOWER_PLACE", "OPEN", "RETREAT",
+    "LOWER_PLACE", "OPEN", "RETREAT",
 }
 
 
@@ -3872,7 +3872,7 @@ def main():
     phase3_hide_all_debug_visuals(omni.usd.get_context().get_stage())
     print("[CAM STRICT PATCH] true RGB helper inserted; RGB must come from camera.data.output['rgb']")
     print(f"  VIS_GRID_FINE_TUNE spawn_x={GRID_X_RANGE} spawn_y={GRID_Y_RANGE} visual_x={VIS_GRID_X_RANGE} visual_y={VIS_GRID_Y_RANGE} tray={TRAY_FIXED_POS} yaw={TRAY_FIXED_YAW_DEG}")
-    print("  REUSABLE_PICK=vertical LIFT_CLEAR; MOVE_TO_TARGET belongs to place")
+    print("  POLICY WINDOWS: pick=LOWER_PRE..LIFT_CLEAR; place=LOWER_PLACE..RETREAT; setup/transfer excluded")
 
     env_cfg=parse_env_cfg(args_cli.task,device=args_cli.device,num_envs=args_cli.num_envs)
     phase3_ensure_all_object_scene_cfg(env_cfg)
