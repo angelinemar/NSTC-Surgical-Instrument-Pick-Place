@@ -21,6 +21,7 @@ def status(ns, state, **values):
     payload = dict(state=state,object=ns['PHASE3_TARGET_OBJECT'],attempt=ns.get('_p4_attempt_number',0),
                    tray_objects=ns.get('_p4_tray_objects',[]),coverage=ns.get('_p4_coverage'),**values)
     payload['instrument_geometry']=ns.get('_p4_panel_geometry')
+    payload['scene_clutter']=ns.get('_p4_clutter',{})
     spawn=ns.get('_p4_force_args',(None,{},None))[1]
     payload['table_positions']={name:dict(x=p.get('center_x',p.get('x')),y=p.get('center_y',p.get('y')),yaw_deg=p['yaw_deg'])
                                for name,p in spawn.items() if name!='grid' and 'yaw_deg' in p}

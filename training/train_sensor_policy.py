@@ -59,28 +59,28 @@ def main():
         print(json.dumps(row), flush=True)
     model.eval()
     metrics = []
-    confusion = torch.zeros(8, 8, dtype=torch.int64)
+    confusion = torch.zeros(11, 11, dtype=torch.int64)
     with torch.no_grad():
         for index, batch in enumerate(DataLoader(valid, batch_size=1)):
             batch = {k: v.to(args.device) for k, v in batch.items()}
             loss, dp, perception = model.losses(batch)
             _, logits = model.encode(batch['rgb'], batch['proprio'])
             pred = logits.argmax(2)
-            confusion += torch.bincount((batch['semantic'] * 8 + pred).flatten().cpu(), minlength=64).reshape(8, 8)
+            confusion += torch.bincount((batch['semantic'] * 11 + pred).flatten().cpu(), minlength=121).reshape(11, 11)
             metrics.append([float(loss), float(dp), float(perception)])
             if index == 0:
                 # Inference has no labels/actions/metadata arguments.
-                sampled, predicted_mask = model.act(batch['rgb'], batch['proprio'], inference_steps=10)
+                sampled, predicted_mask = model.act(batch['rgb'], batch['proprio'], inference_steps=10,task_target=batch['task_target'])
                 decoded = decode_actions(sampled, stats)
                 if decoded.shape != (1, 16, 8) or not torch.isfinite(decoded).all():
                     raise RuntimeError('Invalid inference output')
             if args.smoke and index >= 1:
                 break
     union = confusion.sum(0) + confusion.sum(1) - confusion.diag()
-    iou = [float(confusion[i, i] / union[i]) if union[i] else None for i in range(8)]
+    iou = [float(confusion[i, i] / union[i]) if union[i] else None for i in range(11)]
     checkpoint = dict(model=model.state_dict(), stats=stats, skill=args.skill,
                       observation_horizon=2, prediction_horizon=16, control_dt_s=.02,
-                      input_contract='p4_sensor_only_v1', smoke_only=args.smoke)
+                      input_contract='p4_sensor_task_v2', smoke_only=args.smoke)
     checkpoint['controller_contract'] = json.loads((args.dataset / 'manifest.json').read_text())['controller_contract']
     torch.save(checkpoint, args.output / 'checkpoint.pt')
     # Independently loadable perception artifact even when trained jointly.

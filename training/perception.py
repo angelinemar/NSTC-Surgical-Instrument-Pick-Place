@@ -15,7 +15,7 @@ class PerceptionModel(nn.Module):
             nn.Conv2d(3,32,5,2,2), nn.GroupNorm(8,32), nn.SiLU(),
             nn.Conv2d(32,64,3,2,1), nn.GroupNorm(8,64), nn.SiLU(),
             nn.Conv2d(64,64,3,2,1), nn.GroupNorm(8,64), nn.SiLU())
-        self.segmentation = nn.Conv2d(64,8,1)
+        self.segmentation = nn.Conv2d(64,11,1)
 
     def forward(self, rgb):
         if rgb.ndim != 4 or rgb.shape[1] != 3:

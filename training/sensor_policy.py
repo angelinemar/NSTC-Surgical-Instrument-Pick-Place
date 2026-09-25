@@ -36,6 +36,8 @@ class SensorDataset(Dataset):
         manifest = json.loads((self.root / 'manifest.json').read_text())
         if not manifest.get('export_complete') or manifest.get('labels_are_inputs') is not False:
             raise ValueError('Incomplete or unsafe export')
+        if not manifest.get('task_command_required'):
+            raise ValueError('Re-export this dataset with explicit task commands before training the clutter-aware policy')
         self.path = self.root / (skill + '.hdf5')
         self.stats, self.horizon, self.obs_horizon = stats, horizon, obs_horizon
         self.indices = []
@@ -63,13 +65,15 @@ class SensorDataset(Dataset):
             rgb = np.stack([np.stack([demo['obs/' + c + '_rgb'][i] for c in CAMERAS]) for i in times])
             proprio = np.stack([demo['obs/robot_proprio'][i] for i in times])
             actions = demo['actions'][t:t + self.horizon]
+            task_target = demo['task_target'][:]
         with h5py.File(self.root / 'perception_labels.hdf5', 'r') as f:
             semantic = np.stack([f[self.skill + '/' + key + '/' + c][t] for c in CAMERAS])
         proprio = (proprio - np.asarray(self.stats['proprio_mean'])) / np.asarray(self.stats['proprio_std'])
         actions = (actions - np.asarray(self.stats['action_center'])) / np.asarray(self.stats['action_scale'])
-        # Targets are returned separately and cannot be passed to encode()/act().
+        # Action/semantic supervision stays separate from sensors and task command.
         return dict(rgb=torch.from_numpy(rgb).permute(0, 1, 4, 2, 3).float() / 255,
                     proprio=torch.from_numpy(proprio.astype(np.float32)),
+                    task_target=torch.from_numpy(task_target.astype(np.float32)),
                     actions=torch.from_numpy(actions.astype(np.float32)),
                     semantic=torch.from_numpy(semantic.astype(np.int64)))
 
@@ -83,38 +87,47 @@ class SensorPolicy(nn.Module):
             nn.Conv2d(32, 64, 3, 2, 1), nn.GroupNorm(8, 64), nn.SiLU(),
             nn.Conv2d(64, 64, 3, 2, 1), nn.GroupNorm(8, 64), nn.SiLU())
         self.spatial = nn.Sequential(nn.AdaptiveAvgPool2d((4, 4)), nn.Flatten(), nn.Linear(1024, 64), nn.SiLU())
-        self.segmentation = nn.Conv2d(64, 8, 1)
+        self.segmentation = nn.Conv2d(64, 11, 1)
         self.denoiser = ConditionalUnet1D(input_dim=8,
-            global_cond_dim=obs_horizon * (len(CAMERAS) * 64 + 16),
+            global_cond_dim=obs_horizon * (len(CAMERAS) * 64 + 16) + 5,
             diffusion_step_embed_dim=64, down_dims=[64, 128, 256])
         self.scheduler = DDPMScheduler(num_train_timesteps=diffusion_steps,
             beta_schedule='squaredcos_cap_v2', clip_sample=True, prediction_type='epsilon')
 
-    def encode(self, rgb, proprio):
+    def encode(self, rgb, proprio, task_target=None):
         b, t, views, channels, height, width = rgb.shape
         if (t, views, channels, proprio.shape[-1]) != (self.obs_horizon, len(CAMERAS), 3, 16):
             raise ValueError('Invalid sensor dimensions')
         features = self.encoder(rgb.reshape(b * t * views, channels, height, width))
         context = torch.cat((self.spatial(features).reshape(b, t, views * 64), proprio), dim=-1).flatten(1)
+        # Optional only for inspecting the RGB semantic head; act/losses require
+        # an explicit task. This vector identifies the request, never a pose.
+        if task_target is None:
+            task_target = context.new_zeros((b,5))
+        elif task_target.shape != (b,5) or not torch.all((task_target==0)|(task_target==1)) or not torch.all(task_target.sum(-1)==1):
+            raise ValueError('Task target must be a one-hot requested instrument')
+        context = torch.cat((context,task_target),dim=-1)
         features = features.reshape(b, t, views, *features.shape[1:])[:, -1].flatten(0, 1)
         logits = F.interpolate(self.segmentation(features), (height, width), mode='bilinear', align_corners=False)
-        return context, logits.reshape(b, views, 8, height, width)
+        return context, logits.reshape(b, views, 11, height, width)
 
     def losses(self, batch):
-        context, logits = self.encode(batch['rgb'], batch['proprio'])
+        context, logits = self.encode(batch['rgb'], batch['proprio'], batch['task_target'])
         noise = torch.randn_like(batch['actions'])
         time = torch.randint(self.scheduler.config.num_train_timesteps, (len(noise),), device=noise.device)
         noisy = self.scheduler.add_noise(batch['actions'], noise, time)
         prediction = self.denoiser(noisy, time, global_cond=context)
         diffusion_loss = F.mse_loss(prediction, noise)
         # Balance instrument pixels against large background; labels never condition DP.
-        weight = logits.new_tensor([.1, .3, .5, 1., 1., 1., 1., 1.])
+        weight = logits.new_tensor([.1, .3, .5, 1., 1., 1., 1., 1., .2, .1, .1])
         perception_loss = F.cross_entropy(logits.flatten(0, 1), batch['semantic'].flatten(0, 1), weight=weight)
         return diffusion_loss + .2 * perception_loss, diffusion_loss, perception_loss
 
     @torch.no_grad()
-    def act(self, rgb, proprio, inference_steps=20, generator=None):
-        context, logits = self.encode(rgb, proprio)
+    def act(self, rgb, proprio, inference_steps=20, generator=None, *, task_target=None):
+        if task_target is None:
+            raise ValueError('Choose the requested target before DP inference')
+        context, logits = self.encode(rgb, proprio, task_target)
         trajectory = torch.randn((len(rgb), self.horizon, 8), device=rgb.device, generator=generator)
         self.scheduler.set_timesteps(inference_steps)
         for time in self.scheduler.timesteps:

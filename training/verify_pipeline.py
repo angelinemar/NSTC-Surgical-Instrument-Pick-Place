@@ -36,10 +36,11 @@ def main():
             raise ValueError('Invalid episode split')
         for demo in f['data'].values():
             assert_sensor_inputs(demo['obs'])
-            if set(demo.keys()) != {'obs', 'actions', 'dones', 'rewards'}:
+            if set(demo.keys()) != {'obs', 'actions', 'dones', 'rewards', 'task_target'}:
                 raise ValueError('Unexpected exported data field')
         key = next(iter(sorted(valid))).decode()
         sensors = {k: f['data/' + key + '/obs/' + k][0] for k in INPUTS}
+        requested_target = str(f['data/'+key].attrs['task_target_name'])
     blocked_smoke = False
     try:
         PolicyRuntime(args.checkpoint)
@@ -48,6 +49,7 @@ def main():
         if not blocked_smoke:
             raise
     policy = PolicyRuntime(args.checkpoint, allow_smoke=True)
+    policy.set_target(requested_target)
     actions, recognition = policy.predict(sensors, inference_steps=10)
     poisoned = dict(sensors, selected_object_pose_b=np.zeros(7))
     try:

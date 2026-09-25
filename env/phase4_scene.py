@@ -171,6 +171,19 @@ def spawn_hospital(prim_path, cfg, translation=None, orientation=None, **kwargs)
     for child in list(Usd.PrimRange(prim)):
         if child.IsA(UsdPhysics.Scene):
             child.SetActive(False)
+    # Author semantics before PhysX tensor views are constructed. Runtime API
+    # edits to rigid ancestors can invalidate the simulator's cached views.
+    from pxr import Semantics
+    def label(node, name):
+        api = Semantics.SemanticsAPI.Apply(node, 'P4SceneClass')
+        api.CreateSemanticTypeAttr().Set('class')
+        api.CreateSemanticDataAttr().Set(name)
+    label(prim, 'room')
+    for child in Usd.PrimRange(prim):
+        if child.GetName().startswith('Table_'):
+            label(child, 'table')
+        elif 'floor' in child.GetName().lower():
+            label(child, 'floor')
     return prim
 
 
@@ -229,6 +242,10 @@ def apply_scene(env_cfg):
         init_state=AssetBaseCfg.InitialStateCfg(pos=g["room_pos"], rot=g["room_rot"]))
     env_cfg.scene.robot.init_state.pos = tuple(LAYOUT["robot_pos"])
     env_cfg.scene.robot.init_state.rot = tuple(LAYOUT["robot_rot_wxyz"])
+    for name in ('ground','plane'):
+        ground = getattr(env_cfg.scene, name, None)
+        if ground is not None and getattr(ground,'spawn',None) is not None:
+            ground.spawn.semantic_tags = [('class','floor')]
     yaw = math.radians(LAYOUT["tray_yaw_deg"])
     env_cfg.scene.shared_surgical_tray.init_state.rot = (math.cos(yaw/2),0.,0.,math.sin(yaw/2))
     env_cfg.scene.shared_surgical_tray.spawn.func = spawn_centered_tray

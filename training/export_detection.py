@@ -1,8 +1,9 @@
 """Export independent full-resolution RGB, semantic PNG and COCO visible boxes.
 
 Split by independently collected run/session, never adjacent frames or cameras.
-Current scene has exactly one instance of each instrument class. Bounding boxes
-enclose ALL visible class pixels (including disconnected occluded parts).
+New recordings include per-body instance masks for duplicate instruments.
+Legacy recordings use one instance per class. Bounding boxes
+enclose ALL visible instance pixels (including disconnected occluded parts).
 These are visible boxes, not amodal boxes or general instance segmentation.
 """
 import argparse
@@ -24,9 +25,26 @@ CAMERAS = ('front', 'wrist', 'cam_top', 'cam_left', 'cam_right', 'cam_tray')
 CLASSES = ('scalpel', 'scissor', 'love_retractor', 'kelly', 'scalpel_type2')
 
 
-def visible_boxes(mask, min_pixels=8):
-    if mask.ndim != 2 or not np.isin(mask, np.arange(8)).all():
+def visible_boxes(mask, min_pixels=8, instances=None, instance_classes=None):
+    if mask.ndim != 2 or not np.isin(mask, np.arange(11)).all():
         raise ValueError('Invalid semantic map')
+    if instances is not None:
+        if instances.shape != mask.shape:
+            raise ValueError('Instance/semantic shape mismatch')
+        result = []
+        for value in np.unique(instances):
+            if value == 0:
+                continue
+            item = instance_classes[str(int(value))]
+            semantic_id = int(item['semantic_id'])
+            pixels = instances == value
+            if not np.all(mask[pixels] == semantic_id):
+                raise ValueError('Instance class disagrees with semantic pixels')
+            y, x = np.where(pixels)
+            if len(x) >= min_pixels:
+                result.append(dict(category_id=semantic_id-2, instance_id=int(value),
+                    bbox=[int(x.min()),int(y.min()),int(x.max()-x.min()+1),int(y.max()-y.min()+1)],area=int(len(x)),iscrowd=0))
+        return result
     result = []
     for category, name in enumerate(CLASSES, 1):
         y, x = np.where(mask == category + 2)
@@ -53,7 +71,7 @@ def export(splits, output, stride=20):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     manifest = dict(contract='p4_detection_v1', export_complete=False, production_ready=False,
-                    stride=stride, box_convention='visible_xywh_one_instance_per_class',
+                    stride=stride, box_convention='visible_xywh_per_rigid_instance',
                     categories=[dict(id=i+1, name=n) for i,n in enumerate(CLASSES)],
                     sources=[], splits={}, split_rule='independent_run_no_frame_split')
     seen_transactions, seen_files, seen_images, seen_seeds = {}, {}, {}, {}
@@ -62,6 +80,7 @@ def export(splits, output, stride=20):
         folder = output / split
         (folder / 'images').mkdir(parents=True)
         (folder / 'masks').mkdir()
+        (folder / 'instances').mkdir()
         coco = dict(images=[], annotations=[], categories=manifest['categories'])
         for path in files:
             with path.open('rb') as stream:
@@ -78,13 +97,19 @@ def export(splits, output, stride=20):
                 require_commit(path, h)
                 expected_classes = dict(background=0, robot=1, surgical_tray=2,
                                         **{n:i+3 for i,n in enumerate(CLASSES)})
-                if json.loads(h.attrs.get('semantic_class_ids', '{}')) != expected_classes:
+                actual_classes = json.loads(h.attrs.get('semantic_class_ids', '{}'))
+                if actual_classes not in (expected_classes, dict(expected_classes,table=8,floor=9,room=10)):
                     raise ValueError('Unexpected class mapping')
+                clutter = json.loads(h.attrs.get('scene_clutter','{}'))
+                if clutter.get('instances') and h.attrs.get('instance_contract') != 'rigid_body_visible_masks_v1':
+                    raise ValueError('Duplicate objects require recorded instance masks')
+                instance_classes = json.loads(h.attrs.get('instance_classes','{}'))
                 tx = str(h.attrs['pair_transaction_id'])
                 if seen_transactions.setdefault(tx, split) != split:
                     raise ValueError('Pick/place transaction crosses splits')
                 metadata = dict(source=str(path.resolve()), sha256=sha, split=split,
                                 transaction=tx, target=str(h.attrs['target_object']),
+                                has_duplicate_instances=bool(clutter.get('instances')),
                                 randomization=json.loads(h.attrs.get('domain_randomization', '{}')))
                 manifest['sources'].append(metadata)
                 seed = metadata['randomization'].get('session_seed')
@@ -118,7 +143,13 @@ def export(splits, output, stride=20):
                             source_sha256=sha, frame_index=t, camera=camera, transaction=tx,
                             image_quality=dict(laplacian_variance=float(lap.var()),
                                 dark_fraction=float((gray<3).mean()), bright_fraction=float((gray>252).mean()))))
-                        for box in visible_boxes(mask):
+                        instance_key = 'observations/' + ('grip_b' if camera=='wrist' else camera) + '_instance'
+                        instances = h[instance_key][t] if instance_key in h else None
+                        if instances is not None:
+                            Image.fromarray(instances.astype(np.uint16)).save(folder/'instances'/f'{stem}.png')
+                            coco['images'][-1]['instance_mask_file'] = f'instances/{stem}.png'
+                            coco['images'][-1]['instance_classes'] = instance_classes
+                        for box in visible_boxes(mask, instances=instances, instance_classes=instance_classes):
                             annotation_id += 1
                             coco['annotations'].append(dict(id=annotation_id, image_id=image_id, **box))
         counts = {c['name']:sum(a['category_id']==c['id'] for a in coco['annotations']) for c in coco['categories']}

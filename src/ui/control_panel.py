@@ -60,12 +60,14 @@ class Panel:
         self.mode = tk.StringVar(value='manual')
         self.skill = tk.StringVar(value='both')
         self.dataset_purpose = tk.StringVar(value='Both: DP + detector (recommended)')
-        self.camera_size = tk.StringVar(value='448')
+        self.camera_size = tk.StringVar(value='224')
         self.dataset_split = tk.StringVar(value='auto')
         self.session_seed = tk.IntVar(value=int(datetime.now().timestamp()))
         self.destination = tk.StringVar(value=str(ROOT/'datasets'/'panel_runs'))
         self.episodes = tk.IntVar(value=1)
         self.tray_mode = tk.StringVar(value='random')
+        self.distractor_min = tk.IntVar(value=12)
+        self.distractor_max = tk.IntVar(value=18)
         self.tray_counts = {n:tk.IntVar(value=0) for n in NAMES}
         self.status = tk.StringVar(value='Choose target, drag instrument footprints, then Launch / Prepare.')
         self.selected = tk.StringVar(value='scalpel')
@@ -127,7 +129,7 @@ class Panel:
         dataset.columnconfigure(1,weight=1)
         self.dataset_purpose.trace_add('write',self.dataset_changed)
         self.dataset_changed()
-        tray_controls=ttk.LabelFrame(traypage,text='Initial tray occupancy',padding=12)
+        tray_controls=ttk.LabelFrame(traypage,text='Base tray layout + extra distractors',padding=12)
         tray_controls.pack(fill='x',pady=6)
         ttk.Label(tray_controls,text='Mode').grid(row=0,column=0,sticky='w',padx=8)
         traymode=ttk.Combobox(tray_controls,textvariable=self.tray_mode,values=('random','empty','full','manual'),state='readonly',width=16)
@@ -137,7 +139,14 @@ class Panel:
             ttk.Label(tray_controls,text=n).grid(row=i,column=0,sticky='w',padx=8,pady=4)
             widget=ttk.Spinbox(tray_controls,from_=0,to=1,textvariable=self.tray_counts[n],width=5)
             widget.grid(row=i,column=1,sticky='w'); self.controls.append(widget)
-        ttk.Label(tray_controls,text='Counts apply only in manual tray mode.\n0 = on table; 1 = in its fixed tray slot.\nTarget must be 0. No duplicate instances.',justify='left').grid(row=1,column=2,rowspan=5,sticky='nw',padx=30)
+        ttk.Label(tray_controls,text='Base objects: 0 = table, 1 = tray (manual mode).\nExtra distractors repeat non-target types on table/tray.\nTarget type appears exactly once; its tray lane stays free.',justify='left').grid(row=1,column=2,rowspan=3,sticky='nw',padx=20)
+        clutter = ttk.Frame(tray_controls)
+        clutter.grid(row=4,column=2,rowspan=2,sticky='w',padx=20)
+        ttk.Label(clutter,text='Total distractors, random range:').pack(side='left')
+        for var in (self.distractor_min, self.distractor_max):
+            spin = ttk.Spinbox(clutter,from_=4,to=30,textvariable=var,width=4)
+            spin.pack(side='left',padx=5); self.controls.append(spin)
+            self.tooltips.append(Tooltip(spin,'Total distractors excludes the single target. Default 12-18. Includes the four base non-targets plus randomly placed duplicate instances. Restart a running simulator to change this range. Dense scenes that cannot fit safely are rejected.'))
         body=ttk.Panedwindow(main,orient='horizontal'); body.pack(fill='both',expand=True)
         workspace=ttk.Frame(body); logbox=ttk.LabelFrame(body,text='Run log - saves, failures and stage timing',padding=5)
         body.add(workspace,weight=3); body.add(logbox,weight=1)
@@ -351,7 +360,16 @@ class Panel:
             c.create_oval(u-ru,v-rv,u+ru,v+rv,outline=color,width=3 if name==self.target.get() else 1,dash=(3,3))
             self.draw_instrument(name,color,p,self.live_geometry.get(name) if self.process and self.live_geometry else None)
             c.create_text(u,v+rv+11,text=name,fill=color)
-        caption='Measured AFTER SETTLE (snapshot, not live motion)' if self.process and self.live_geometry else 'Calibrated prediction - exact outline after Prepare / settle'
+        if self.process and self.live_geometry:
+            for key, geometry in self.live_geometry.items():
+                if not key.startswith('clutter_'):
+                    continue
+                color=COLORS[NAMES.index(geometry['class_name'])]
+                polygon=[v for xy in geometry['hull_xy'] for v in self.xy_to_canvas(*xy)]
+                c.create_polygon(*polygon,outline=color,fill='',width=2,tags=('extra_distractor',key))
+            caption=f"After settle: 1 target + {len(self.live_geometry)-1} distractors (snapshot)"
+        else:
+            caption='Base-object preview; randomized duplicates appear after Prepare / settle'
         c.create_text(self.canvas.winfo_width()/2,self.canvas.winfo_height()-10,text=caption,fill='#cbd5e0')
         p=self.tray_preview; p.delete('all')
         p.create_text(12,12,anchor='w',fill='white',text='Canonical tray top view: right = tray +Y; down = tray +X. Fixed slots, NOT pick order.')
@@ -437,11 +455,13 @@ class Panel:
 
     def dataset_changed(self,*args):
         purpose=LABELS[self.dataset_purpose.get()]
-        if purpose in ('dp','both'):
+        if purpose == 'both':
             text='Complete mode: records DP data and standalone detector data from one raw run.'
+        elif purpose == 'dp':
+            text='DP joint export: RGB, robot state and actions, with semantic training labels.'
         else:
-            text='Detector-only mode: records flexible object-detection data, no DP policy data.'
-        self.dataset_hint.set(text+' Random tray keeps tabletop distractors for richer scenes. Image size is saved RGB; 448 is sharper, 224 is smaller.')
+            text='Detector export: RGB, semantic and separate instance labels for repeated instruments.'
+        self.dataset_hint.set(text+' Distractor range below applies to every mode. Saved RGB: 224 default, 448 for finer detail.')
 
     def choose_auto_split(self,destination):
         counts={s:0 for s in ('train','valid','test')}
@@ -471,7 +491,9 @@ class Panel:
             purpose=LABELS[self.dataset_purpose.get()]
             tray_objects=[n for n in NAMES if self.tray_counts[n].get()==1]
             if any(self.tray_counts[n].get() not in (0,1) for n in NAMES):
-                raise ValueError('Currently one physical instance per class: tray count must be 0 or 1.')
+                raise ValueError('Base-object tray choices must be 0 or 1. Extra duplicates use the distractor range.')
+            if not 4 <= self.distractor_min.get() <= self.distractor_max.get() <= 30:
+                raise ValueError('Distractor range must satisfy 4 <= minimum <= maximum <= 30.')
             if self.tray_mode.get()=='manual' and self.target.get() in tray_objects:
                 raise ValueError('Target must not already exist in the tray. Set its tray count to 0.')
             from phase4_session import validate_positions,validate_target_workspace
@@ -479,6 +501,8 @@ class Panel:
                 validate_positions(self.positions,self.layout,RADII)
                 validate_target_workspace(self.target.get(),self.positions,self.layout)
             if self.process and self.process.poll() is None:
+                if (self.distractor_min.get(),self.distractor_max.get()) != (self.session.get('distractor_min',12),self.session.get('distractor_max',18)):
+                    raise ValueError('Stop and relaunch to change the number of spawned distractor bodies.')
                 state=self.read_status().get('state')
                 if state not in ('waiting_prepare','ready_to_record'):
                     raise ValueError('Wait for READY or waiting for the next attempt before preparing positions.')
@@ -507,6 +531,7 @@ class Panel:
             self.output_dir=output; self.output_text.set(str(output))
             self.session=dict(target=self.target.get(),mode=self.mode.get(),positions=json.loads(json.dumps(self.positions)),prepare_id=1,start_id=0,discard_id=0,stop=False,auto_start=start)
             self.session.update(tray_mode=self.tray_mode.get(),tray_objects=tray_objects)
+            self.session.update(distractor_min=self.distractor_min.get(),distractor_max=self.distractor_max.get())
             self.session.update(collection=self.collection.get(),cycles=cycles)
             self.session.update(dataset_purpose=purpose,dataset_split=split,session_seed=seed)
             self.write()

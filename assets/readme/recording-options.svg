@@ -12,8 +12,8 @@
 <text x="60" y="307" class="s">6 views + labels + calibration + robot/actions. Random lights + drape. No duplicate RGB for Both.</text>
 <path d="M310 330V362 M880 330V362" stroke="#73dfb5" stroke-width="4"/>
 <rect x="35" y="365" width="540" height="115" rx="16" fill="#243a4b"/><rect x="595" y="365" width="570" height="115" rx="16" fill="#243a4b"/>
-<text x="58" y="400" class="m green">INDEPENDENT DETECTION</text><text x="58" y="433" class="s">Native PNG + masks + visible COCO boxes</text><text x="58" y="460" class="s">RGB-only model; one instance per class</text>
-<text x="618" y="400" class="m green">DP + SEGMENTATION</text><text x="618" y="433" class="s">224 RGB + proprioception / action targets</text><text x="618" y="460" class="s">Joint checkpoint + independent perception head</text>
+<text x="58" y="400" class="m green">INDEPENDENT DETECTION</text><text x="58" y="433" class="s">Native RGB + semantic + instance masks</text><text x="58" y="460" class="s">COCO box per instrument, including duplicates</text>
+<text x="618" y="400" class="m green">DP + SEGMENTATION</text><text x="618" y="433" class="s">224 RGB + proprio + requested target</text><text x="618" y="460" class="s">Joint checkpoint + independent perception head</text>
 <text x="40" y="525" class="m">SESSION SPLITS: distinct train / valid / test seeds; never split adjacent frames.</text>
 <text x="40" y="560" class="s muted">Before launch: select drive, check capacity + reserve. Logs stay under debug/logs.</text>
 <text x="40" y="593" class="s muted">Recording/export PASS is not model quality PASS. Held-out metrics + learned rollouts still required.</text>

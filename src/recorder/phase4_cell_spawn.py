@@ -106,10 +106,13 @@ def install_cell_spawn(namespace):
     def cell_metadata(spawn, before, report, drift):
         meta=original_metadata(spawn,before,report,drift)
         meta['domain_randomization'] = json.dumps(namespace.get('_p4_domain_randomization', {}), sort_keys=True)
+        meta['scene_clutter'] = json.dumps(namespace.get('_p4_clutter', {}), sort_keys=True)
+        meta['scene_label_audit'] = json.dumps(namespace.get('_p4_scene_label_audit', {}), sort_keys=True)
         import os
         meta['dataset_purpose'] = os.environ.get('P4_DATASET_PURPOSE','detection')
         meta['dataset_split'] = os.environ.get('P4_DATASET_SPLIT','unassigned')
         meta.update(cell_recenter_passes=int(report.get('cell_recenter_passes',0)),
+                    cell_fit_scope='five_base_bodies; extra_instances_use_scene_clutter_footprints',
                     cell_fit_rule='settled_rotated_asset_bbox_in_assigned_cell',
                     cell_assignments_requested=spawn.get('grid',{}).get('object_cell_assignments','{}'))
         meta.update(spawn_control_mode='manual' if namespace.get('_p4_manual_positions') else 'auto',

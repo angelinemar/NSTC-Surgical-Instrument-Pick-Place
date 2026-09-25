@@ -18,6 +18,9 @@ def main() -> None:
                         help='Recorded square RGB size. Native sensor, wider table view, no crop. 448 retains more detail.')
     parser.add_argument('--randomization', choices=('off', 'train'), default='train')
     parser.add_argument('--randomization-seed', type=int, default=17)
+    parser.add_argument('--distractor-min', type=int, default=12)
+    parser.add_argument('--distractor-max', type=int, default=18)
+    parser.add_argument('--scene-audit-only', action='store_true',help='Settle and save six-camera label preview, then exit without recording demonstrations.')
     parser.add_argument('--dataset-purpose', choices=('detection','dp','both'), default='detection')
     parser.add_argument('--dataset-split', choices=('train','valid','test','unassigned'), default='unassigned')
     parser.add_argument('--shutdown-mode', choices=('native','verified-exit'),
@@ -29,6 +32,11 @@ def main() -> None:
                         help="Stop with nonzero exit after this many attempts; 0 = unlimited")
     known, forwarded = parser.parse_known_args()
     os.environ['P4_CAMERA_SIZE'] = str(known.camera_size)
+    if not 4 <= known.distractor_min <= known.distractor_max <= 30:
+        parser.error('Distractor range must satisfy 4 <= min <= max <= 30')
+    os.environ['P4_DISTRACTOR_MIN'] = str(known.distractor_min)
+    os.environ['P4_DISTRACTOR_MAX'] = str(known.distractor_max)
+    os.environ['P4_SCENE_AUDIT_ONLY'] = '1' if known.scene_audit_only else '0'
     os.environ['P4_RANDOMIZATION'] = known.randomization
     os.environ['P4_RANDOMIZATION_SEED'] = str(known.randomization_seed)
     os.environ['P4_DATASET_PURPOSE'] = known.dataset_purpose

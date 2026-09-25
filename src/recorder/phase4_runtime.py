@@ -36,6 +36,8 @@ def bounded_settle(settle, env, hold_action, scene_key_for_object, **kwargs):
 
 
 def install_runtime_hooks(namespace):
+    from src.recorder.scene_semantics import install
+    install(namespace)
     from phase4_fsm import install_fsm
     install_fsm(namespace)
     from phase4_cell_spawn import install_cell_spawn
@@ -43,7 +45,13 @@ def install_runtime_hooks(namespace):
     if namespace.get('_p4_render_hook_installed'):
         return
     original_settle_all = namespace['settle_all_objects']
-    namespace['settle_all_objects'] = lambda *a, **kw: bounded_settle(original_settle_all, *a, **kw)
+    def settle_including_clutter(env, hold, scene_key, **kw):
+        from phase3_settle_contract import SETTLE_OBJECTS
+        extra = [row['instance'] for row in namespace.get('_p4_clutter',{}).get('instances',[])]
+        kw['names'] = tuple(kw.get('names', SETTLE_OBJECTS)) + tuple(extra)
+        return bounded_settle(original_settle_all, env, hold,
+                              lambda name: name if name in extra else scene_key(name), **kw)
+    namespace['settle_all_objects'] = settle_including_clutter
     original_settle = namespace['wait_for_settle']
     original_force = namespace['force_episode_objects']
     original_capture = namespace['capture_object_states']
@@ -57,9 +65,12 @@ def install_runtime_hooks(namespace):
             if not budget['capacity_pass']:
                 raise RuntimeError('DISK_RESERVE: stopped before next attempt; saved episodes preserved')
         from src.recorder.domain_randomization import apply_episode_lighting
+        from src.recorder.scene_clutter import park
+        park(env, namespace)
         apply_episode_lighting(env, namespace)
         namespace.pop('_p4_panel_geometry',None)
         namespace['_p4_force_args'] = (env,spawn,pose_mode)
+        namespace['_p4_prepare_clutter_pending'] = True
         from phase4_reset import reset_robot,restore_objects
         reset_robot(env)
         if namespace.get('_p4_spawn_templates'):
@@ -106,6 +117,27 @@ def install_runtime_hooks(namespace):
                 result=dict(result,steps=first_steps+int(result.get('steps',0)))
                 if not result.get('success',False):
                     return result
+        if namespace.pop('_p4_prepare_clutter_pending', False):
+            from src.recorder.scene_clutter import prepare, validate
+            try:
+                prepare(env, namespace)
+            except RuntimeError as exc:
+                if not str(exc).startswith('CLUTTER_'):
+                    raise
+                print('[P4 SPAWN REJECT]', str(exc), flush=True)
+                return dict(result, success=False, reason=str(exc))
+            first_steps = int(result.get('steps', 0))
+            result = original_settle(env, *args, **kwargs)
+            result = dict(result, steps=first_steps + int(result.get('steps', 0)))
+            if not result.get('success', False):
+                return result
+            try:
+                validate(env, namespace)
+            except RuntimeError as exc:
+                if not str(exc).startswith('CLUTTER_'):
+                    raise
+                print('[P4 SPAWN REJECT]', str(exc), flush=True)
+                return dict(result, success=False, reason=str(exc))
         from phase4_cell_spawn import settled_cell_failures
         cell_failures = settled_cell_failures(env,namespace)
         total_settle_steps = int(result.get('steps',0))
@@ -153,6 +185,14 @@ def install_runtime_hooks(namespace):
             good = good + 1 if ready else 0
             if good >= 2:
                 print(f'[P4 RGB READY] render_frames={frame+1} no_physics_steps; mean/std={stats}', flush=True)
+                from src.recorder.scene_semantics import audit_preview
+                audit_preview(env, namespace)
+                import os
+                if os.environ.get('P4_SCENE_AUDIT_ONLY') == '1':
+                    import sys
+                    print('[P4 SCENE AUDIT COMPLETE] preview and class counts saved; no demonstrations recorded',flush=True)
+                    sys.stdout.flush(); sys.stderr.flush()
+                    os._exit(0)
                 from phase4_session import wait_for_start
                 import os
                 if os.environ.get('P4_SESSION_CONFIG'):

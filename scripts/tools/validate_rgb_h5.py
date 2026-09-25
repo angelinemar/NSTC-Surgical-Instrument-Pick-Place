@@ -1,5 +1,6 @@
 """Read-only geometry/data integrity check before using P4 output for training."""
 import argparse
+import json
 from pathlib import Path
 import h5py
 import numpy as np
@@ -36,7 +37,7 @@ def main():
                 d = f['observations'][key]
                 if d.shape != (count,*image_hw) or d.dtype != np.uint16:
                     issues.append(f'{key} shape/dtype')
-                if np.max(d[:]) > 7:
+                if not set(np.unique(d[:])) <= set(json.loads(f.attrs['semantic_class_ids']).values()):
                     issues.append(f'{key} unknown semantic ID')
             for name, group in f['camera_calibration'].items():
                 for key, data in group.items():

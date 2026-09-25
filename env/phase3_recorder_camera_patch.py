@@ -68,6 +68,7 @@ def phase3_apply_final_cameras_to_env_cfg(env_cfg, preview_output_crop=False):
                 width=width,
                 height=height,
                 data_types=data_types,
+                colorize_instance_id_segmentation=False,
                 update_period=0,
                 offset=CameraCfg.OffsetCfg(
                     pos=resolved_pos(name, c["pos"]),

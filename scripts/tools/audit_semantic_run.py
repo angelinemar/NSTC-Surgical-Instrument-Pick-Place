@@ -17,7 +17,7 @@ CLASSES = dict(background=0, robot=1, surgical_tray=2, scalpel=3,
                scissor=4, love_retractor=5, kelly=6, scalpel_type2=7)
 COLORS = np.array([(0, 0, 0), (60, 150, 255), (255, 150, 40),
                    (80, 220, 100), (245, 220, 60), (225, 80, 210),
-                   (80, 225, 220), (255, 90, 90)], dtype=np.uint8)
+                   (80, 225, 220), (255, 90, 90), (45,150,75), (110,110,120), (180,170,155)], dtype=np.uint8)
 CAMERAS = ('front', 'wrist', 'cam_top', 'cam_left', 'cam_right', 'cam_tray')
 
 
@@ -46,7 +46,9 @@ def audit_file(path_string, output_string, previous=None):
             report['storage_contract'] = str(h.attrs.get('storage_contract', 'legacy'))
             assert report['storage_contract'] == 'journaled_episode_v2', 'Missing SHA256 commit contract'
             report['commit_sha256_verified'] = True
-            assert json.loads(h.attrs['semantic_class_ids']) == CLASSES, 'Semantic class mapping'
+            mapping = json.loads(h.attrs['semantic_class_ids'])
+            assert mapping in (CLASSES,dict(CLASSES,table=8,floor=9,room=10)), 'Semantic class mapping'
+            class_count = len(mapping)
             target = str(h.attrs['target_object'])
             target_id = CLASSES[target]
             skill = str(h.attrs['policy_skill'])
@@ -67,13 +69,13 @@ def audit_file(path_string, output_string, previous=None):
                 supervision = h[f'supervision_gt/conditioning_mask_{semantic_name}']
                 assert mask.shape == depth.shape == supervision.shape == (n, *image_hw)
                 assert mask.dtype == np.uint16 and supervision.dtype == np.uint8
-                counts = np.zeros(8, dtype=np.int64)
-                visible_frames = np.zeros(8, dtype=np.int64)
+                counts = np.zeros(class_count, dtype=np.int64)
+                visible_frames = np.zeros(class_count, dtype=np.int64)
                 for start in range(0, n, 32):
                     values = mask[start:start+32]
-                    assert values.max() <= 7, f'{camera}: unknown class ID'
-                    counts += np.bincount(values.ravel(), minlength=8)
-                    for class_id in range(8):
+                    assert values.max() < class_count, f'{camera}: unknown class ID'
+                    counts += np.bincount(values.ravel(), minlength=class_count)
+                    for class_id in range(class_count):
                         visible_frames[class_id] += np.any(values == class_id, axis=(1, 2)).sum()
                     assert np.array_equal(supervision[start:start+32], values == conditioning_id), f'{camera}: supervision mask differs'
                     distances = depth[start:start+32]

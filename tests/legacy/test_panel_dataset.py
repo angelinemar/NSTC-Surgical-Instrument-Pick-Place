@@ -30,6 +30,7 @@ class DatasetPanelTests(unittest.TestCase):
                             self.assertEqual(contract['purpose'],purpose)
                             self.assertTrue(Path(panel.session['console_log']).is_relative_to(Path(tmp)/'debug/logs'))
                             self.assertEqual(panel.session['tray_mode'],'random')
+                            self.assertEqual((panel.session['distractor_min'],panel.session['distractor_max']),(12,18))
                     finally:
                         if panel.log_file: panel.log_file.close()
                         panel.log_file=None;panel.process=None;panel.close()

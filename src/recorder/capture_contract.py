@@ -31,7 +31,7 @@ def storage_budget(destination, episodes, size, reserve_gb=30):
         existing = existing.parent
     free = shutil.disk_usage(existing).free
     # Conservatively budget a full pair even when saving only one skill.
-    estimated = int(episodes * (.9 if size == 448 else .25) * 1e9)
+    estimated = int(episodes * (1.1 if size == 448 else .30) * 1e9)
     reserve = int(reserve_gb * 1e9)
     return dict(estimated_bytes=estimated, reserve_bytes=reserve, free_bytes=free,
                 capacity_pass=estimated + reserve <= free)

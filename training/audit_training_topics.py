@@ -112,11 +112,12 @@ def inspect(path):
             check(rgb.shape==(total,*image_hw,3) and rgb.dtype==np.uint8, 'rgb_format:'+view)
             check(depth.shape==(total,*image_hw), 'depth_format:'+view)
             check(semantic.shape==(total,*image_hw) and semantic.dtype==np.uint16, 'semantic_format:'+view)
-            stats = dict(flat_rgb_frames=[], semantic_pixel_counts=[0]*8,
+            class_count = len(json.loads(h.attrs['semantic_class_ids']))
+            stats = dict(flat_rgb_frames=[], semantic_pixel_counts=[0]*class_count,
                          target_visible_frames=0, target_pixels=0, depth_valid_pixels=0,
                          depth_total_pixels=0, depth_negative_pixels=0, invalid_semantic_pixels=0,
                          conditioning_mask_mismatch_pixels=0)
-            counts = np.zeros(8,dtype=np.int64)
+            counts = np.zeros(class_count,dtype=np.int64)
             for start in range(0,total,32):
                 stop = min(total,start+32)
                 images, depths, labels = rgb[start:stop], depth[start:stop], semantic[start:stop]
@@ -126,7 +127,7 @@ def inspect(path):
                 stats['depth_total_pixels'] += depths.size
                 unique, freq = np.unique(labels,return_counts=True)
                 for value, count in zip(unique,freq):
-                    if int(value) in range(8):
+                    if int(value) in range(class_count):
                         counts[int(value)] += count
                     else:
                         stats['invalid_semantic_pixels'] += int(count)

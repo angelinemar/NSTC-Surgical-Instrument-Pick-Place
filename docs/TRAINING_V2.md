@@ -6,23 +6,33 @@
 flowchart LR
     S[Native 224 or 448 square sensors] --> R[Committed raw H5: RGB + depth + semantic + calibration]
     R --> D[Detection export: native PNG + masks + COCO visible boxes]
-    R --> P[Sensor-only export: 224 RGB + proprio + action chunks]
+    R --> P[DP export: 224 RGB + proprio + requested target]
     D --> M[Independent perception.pt]
     P --> J[Joint DP + segmentation training]
     J --> A[checkpoint.pt: policy]
     J --> B[perception.pt: independently loadable head]
 ```
 
-The independent model currently predicts semantic classes and visible class boxes;
-the scene supports one instance of each class. It does not separate two instruments
-of the same class. COCO exports can also feed a different box detector. Connecting
+The scene supports repeated non-target instrument types: default 12-18 distractors
+plus exactly one target. Raw H5 records per-body instance masks, and COCO exports
+derive one visible box per physical instrument, even when its mask has disconnected
+parts. The bundled semantic model still predicts classes, not separate instances;
+use the COCO instance boxes with an instance-aware detector for duplicate objects. Connecting
 these outputs to a different action model still requires that model's input adapter.
 GT labels never condition DP inference.
 
+With table distractors, DP needs an explicit requested target. The existing panel
+Target / CLI `--object` selection supplies that task during recording. Export stores
+it separately as `task_target`; it contains only the requested instrument type,
+never object position, segmentation or a simulator-selected grasp. One policy per
+skill can train across all five targets. At inference call
+`policy.set_target('scissor')` before supplying RGB/robot sensors. Checkpoints now use
+`p4_sensor_task_v2`; regenerate old exports and retrain. Full tray is not required.
+
 ## Camera
 
-Native square rendering preserves historical angular framing by halving the
-horizontal aperture relative to the old 448-wide sensor. No crop or image resize
+Native square rendering uses 0.75 times the original horizontal aperture for a
+wider view than the historical center crop. No crop or image resize
 occurs while saving raw H5. `--camera-size 224` is the low-memory default;
 `--camera-size 448` samples the same field of view with four times the pixels.
 DLSS upscaling and frame generation are disabled; direct lighting uses 4 samples/pixel.
@@ -48,11 +58,29 @@ DP, perception, and shared collection can randomize tray occupancy. The target a
 starts on the table, while non-target classes can split between tabletop distractors
 and tray slots; random mode keeps at least one non-target on the table for clutter and
 natural occlusion. Both keep physical gates. The selected table drape
-now varies across seeded teal/blue/grey material colors and roughness; this changes
+now varies across seeded green/teal-green material colors and roughness; this changes
 appearance only, not collision geometry or instrument materials. Physical scale and room
-geometry are unchanged; novel rooms, duplicate-class scenes, and real-camera
+geometry are unchanged; novel rooms and real-camera
 domain coverage require separate validation. No synthetic image filter is recorded
 as a new independent episode.
+
+The panel's **Total distractors, random range** excludes the target and includes
+the four base non-target bodies. Extra bodies repeat those four types; one type can
+appear on both table and tray. The target type is excluded from duplicates. Base
+tray choices only control the four original bodies. Extras use randomized placement,
+measured footprint rejection and the same pose-stability gates as the originals;
+the target grasp area and its destination lane stay clear. Impossible packing is
+rejected rather than silently reducing the requested count. Restart the simulator
+after changing the range. CLI equivalents: `--distractor-min 12 --distractor-max 18`.
+
+Semantic IDs 0-7 are unchanged; 8=table, 9=floor, 10=room. Every instrument retains
+its class label and a separate rigid-body instance ID. New training heads have 11
+semantic outputs; old 8-class checkpoints require retraining/migration. Preview and
+pixel counts are saved in `scene_camera_semantic_preview.png` and `scene_label_audit.json`.
+Labels outside a camera's view or fully occluded correctly have no pixels.
+Robot submeshes, including otherwise unlabeled joints, are resolved from the
+renderer instance-to-prim mapping. A scene-only check writes the preview without
+creating demonstrations: add `--scene-audit-only` to a normal recorder command.
 
 Replace placeholders; run from P4. `--run` starts collection and may take hours.
 The default plan uses 2 train seeds, 1 validation seed, 1 test seed, all five classes
@@ -160,10 +188,19 @@ result = detector.predict(rgb_uint8)  # mask + class boxes + mean pixel confiden
 
 No manifest is changed to `production_ready: true` solely because code/tests pass.
 
+Duplicate-instance validation (2026-09-26): a native-224 scissor run completed one
+pick/place pair with 12 distractors and one target, passing per-frame semantic /
+instance consistency and committed-file checks. The preceding 17-distractor attempt
+failed settling and was discarded. Detector export produced 36 sampled images and
+314 separate visible-instance boxes; DP export and a task-conditioned forward /
+diffusion smoke test passed. These checks do not establish learned-policy accuracy.
+Evidence remains local under `debug/test_runs/clutter_v2_verified_20260926` and the
+matching detector/DP export folders.
+
 The earlier 448 demo consumes approximately 561 MB per pair. Two separate 500-pair
-plans would have been roughly 560 GB. The new shared 200-pair initial plan budgets
-180 GB raw conservatively plus a 30 GB reserve; it passed the latest local capacity
-check (about 354 GB free). Disk free space is live, not guaranteed by this document.
+plans would have been roughly 560 GB. With added instance masks, the shared
+200-pair plan budgets 220 GB at 448 or 60 GB at 224, plus a 30 GB reserve.
+Disk free space is checked live before collection and every attempt.
 The full initial cohort has not been collected or accuracy-certified. Export files
 and models need additional capacity. Larger cohorts can increase cycles/seeds after
 reviewing learning curves, class coverage, occlusion coverage and held-out rollouts.

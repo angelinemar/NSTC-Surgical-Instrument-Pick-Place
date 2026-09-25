@@ -26,7 +26,7 @@ def sample_lighting(seed, layout):
 
 def sample_background(seed):
     rng=random.Random(seed+7919)
-    palette={'teal':(.08,.30,.26),'blue':(.09,.20,.38),'grey':(.30,.33,.35)}
+    palette={'surgical_green':(.045,.24,.13),'deep_green':(.035,.18,.10),'teal_green':(.045,.25,.19)}
     name=rng.choice(tuple(palette))
     return dict(profile=name,color=[min(1.,v*rng.uniform(.8,1.2)) for v in palette[name]],
                 roughness=rng.uniform(.65,.95),physical_scale=1.,
@@ -53,9 +53,10 @@ def apply_background(stage, layout, config):
     shader.CreateIdAttr('UsdPreviewSurface')
     shader.CreateInput('diffuseColor',Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*config['color']))
     shader.CreateInput('roughness',Sdf.ValueTypeNames.Float).Set(config['roughness'])
+    shader.CreateOutput('surface', Sdf.ValueTypeNames.Token)
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(),'surface')
     for mesh in meshes:
-        UsdShade.MaterialBindingAPI.Apply(mesh).Bind(material)
+        UsdShade.MaterialBindingAPI.Apply(mesh).Bind(material, bindingStrength=UsdShade.Tokens.strongerThanDescendants)
     config['mesh_paths']=[str(p.GetPath()) for p in meshes]
 
 

@@ -16,7 +16,7 @@ else:
 class PolicyRuntime:
     def __init__(self, checkpoint, device='cpu', allow_smoke=False):
         data = torch.load(Path(checkpoint), map_location=device, weights_only=True)
-        if data.get('input_contract') != 'p4_sensor_only_v1':
+        if data.get('input_contract') != 'p4_sensor_task_v2':
             raise ValueError('Incompatible checkpoint input contract')
         if data.get('smoke_only') and not allow_smoke:
             raise ValueError('Smoke checkpoint is not approved for deployment')
@@ -27,6 +27,13 @@ class PolicyRuntime:
         self.model.load_state_dict(data['model'])
         self.model.eval()
         self.history = deque(maxlen=data['observation_horizon'])
+        self.task_target = None
+
+    def set_target(self, instrument):
+        """Operator task command; never read target identity from simulator state."""
+        from training.export_sensor_only import task_command
+        self.task_target = torch.from_numpy(task_command(instrument))[None].to(self.device)
+        self.reset()
 
     def reset(self):
         self.history.clear()
@@ -46,7 +53,7 @@ class PolicyRuntime:
         for name in CAMERAS:
             image = np.asarray(sensors[name + '_rgb'])
             if image.shape != (224, 224, 3) or image.dtype != np.uint8:
-                raise ValueError('Expected the recorded 224x224 uint8 sensor crop')
+                raise ValueError('Expected the recorded 224x224 uint8 sensor image')
             images.append(image)
         proprio = np.asarray(sensors['robot_proprio'], dtype=np.float32).copy()
         if proprio.shape != (16,) or not np.isfinite(proprio).all():
@@ -66,6 +73,8 @@ class PolicyRuntime:
             self.history.appendleft(self.history[0])
 
     def predict(self, sensors=None, inference_steps=20):
+        if self.task_target is None:
+            raise ValueError('Call set_target with the requested instrument before inference')
         if sensors is not None:
             self.observe(sensors)
         if not self.history:
@@ -74,7 +83,7 @@ class PolicyRuntime:
         state = np.stack([r[1] for r in self.history])
         state = (state - self.stats['proprio_mean']) / self.stats['proprio_std']
         state = torch.as_tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
-        normalized, semantic_prediction = self.model.act(rgb, state, inference_steps)
+        normalized, semantic_prediction = self.model.act(rgb, state, inference_steps,task_target=self.task_target)
         return decode_actions(normalized, self.stats)[0].cpu().numpy(), semantic_prediction[0].cpu().numpy()
 
 

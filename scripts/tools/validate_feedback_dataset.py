@@ -71,9 +71,11 @@ def audit(path):
                     ids = set()
                     for i in {0,total//2,total-1}:
                         ids.update(int(v) for v in np.unique(node[i]))
-                    assert ids <= set(range(8)), (path,name,ids)
+                    assert ids <= set(json.loads(h5.attrs['semantic_class_ids']).values()), (path,name,ids)
                     semantics.append(name)
         h5.visititems(visit)
+        from src.recorder.instance_labels import audit_instances
+        audit_instances(h5)
         assert len(rgb) == len(semantics) == 6, (path,rgb,semantics)
         assert np.isfinite(h5['observations/robot_proprio'][:]).all(), (path,'proprio')
         stages = [v.decode() if isinstance(v,bytes) else str(v) for v in h5['stage_names'][:]]

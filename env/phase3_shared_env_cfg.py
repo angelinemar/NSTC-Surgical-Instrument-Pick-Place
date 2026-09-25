@@ -372,6 +372,9 @@ def apply_shared_env_cfg(env_cfg, request: RecorderEnvRequest, *, camera_width: 
         else:
             setattr(env_cfg.scene, name, rigid_cfg(name))
 
+    from src.recorder.scene_clutter import add_to_scene
+    add_to_scene(env_cfg.scene, request.target, rigid_cfg)
+
     if hasattr(env_cfg, "events") and hasattr(env_cfg.events, "reset_object_position"):
         reset_params = env_cfg.events.reset_object_position.params
         body_name = {

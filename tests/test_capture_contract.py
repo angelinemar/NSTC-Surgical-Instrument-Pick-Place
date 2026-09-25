@@ -23,7 +23,8 @@ class CaptureTests(unittest.TestCase):
 
     def test_disk_guard_never_counts_both_consumers_twice(self):
         with patch('src.recorder.capture_contract.shutil.disk_usage',return_value=Mock(free=227_000_000_000)):
-            self.assertTrue(storage_budget(ROOT,200,448)['capacity_pass'])
+            self.assertTrue(storage_budget(ROOT,150,448)['capacity_pass'])
+            self.assertFalse(storage_budget(ROOT,200,448)['capacity_pass'])
             self.assertFalse(storage_budget(ROOT,500,448)['capacity_pass'])
             self.assertTrue(storage_budget(ROOT,500,224)['capacity_pass'])
 

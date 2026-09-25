@@ -17,6 +17,13 @@ sys.path.insert(0, str(ROOT))
 
 CAMERAS = ('front', 'wrist', 'cam_top', 'cam_left', 'cam_right', 'cam_tray')
 INPUTS = ('robot_proprio',) + tuple(c + '_rgb' for c in CAMERAS)
+TASK_TARGETS = ('scalpel','scissor','love_retractor','kelly','scalpel_type2')
+
+
+def task_command(name):
+    if name not in TASK_TARGETS:
+        raise ValueError('Choose an explicit target instrument task')
+    return np.eye(len(TASK_TARGETS),dtype=np.float32)[TASK_TARGETS.index(name)]
 
 
 def copy_policy_images(src, destination, name, mask=False):
@@ -104,6 +111,8 @@ def export(source, output, validation_cells, panel_pairs=None):
         raise ValueError('No independently audited successful pairs')
     output.mkdir(parents=True, exist_ok=False)
     manifest = dict(input_allowlist=INPUTS, labels_are_inputs=False,
+                    task_command_required=True, task_targets=TASK_TARGETS,
+                    task_command_source='requested recorder target, supplied explicitly by operator at inference',
                     action_contract='absolute robot-base XYZ, wxyz unit quaternion, gripper -1/+1',
                     control_dt_s=0.02, validation_cells=sorted(validation_cells), episodes=[],
                     source_snapshot_complete=source_complete, split_rule=split_rule, production_ready=False,
@@ -116,7 +125,7 @@ def export(source, output, validation_cells, panel_pairs=None):
     try:
         for f in policy_files.values():
             f.create_group('data')
-            f.attrs['sensor_only_contract'] = 'p4_sensor_only_v1'
+            f.attrs['sensor_only_contract'] = 'p4_sensor_task_v2'
         for index, (case, split, paths) in enumerate(pairs):
             episode = 'demo_%06d' % index
             expected_skills = set(case.get('saved_skills', ['pick','place']))
@@ -146,9 +155,12 @@ def export(source, output, validation_cells, panel_pairs=None):
                         raise ValueError('Missing physical success evidence')
                     occupancy = json.loads(src.attrs.get('initial_tray_occupancy', '[]'))
                     target_id = int(src.attrs.get('object_type_id', -1))
-                    if (len(occupancy) != 5 or sum(occupancy) != 4 or target_id not in range(5)
+                    if (len(occupancy) != 5 or target_id not in range(5)
                             or occupancy[target_id] != 0):
-                        raise ValueError('Command-free policy requires exactly one actionable instrument; use an explicit user task command for ambiguous scenes')
+                        raise ValueError('Invalid initial target/tray metadata')
+                    target_name = str(src.attrs['target_object'])
+                    if TASK_TARGETS[target_id] != target_name:
+                        raise ValueError('Requested task target disagrees with recorded target ID')
                     if float(src.attrs.get('control_dt_s', 0)) != .02:
                         raise ValueError('Missing or incompatible control interval')
                     contract = tuple(str(src.attrs.get(k, '')) for k in
@@ -161,6 +173,8 @@ def export(source, output, validation_cells, panel_pairs=None):
                     actions[:, 3:7] = canonical_quaternions(actions[:, 3:7])
                     n = len(actions)
                     demo.attrs['num_samples'] = n
+                    demo.create_dataset('task_target', data=task_command(target_name))
+                    demo.attrs['task_target_name'] = target_name
                     obs = demo.create_group('obs')
                     proprio = src['observations/robot_proprio'][:]
                     proprio[:, 12:16] = canonical_quaternions(proprio[:, 12:16])

@@ -106,6 +106,8 @@ class EpisodeTransaction:
         bound.arguments['meta'].update(storage_contract='journaled_episode_v2', pair_transaction_id=self.token)
         if not writer(*bound.args, **bound.kwargs):
             raise RuntimeError('Segment writer did not complete')
+        from src.recorder.instance_labels import append_segment
+        append_segment(destination / (self.name + '.h5'), bound.arguments['recorder'], skill)
         from validate_feedback_dataset import audit
         audit(destination / (self.name + '.h5'))
         self.saved.add(skill)

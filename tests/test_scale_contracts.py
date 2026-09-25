@@ -117,12 +117,13 @@ class SensorBoundaryTests(unittest.TestCase):
 
     def test_predict_api_has_no_ground_truth_or_target_action_argument(self):
         self.assertEqual(tuple(inspect.signature(SensorPolicy.act).parameters),
-                         ('self', 'rgb', 'proprio', 'inference_steps', 'generator'))
+                         ('self', 'rgb', 'proprio', 'inference_steps', 'generator', 'task_target'))
 
     def test_semantic_labels_cannot_condition_diffusion_prediction(self):
         torch.set_num_threads(2)
         model = SensorPolicy()
         batch = dict(rgb=torch.rand(1, 2, 6, 3, 32, 32), proprio=torch.zeros(1, 2, 16),
+                     task_target=torch.tensor([[1.,0.,0.,0.,0.]]),
                      actions=torch.zeros(1, 16, 8), semantic=torch.zeros(1, 6, 32, 32, dtype=torch.long))
         torch.manual_seed(73)
         _, first_dp, first_seg = model.losses(batch)
@@ -131,6 +132,15 @@ class SensorBoundaryTests(unittest.TestCase):
         _, second_dp, second_seg = model.losses(batch)
         torch.testing.assert_close(first_dp, second_dp, rtol=0, atol=0)
         self.assertNotEqual(float(first_seg), float(second_seg))
+
+    def test_inference_requires_explicit_task(self):
+        model = SensorPolicy()
+        with self.assertRaisesRegex(ValueError,'requested target'):
+            model.act(torch.rand(1,2,6,3,32,32),torch.zeros(1,2,16))
+        from training.export_sensor_only import task_command
+        np.testing.assert_array_equal(task_command('scissor'),[0,1,0,0,0])
+        with self.assertRaises(ValueError):
+            task_command('guess_from_ground_truth')
 
     def test_quaternion_signs_and_degenerate_prediction(self):
         result = canonical_quaternions([[1, 0, 0, 0], [-1, 0, 0, 0]])

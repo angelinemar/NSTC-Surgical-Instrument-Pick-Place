@@ -83,7 +83,7 @@ class Contracts(unittest.TestCase):
         mask=np.zeros((20,20),np.uint16)
         mask[1,1]=3
         self.assertEqual(visible_boxes(mask),[])
-        mask[1,1]=8
+        mask[1,1]=11
         with self.assertRaises(ValueError): visible_boxes(mask)
 
     def test_split_alias_and_parent_rejected(self):
@@ -114,6 +114,8 @@ class Contracts(unittest.TestCase):
         rgb=torch.rand(1,2,6,3,224,224)
         with torch.no_grad():
             _,logits=joint.encode(rgb,torch.zeros(1,2,16))
+            batch=dict(rgb=rgb,proprio=torch.zeros(1,2,16),task_target=torch.tensor([[1.,0.,0.,0.,0.]]),actions=torch.zeros(1,16,8),semantic=torch.full((1,6,224,224),8,dtype=torch.long))
+            self.assertTrue(torch.isfinite(joint.losses(batch)[0]))
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'perception.pt'
             save_from_joint(joint,path,True)

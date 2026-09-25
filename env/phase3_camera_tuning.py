@@ -10,7 +10,7 @@ if CAMERA_WIDTH not in (224, 448):
     raise ValueError('P4_CAMERA_SIZE must be 224 or 448')
 CAMERA_HEIGHT = CAMERA_WIDTH
 CAMERA_OUTPUT_CROP_SIZE = 224
-CAMERA_DATA_TYPES = ["rgb", "distance_to_image_plane", "semantic_segmentation"]
+CAMERA_DATA_TYPES = ["rgb", "distance_to_image_plane", "semantic_segmentation", "instance_id_segmentation_fast"]
 
 PHASE3_CAMERAS = {
     "camera": {
