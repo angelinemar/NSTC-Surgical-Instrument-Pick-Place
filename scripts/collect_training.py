@@ -24,7 +24,7 @@ def plan(output, track, cycles, camera_size, sessions):
                 folder=Path(output)/split/f'{name}_seed{seed}'
                 config=dict(target=name, mode='auto', auto_start=True, stop=False,
                             collection='grid_cycles',cycles=cycles,
-                            tray_mode='full' if track in ('dp','both') else 'random')
+                            tray_mode='random')
                 args=['scripts/p4.py','record','--object',name,'--episodes',str(10*cycles),
                       '--record_mode','both','--camera-size',str(camera_size),
                       '--randomization','train','--randomization-seed',str(seed),

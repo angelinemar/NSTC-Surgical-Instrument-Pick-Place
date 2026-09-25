@@ -56,7 +56,7 @@ class Contracts(unittest.TestCase):
         self.assertEqual(len(jobs),20)
         self.assertEqual(len({j['folder'] for j in jobs}),20)
         for job in jobs:
-            self.assertEqual(job['config']['tray_mode'],'full')
+            self.assertEqual(job['config']['tray_mode'],'random')
             self.assertEqual(job['config']['mode'],'auto')
             self.assertIn('--camera-size',job['args'])
 

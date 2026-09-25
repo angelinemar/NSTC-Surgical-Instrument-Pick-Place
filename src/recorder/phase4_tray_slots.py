@@ -37,7 +37,9 @@ def select_occupancy(target, rng, session=None):
     eligible = [n for n in ORDER if n != target]
     mode = (session or {}).get('tray_mode', os.environ.get('P4_TRAY_OCCUPANCY','random'))
     if mode == 'random':
-        count = int(rng.integers(0,5)) if hasattr(rng,'integers') else int(rng.randint(0,5))
+        # Mixed clutter: target remains on the table, and at least one
+        # non-target stays on the table as a visual/physical distractor.
+        count = int(rng.integers(0,4)) if hasattr(rng,'integers') else int(rng.randint(0,4))
         chosen = [str(n) for n in rng.choice(eligible,size=count,replace=False)]
     elif mode == 'empty':
         chosen = []

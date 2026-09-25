@@ -44,9 +44,10 @@ configuration in `domain_randomization`. Light cone implementation follows
 Auto spawning already supplies bounded XY jitter and yaw in [0,360); independent
 session seeds now control this RNG as well. Manual poses remain exact.
 
-DP collection uses a full non-target tray to retain one actionable tabletop object.
-Perception collection randomizes tray occupancy, yielding more tabletop distractors
-and naturally varying occlusions. Both keep physical gates. The selected table drape
+DP, perception, and shared collection can randomize tray occupancy. The target always
+starts on the table, while non-target classes can split between tabletop distractors
+and tray slots; random mode keeps at least one non-target on the table for clutter and
+natural occlusion. Both keep physical gates. The selected table drape
 now varies across seeded teal/blue/grey material colors and roughness; this changes
 appearance only, not collision geometry or instrument materials. Physical scale and room
 geometry are unchanged; novel rooms, duplicate-class scenes, and real-camera
@@ -83,8 +84,9 @@ python scripts\collect_training.py --track perception --output '<NEW_DETECTION_R
    recorded image size and a destination on the desired drive. The GUI assigns seed
    and train/valid/test automatically with a 70/20/10 session ratio. Manual spawn
    does not automatically add XY/yaw jitter; choose auto.
-3. DP/Both require a full non-target tray. Detection-only defaults to random tray
-   occupancy. Each saved skill retains RGB/masks/robot evidence; purpose describes
+3. Random tray occupancy is valid for DP, detector-only, and Both. Full tray remains
+   available as a special controlled setting, while manual lets you choose which
+   non-target classes start in tray slots. Each saved skill retains RGB/masks/robot evidence; purpose describes
    the consumers in `capture_contract.json`, not a separately trained model.
 4. **Launch + record** starts recording. Capacity is checked before launch and a
    30 GB reserve is checked before each new attempt. Existing data is not deleted.

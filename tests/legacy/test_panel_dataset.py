@@ -29,7 +29,7 @@ class DatasetPanelTests(unittest.TestCase):
                             contract=json.loads((panel.output_dir/'capture_contract.json').read_text())
                             self.assertEqual(contract['purpose'],purpose)
                             self.assertTrue(Path(panel.session['console_log']).is_relative_to(Path(tmp)/'debug/logs'))
-                            self.assertEqual(panel.session['tray_mode'],'random' if purpose=='detection' else 'full')
+                            self.assertEqual(panel.session['tray_mode'],'random')
                     finally:
                         if panel.log_file: panel.log_file.close()
                         panel.log_file=None;panel.process=None;panel.close()
@@ -37,10 +37,11 @@ class DatasetPanelTests(unittest.TestCase):
     def test_dp_rejects_ambiguous_tray_and_low_capacity_stops_launch(self):
         root=tk.Tk();root.withdraw();panel=ui.Panel(root)
         try:
-            panel.tray_mode.set('empty')
+            panel.tray_mode.set('manual')
+            panel.tray_counts['scalpel'].set(1)
             with patch.object(ui.messagebox,'showerror') as error,patch.object(ui.subprocess,'Popen') as launch:
                 panel.prepare();error.assert_called_once();launch.assert_not_called()
-            panel.tray_mode.set('full');panel.mode.set('auto')
+            panel.tray_counts['scalpel'].set(0);panel.tray_mode.set('random');panel.mode.set('auto')
             with patch.object(ui,'storage_budget',return_value=dict(capacity_pass=False,estimated_bytes=900000000,free_bytes=100)),patch.object(ui.messagebox,'showerror') as error,patch.object(ui.subprocess,'Popen') as launch:
                 panel.prepare();error.assert_called_once();launch.assert_not_called()
         finally: panel.close()

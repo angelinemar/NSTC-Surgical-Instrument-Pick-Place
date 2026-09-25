@@ -23,8 +23,8 @@ def main() -> None:
     parser.add_argument('--shutdown-mode', choices=('native','verified-exit'),
                         default='verified-exit' if os.name=='nt' else 'native')
     parser.add_argument('--session-config',help='Control-panel session JSON')
-    parser.add_argument('--tray-occupancy',choices=['random','empty','full'],default='random',
-                        help='Initial tray holds 0-4 other classes; target slot is always empty')
+    parser.add_argument('--tray-occupancy',choices=['random','empty','full','manual'],default='random',
+                        help='Initial tray occupancy. Random holds 0-3 other classes so at least one non-target remains on the table; full holds all four. Target slot is always empty.')
     parser.add_argument("--max-attempts", type=int, default=None,
                         help="Stop with nonzero exit after this many attempts; 0 = unlimited")
     known, forwarded = parser.parse_known_args()
@@ -34,14 +34,6 @@ def main() -> None:
     os.environ['P4_DATASET_PURPOSE'] = known.dataset_purpose
     os.environ['P4_DATASET_SPLIT'] = known.dataset_split
     os.environ['P4_SHUTDOWN_MODE'] = known.shutdown_mode
-    if known.dataset_purpose in ('dp','both'):
-        # Existing DP contract allows exactly one actionable tabletop object.
-        known.tray_occupancy = 'full'
-        if known.session_config:
-            import json
-            from pathlib import Path
-            if json.loads(Path(known.session_config).read_text()).get('tray_mode') != 'full':
-                parser.error('DP / both require full non-target tray; select full tray in the session')
     if any(a.startswith('--center_crop_size') for a in forwarded):
         parser.error('P4 uses native square images; --center_crop_size is no longer supported')
     forwarded.extend(['--center_crop_size', '0'])

@@ -62,7 +62,7 @@ class TrayContractTests(unittest.TestCase):
                 self.assertNotIn(target,chosen)
                 self.assertEqual(len(chosen),len(set(chosen)))
                 counts.add(len(chosen))
-            self.assertEqual(counts,set(range(5)))
+            self.assertEqual(counts,set(range(4)))
 
     def test_manual_rejects_target_duplicate_unknown(self):
         for names in (['scalpel'],['kelly','kelly'],['unknown']):

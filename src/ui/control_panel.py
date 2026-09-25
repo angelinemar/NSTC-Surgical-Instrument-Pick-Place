@@ -65,7 +65,7 @@ class Panel:
         self.session_seed = tk.IntVar(value=int(datetime.now().timestamp()))
         self.destination = tk.StringVar(value=str(ROOT/'datasets'/'panel_runs'))
         self.episodes = tk.IntVar(value=1)
-        self.tray_mode = tk.StringVar(value='full')
+        self.tray_mode = tk.StringVar(value='random')
         self.tray_counts = {n:tk.IntVar(value=0) for n in NAMES}
         self.status = tk.StringVar(value='Choose target, drag instrument footprints, then Launch / Prepare.')
         self.selected = tk.StringVar(value='scalpel')
@@ -132,7 +132,7 @@ class Panel:
         ttk.Label(tray_controls,text='Mode').grid(row=0,column=0,sticky='w',padx=8)
         traymode=ttk.Combobox(tray_controls,textvariable=self.tray_mode,values=('random','empty','full','manual'),state='readonly',width=16)
         traymode.grid(row=0,column=1,sticky='w',pady=6); self.controls.append(traymode)
-        self.tooltips.append(Tooltip(traymode,'Random: 0-4 other classes. Full: all four other classes. Manual: use counts below. Target is never preloaded.'))
+        self.tooltips.append(Tooltip(traymode,'Random: non-target classes split between table and tray, with at least one table distractor. Full: all four non-target classes in tray. Manual: use counts below. Target is never preloaded.'))
         for i,n in enumerate(NAMES,1):
             ttk.Label(tray_controls,text=n).grid(row=i,column=0,sticky='w',padx=8,pady=4)
             widget=ttk.Spinbox(tray_controls,from_=0,to=1,textvariable=self.tray_counts[n],width=5)
@@ -361,7 +361,7 @@ class Panel:
             p.create_rectangle(x,26,x+cell-8,104,outline=color,width=2)
             target=name==self.target.get()
             mode=self.tray_mode.get()
-            state='TARGET / EMPTY' if target else ('random 0/1' if mode=='random' else '1 in tray' if name in selected_tray else '0 in tray')
+            state='TARGET / EMPTY' if target else ('random table/tray' if mode=='random' else '1 in tray' if name in selected_tray else '0 in tray')
             p.create_text(middle,39,fill=color,text=f'{i}: {name}')
             p.create_line(middle,51,middle,80,fill=color,width=3,arrow='last')
             p.create_text(middle,94,fill='white',text=state)
@@ -438,12 +438,10 @@ class Panel:
     def dataset_changed(self,*args):
         purpose=LABELS[self.dataset_purpose.get()]
         if purpose in ('dp','both'):
-            self.tray_mode.set('full')
             text='Complete mode: records DP data and standalone detector data from one raw run.'
         else:
-            self.tray_mode.set('random')
             text='Detector-only mode: records flexible object-detection data, no DP policy data.'
-        self.dataset_hint.set(text+' Image size is the RGB size saved in H5; 448 is sharper, 224 is smaller.')
+        self.dataset_hint.set(text+' Random tray keeps tabletop distractors for richer scenes. Image size is saved RGB; 448 is sharper, 224 is smaller.')
 
     def choose_auto_split(self,destination):
         counts={s:0 for s in ('train','valid','test')}
@@ -471,8 +469,6 @@ class Panel:
             if self.export_process:
                 raise ValueError('Finish the active export before launching another recorder.')
             purpose=LABELS[self.dataset_purpose.get()]
-            if purpose in ('dp','both') and self.tray_mode.get()!='full':
-                raise ValueError('DP / Both require Full tray. For variable tabletop distractors select Detection only.')
             tray_objects=[n for n in NAMES if self.tray_counts[n].get()==1]
             if any(self.tray_counts[n].get() not in (0,1) for n in NAMES):
                 raise ValueError('Currently one physical instance per class: tray count must be 0 or 1.')
@@ -523,7 +519,7 @@ class Panel:
             args=[str(launcher),str(ROOT/'record.py'),'--object',self.target.get(),'--episodes',str(episodes),
                   '--max-attempts','0','--record_mode',self.skill.get(),'--out_dir',str(output),'--session-config',str(self.session_path),
                   '--camera-size',self.camera_size.get(),'--randomization-seed',str(seed),
-                  '--dataset-purpose',purpose,'--dataset-split',split,'--tray-occupancy','full' if purpose in ('dp','both') else 'random']
+                  '--dataset-purpose',purpose,'--dataset-split',split,'--tray-occupancy',self.tray_mode.get()]
             log=ROOT/'debug'/'logs'/'panel_runs'/stamp/(self.target.get()+'.log')
             log.parent.mkdir(parents=True,exist_ok=True)
             self.log_file=log.open('w',encoding='utf-8')
