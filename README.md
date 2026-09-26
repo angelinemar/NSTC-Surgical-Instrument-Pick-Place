@@ -31,6 +31,12 @@ Both shares raw data once. All dataset modes support randomized duplicate distra
 
 ## What is recorded
 
+Raw RGB defaults to **448 x 448 with spatial FXAA**, with the same full-table
+framing. DP export remains 224 x 224 (Lanczos); detector export retains 448.
+The lower-memory 224 option sacrifices small-tool detail. Preview PNG folders
+include front, grip/wrist, top, left, right and tray. Restart the simulator and
+use a fresh session after changing resolution; old RGB cannot recover lost detail.
+
 Policy recording windows (all five instruments):
 
 ```mermaid

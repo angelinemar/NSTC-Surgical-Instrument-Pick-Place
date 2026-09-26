@@ -61,7 +61,7 @@ def install_runtime_hooks(namespace):
         import os
         args=namespace.get('args_cli')
         if args is not None:
-            budget=storage_budget(args.out_dir,1,int(os.environ.get('P4_CAMERA_SIZE','224')))
+            budget=storage_budget(args.out_dir,1,int(os.environ.get('P4_CAMERA_SIZE','448')))
             if not budget['capacity_pass']:
                 raise RuntimeError('DISK_RESERVE: stopped before next attempt; saved episodes preserved')
         from src.recorder.domain_randomization import apply_episode_lighting

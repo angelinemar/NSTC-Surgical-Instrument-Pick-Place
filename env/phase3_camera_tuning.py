@@ -5,7 +5,7 @@ from pathlib import Path
 from phase4_camera_names import sensor_names
 
 
-CAMERA_WIDTH = int(os.environ.get('P4_CAMERA_SIZE', '224'))
+CAMERA_WIDTH = int(os.environ.get('P4_CAMERA_SIZE', '448'))
 if CAMERA_WIDTH not in (224, 448):
     raise ValueError('P4_CAMERA_SIZE must be 224 or 448')
 CAMERA_HEIGHT = CAMERA_WIDTH

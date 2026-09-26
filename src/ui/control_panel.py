@@ -60,7 +60,7 @@ class Panel:
         self.mode = tk.StringVar(value='manual')
         self.skill = tk.StringVar(value='both')
         self.dataset_purpose = tk.StringVar(value='Both: DP + detector (recommended)')
-        self.camera_size = tk.StringVar(value='224')
+        self.camera_size = tk.StringVar(value='448')
         self.dataset_split = tk.StringVar(value='auto')
         self.session_seed = tk.IntVar(value=int(datetime.now().timestamp()))
         self.destination = tk.StringVar(value=str(ROOT/'datasets'/'panel_runs'))
@@ -461,7 +461,7 @@ class Panel:
             text='DP joint export: RGB, robot state and actions, with semantic training labels.'
         else:
             text='Detector export: RGB, semantic and separate instance labels for repeated instruments.'
-        self.dataset_hint.set(text+' Distractor range below applies to every mode. Saved RGB: 224 default, 448 for finer detail.')
+        self.dataset_hint.set(text+' Distractor range below applies to every mode. Raw RGB: 448 recommended for small tools; DP export stays 224. 224 is lower-detail / low-memory mode.')
 
     def choose_auto_split(self,destination):
         counts={s:0 for s in ('train','valid','test')}

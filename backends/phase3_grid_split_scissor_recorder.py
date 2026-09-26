@@ -2294,6 +2294,10 @@ def export_segment_preview(recorder, out_dir, ep_idx, indices, meta):
         Image.fromarray(_depth_to_vis_uint8(recorder.front_depth[idx])).save(os.path.join(base_dir, "front_depth", f"step_{idx:04d}_{stage}.png"))
         phase3_hide_all_debug_visuals(omni.usd.get_context().get_stage())
         Image.fromarray(recorder.grip_b_rgb[idx]).save(os.path.join(base_dir, "grip_b_rgb", f"step_{idx:04d}_{stage}.png"))
+        for camera, frames in recorder.extra_camera_rgb.items():
+            camera_dir = os.path.join(base_dir, camera + "_rgb")
+            os.makedirs(camera_dir, exist_ok=True)
+            Image.fromarray(frames[idx]).save(os.path.join(camera_dir, f"step_{idx:04d}_{stage}.png"))
         Image.fromarray(_depth_to_vis_uint8(recorder.grip_b_depth[idx])).save(os.path.join(base_dir, "grip_b_depth", f"step_{idx:04d}_{stage}.png"))
 
         front_sem = recorder.front_semantic[idx] if hasattr(recorder, "front_semantic") and idx < len(recorder.front_semantic) else np.zeros((CAMERA_HEIGHT, CAMERA_WIDTH), dtype=np.uint16)

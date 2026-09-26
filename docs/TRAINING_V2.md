@@ -33,16 +33,26 @@ skill can train across all five targets. At inference call
 
 Native square rendering uses 0.75 times the original horizontal aperture for a
 wider view than the historical center crop. No crop or image resize
-occurs while saving raw H5. `--camera-size 224` is the low-memory default;
-`--camera-size 448` samples the same field of view with four times the pixels.
+occurs while saving raw H5. `--camera-size 448` is the default for small tools,
+sampling the same field of view with four times the pixels of low-memory 224.
 DLSS upscaling and frame generation are disabled; direct lighting uses 4 samples/pixel.
-Without antialiasing, fine edges can alias. Compare saved frames at native scale.
+Spatial FXAA smooths jagged edges without temporal accumulation. It does not
+restore missing detail; direct-lighting samples are not resolution supersampling.
+Compare saved frames at native scale. RGB preview folders now include all six
+cameras; these PNGs remain a sampled preview, while H5 contains every saved frame.
 An old center crop itself did not interpolate pixels; renderer resolution and small
 instrument pixel footprint also affect apparent sharpness.
 
 The DP exporter and live DP sensor adapter both use the same Lanczos resize from
 448 to 224. Semantic labels use nearest-neighbor. Detection exports retain native
 pixels. Higher resolution cannot retroactively recover detail from old recordings.
+
+Native-448 + FXAA scene audit (2026-09-26) completed successfully with six RGB
+and semantic views and 12 distractors. The preview was visually inspected;
+thin tools still occupy few pixels in wide front/top views. Eleven regression
+tests passed, including all-five-backend six-view PNG exports, unchanged raw
+pixels during DP downsampling, capture/storage guards and panel commands.
+This is a scene/render check, not a complete 448 training run or accuracy claim.
 
 ## Randomization and collection
 

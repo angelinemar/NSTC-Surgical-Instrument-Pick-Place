@@ -28,7 +28,7 @@ def write_run_manifest(object_name, forwarded_args):
     output.mkdir(parents=True, exist_ok=True)
     from src.recorder.capture_contract import capture_contract
     contract = capture_contract(os.environ.get('P4_DATASET_PURPOSE','detection'),
-                                args.record_mode, int(os.environ.get('P4_CAMERA_SIZE','224')),
+                                args.record_mode, int(os.environ.get('P4_CAMERA_SIZE','448')),
                                 int(os.environ.get('P4_RANDOMIZATION_SEED','17')),
                                 os.environ.get('P4_DATASET_SPLIT','unassigned'))
     (output/'capture_contract.json').write_text(json.dumps(contract,indent=2),encoding='utf-8')
@@ -62,8 +62,8 @@ def write_run_manifest(object_name, forwarded_args):
         'camera_layout': json.loads((ROOT/'env'/'camera_layout.json').read_text(encoding='utf-8')),
         'asset_and_config_sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
         'camera_contract': 'native_square_wide_table_v2',
-        'render_contract': 'native_no_dlss_no_frame_generation_4spp_v1',
-        'camera_size': int(os.environ.get('P4_CAMERA_SIZE', '224')),
+        'render_contract': 'native_fxaa_no_frame_generation_4spp_v2',
+        'camera_size': int(os.environ.get('P4_CAMERA_SIZE', '448')),
         'randomization': os.environ.get('P4_RANDOMIZATION', 'train'),
         'randomization_seed': int(os.environ.get('P4_RANDOMIZATION_SEED', '17')),
         'note': 'Native square RGB/depth/semantic; no crop or resize in recorder. Wider FOV than the historical crop to keep table edges in 224 recordings.'
@@ -218,7 +218,9 @@ def spawn_sensor_safe_light(prim_path, cfg, translation=None, orientation=None, 
 def apply_scene(env_cfg):
     # DLSS rendered the old small sensors below output resolution. Preserve
     # actual native samples; higher-res recordings can be downsampled in export.
-    env_cfg.sim.render.antialiasing_mode = 'Off'
+    # Spatial AA avoids temporal history/ghosting on moving thin instruments.
+    # Native 448 supplies real detail; FXAA only smooths edge stair-stepping.
+    env_cfg.sim.render.antialiasing_mode = 'FXAA'
     env_cfg.sim.render.enable_dlssg = False
     env_cfg.sim.render.samples_per_pixel = 4
     # Headless and GUI must provide identical physical tray raycast support.
