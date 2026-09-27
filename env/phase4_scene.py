@@ -59,14 +59,16 @@ def write_run_manifest(object_name, forwarded_args):
         'symmetric_grasp_candidate': os.environ.get('P4_SYMMETRIC_GRASP', '1') == '1',
         'camera_name_mapping': {FRONT_PUBLIC:{'sensor_key':FRONT_SENSOR,'prim_path':FRONT_PRIM,'h5':FRONT_DATA}},
         'scene_layout': LAYOUT,
-        'camera_layout': json.loads((ROOT/'env'/'camera_layout.json').read_text(encoding='utf-8')),
+        'camera_layout': (json.loads(Path(os.environ['P4_RESUME_CAMERA_MANIFEST']).read_text(encoding='utf-8'))['camera_layout']
+                          if os.environ.get('P4_RESUME_CAMERA_MANIFEST') else json.loads((ROOT/'env'/'camera_layout.json').read_text(encoding='utf-8'))),
         'asset_and_config_sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
-        'camera_contract': 'native_square_wide_table_v2',
+        'camera_contract': (json.loads(Path(os.environ['P4_RESUME_CAMERA_MANIFEST']).read_text(encoding='utf-8')).get('camera_contract','native_square_wide_table_v2')
+                            if os.environ.get('P4_RESUME_CAMERA_MANIFEST') else 'native_square_front_work_v3'),
         'render_contract': 'native_fxaa_no_frame_generation_4spp_v2',
         'camera_size': int(os.environ.get('P4_CAMERA_SIZE', '448')),
         'randomization': os.environ.get('P4_RANDOMIZATION', 'train'),
         'randomization_seed': int(os.environ.get('P4_RANDOMIZATION_SEED', '17')),
-        'note': 'Native square RGB/depth/semantic; no crop or resize in recorder. Wider FOV than the historical crop to keep table edges in 224 recordings.'
+        'note': 'Native square RGB/depth/semantic; no crop or resize in recorder. New front view focuses on main work grid; resume preserves original camera layout.'
     }
     (output/'scene_manifest.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
 

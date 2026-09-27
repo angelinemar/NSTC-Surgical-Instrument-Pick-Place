@@ -88,12 +88,18 @@ CAMERA_LAYOUT_FILE = Path(__file__).parent / 'env' / "camera_layout.json"
 if CAMERA_LAYOUT_FILE.is_file():
     try:
         _saved = json.loads(CAMERA_LAYOUT_FILE.read_text(encoding="utf-8"))
+        # Resume keeps the original camera calibration instead of silently
+        # mixing new front framing into an existing training session.
+        if os.environ.get('P4_RESUME_CAMERA_MANIFEST'):
+            _saved = json.loads(Path(os.environ['P4_RESUME_CAMERA_MANIFEST']).read_text(encoding='utf-8'))['camera_layout']
         for _name, _pose in sensor_names(_saved.get("cameras", {})).items():
             if _name in PHASE3_CAMERAS:
                 if "pos" in _pose:
                     PHASE3_CAMERAS[_name]["pos"] = tuple(float(v) for v in _pose["pos"])
                 if "rot" in _pose:
                     PHASE3_CAMERAS[_name]["rot"] = tuple(float(v) for v in _pose["rot"])
+                if 'focal_length' in _pose:
+                    PHASE3_CAMERAS[_name]['focal_length'] = float(_pose['focal_length'])
         print(f"[CAMERA LAYOUT LOADED] {CAMERA_LAYOUT_FILE}")
     except Exception as _camera_layout_error:
         raise RuntimeError(f"Invalid camera layout: {CAMERA_LAYOUT_FILE}") from _camera_layout_error

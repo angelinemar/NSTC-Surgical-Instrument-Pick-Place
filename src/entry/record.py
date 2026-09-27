@@ -77,6 +77,12 @@ def main() -> None:
     output_parser.add_argument('--resume',action='store_true')
     output_parser.add_argument('--record_mode',default='both',choices=['both','pick','place'])
     output, _ = output_parser.parse_known_args(forwarded)
+    os.environ.pop('P4_RESUME_CAMERA_MANIFEST', None)
+    if output.resume:
+        manifest = Path(output.out_dir).resolve()/'scene_manifest.json'
+        if not manifest.is_file():
+            parser.error('Resume requires the original scene_manifest.json to preserve camera calibration')
+        os.environ['P4_RESUME_CAMERA_MANIFEST'] = str(manifest)
     existing = list(Path(output.out_dir).glob('*_policy/*/episode_*.h5'))
     if existing and not output.resume:
         parser.error('Output already contains episodes; use --resume or a fresh --out_dir')

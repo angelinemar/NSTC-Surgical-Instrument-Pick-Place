@@ -41,8 +41,10 @@ only that telemetry update, not the recording. H5 commit errors remain fatal.
 The panel reports `Stopped / incomplete` when the saved goal is not met,
 even when the simulator returns exit code zero.
 
-Raw RGB defaults to **448 x 448 with spatial FXAA**, with the same full-table
-framing. DP export remains 224 x 224 (Lanczos); detector export retains 448.
+Raw RGB defaults to **448 x 448 with spatial FXAA**. New sessions use a closer,
+downward-facing front view of the main work area; tray coverage has its own camera.
+Resume preserves the saved session's camera layout. DP export remains 224 x 224
+(Lanczos); detector export retains 448.
 The lower-memory 224 option sacrifices small-tool detail. Preview PNG folders
 include front, grip/wrist, top, left, right and tray. Restart the simulator and
 use a fresh session after changing resolution; old RGB cannot recover lost detail.

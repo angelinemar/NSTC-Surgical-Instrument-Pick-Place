@@ -31,6 +31,25 @@ skill can train across all five targets. At inference call
 
 ## Camera
 
+2026-09-27 front framing: new sessions use a closer oblique-downward view of
+the main tabletop work grid, rather than including the front table fascia and
+large room margins. Tray-specific detail remains the tray camera's role. Front
+pose and focal length are stored in camera_layout.json. Resume loads the original
+session manifest's layout, preserving its old view; use a new session for the
+new framing. No stored RGB is cropped or upscaled by this change.
+The final 448 front view passed a simulator scene audit and visual inspection;
+it reduces the lower fascia, but does not eliminate every table edge/background
+pixel. Projection tests include all work-grid corners at Z=0 and Z=0.10 m.
+This checks framing, not recognition accuracy or all moving-arm occlusions.
+
+Audit of the existing 224 love_retractor session (38 pairs / 76 H5 files): three
+temporal samples per camera/file gave 1,368 frames. Median target semantic area
+in front was only 7 pixels; in wrist it was 1,441.5 pixels. These are visible
+label areas, not blur scores or accuracy estimates. Small target area and zoom
+pixelation make this collection unsuitable as proof of robust recognition.
+It can still support pipeline experiments; actual learning quality requires
+held-out model evaluation. The audit samples frames, not every RGB frame.
+
 Native square rendering uses 0.75 times the original horizontal aperture for a
 wider view than the historical center crop. No crop or image resize
 occurs while saving raw H5. `--camera-size 448` is the default for small tools,
