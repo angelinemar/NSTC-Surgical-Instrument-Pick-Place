@@ -592,8 +592,10 @@ class Panel:
                 try: summary=json.loads(metrics.read_text(encoding='utf-8')) if metrics.exists() else {}
                 except (OSError,ValueError): summary={}
                 self.dashboard.finish(summary,code); self.update_dashboard()
-                self.status.set(f"Finished: exit={code}, saved successes={summary.get('success_count','?')}, failures={summary.get('failure_count','?')}. {self.session_path.parent}")
-                self.add_log('success' if code==0 else 'error',self.status.get())
+                complete = code==0 and self.dashboard.saved>=self.dashboard.goal
+                outcome = 'Complete' if complete else 'Stopped / incomplete'
+                self.status.set(f"{outcome}: saved {self.dashboard.saved}/{self.dashboard.goal}, exit={code}, failures={summary.get('failure_count','?')}. {self.session_path.parent}")
+                self.add_log('success' if complete else 'error',self.status.get())
                 if code and self.log_filter.last_reason: self.add_log('error','Last reason: '+self.log_filter.last_reason)
                 if code and self.read_status().get('message'): self.add_log('error',self.read_status()['message'])
                 if self.collection.get()=='grid_cycles':

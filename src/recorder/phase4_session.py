@@ -26,8 +26,22 @@ def status(ns, state, **values):
     payload['table_positions']={name:dict(x=p.get('center_x',p.get('x')),y=p.get('center_y',p.get('y')),yaw_deg=p['yaw_deg'])
                                for name,p in spawn.items() if name!='grid' and 'yaw_deg' in p}
     tmp = out.with_suffix('.tmp')
-    tmp.write_text(json.dumps(payload,indent=2),encoding='utf-8')
-    os.replace(tmp,out)
+    # This is advisory GUI telemetry, not a dataset commit. Windows readers
+    # can briefly deny replacement; never discard a demonstration for that.
+    for delay in (0., .02, .05, .1, .2):
+        if delay:
+            time.sleep(delay)
+        try:
+            tmp.write_text(json.dumps(payload,indent=2),encoding='utf-8')
+            os.replace(tmp,out)
+            ns.pop('_p4_status_write_warned', None)
+            return True
+        except PermissionError:
+            continue
+    if not ns.get('_p4_status_write_warned'):
+        print('[P4 STATUS WARNING] GUI status file locked; recording continues. Status update will retry next time.',flush=True)
+        ns['_p4_status_write_warned'] = True
+    return False
 
 
 def before_attempt(ns, attempt, saved, requested):

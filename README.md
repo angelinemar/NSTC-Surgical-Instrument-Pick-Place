@@ -31,6 +31,16 @@ Both shares raw data once. All dataset modes support randomized duplicate distra
 
 ## What is recorded
 
+Interrupted runs can use `record.py --resume` with the **same** output folder,
+session JSON, camera size, seed, purpose, split and skill. `--episodes` is the
+final total, not the number remaining (38 saved toward 100 means use 100).
+Resume validates committed H5 files before continuing and will not overwrite
+completed episodes. Never run two recorders against the same output folder.
+Windows GUI-status file locks now retry; a persistent permission lock skips
+only that telemetry update, not the recording. H5 commit errors remain fatal.
+The panel reports `Stopped / incomplete` when the saved goal is not met,
+even when the simulator returns exit code zero.
+
 Raw RGB defaults to **448 x 448 with spatial FXAA**, with the same full-table
 framing. DP export remains 224 x 224 (Lanczos); detector export retains 448.
 The lower-memory 224 option sacrifices small-tool detail. Preview PNG folders
