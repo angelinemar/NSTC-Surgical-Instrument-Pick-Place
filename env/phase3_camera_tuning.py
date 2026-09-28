@@ -84,7 +84,10 @@ for _camera in PHASE3_CAMERAS.values():
 
 # GUI camera tuner writes only poses here. Keeping it separate from this file
 # makes camera changes recoverable and avoids rewriting executable Python.
-CAMERA_LAYOUT_FILE = Path(__file__).parent / 'env' / "camera_layout.json"
+# Work both through the root compatibility shim and when this canonical module
+# is loaded directly by the camera installer. The former rewrites __file__ for
+# legacy resources; __implementation__ always identifies this physical source.
+CAMERA_LAYOUT_FILE = Path(globals().get('__implementation__', __file__)).resolve().with_name('camera_layout.json')
 if CAMERA_LAYOUT_FILE.is_file():
     try:
         _saved = json.loads(CAMERA_LAYOUT_FILE.read_text(encoding="utf-8"))

@@ -91,16 +91,20 @@ flowchart LR
 
 | Camera | RGB dataset in H5 | Purpose |
 | --- | --- | --- |
-| Front | `observations/front_rgb` | Main work area |
-| Wrist / grip | `observations/wrist_rgb` | Detail near the gripper |
-| Top | `observations/cam_top_rgb` | Overhead table context |
-| Left | `observations/cam_left_rgb` | Left-side view |
-| Right | `observations/cam_right_rgb` | Right-side view |
-| Tray | `observations/cam_tray_rgb` | Tray area |
+| Front | `observations/front_rgb` | Steep diagonal view of the complete task surface |
+| Wrist / grip | `observations/wrist_rgb` | Moving close-up of the grasp and nearby instruments |
+| Top | `observations/cam_top_rgb` | Vertical overview of the full spawn grid and tray |
+| Left | `observations/cam_left_rgb` | Steep oblique overview from the grid end |
+| Right | `observations/cam_right_rgb` | Steep oblique overview from the tray end |
+| Tray | `observations/cam_tray_rgb` | Vertical close-up of the complete tray |
 
 PNG previews contain sampled frames; H5 stores every frame within the selected segments.
 448 + FXAA improves sampling and edges, but does not guarantee that small objects remain clear at the final 224 resolution.
 Resume preserves the original session's camera layout; start a new session to use new framing.
+The four static overview cameras are framed against the full task envelope, not the
+robot. The robot can still enter or occlude these views because it operates above
+the instruments. The tray and moving wrist cameras are specialized close-ups and
+are not intended to show the complete table at once.
 
 ## Policy segments
 
