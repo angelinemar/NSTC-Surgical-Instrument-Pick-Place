@@ -41,7 +41,7 @@ saved episodes**, so a success at `2/3` correctly starts another attempt.
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-.\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui -GifStride 1
+.\scripts\launchers\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui -GifStride 1
 ```
 
 Individual:

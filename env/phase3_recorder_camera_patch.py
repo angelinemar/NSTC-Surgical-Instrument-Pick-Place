@@ -11,7 +11,7 @@ PHASE3_EXTRA_CAMERA_NAMES = ("cam_top", "cam_left", "cam_right", "cam_tray")
 PHASE3_ALL_CAMERA_VIEWS = ("front", "grip_b", "cam_top", "cam_left", "cam_right", "cam_tray")
 
 def phase3_load_camera_tuning():
-    cfg_path = Path(__file__).with_name("phase3_camera_tuning.py")
+    cfg_path = Path(__file__).parent / "env" / "phase3_camera_tuning.py"
     spec = importlib.util.spec_from_file_location("phase3_camera_tuning", str(cfg_path))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

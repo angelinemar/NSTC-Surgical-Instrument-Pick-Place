@@ -33,7 +33,7 @@ Selected existing bodies are moved from the table to their slots after initial
 asset settling, then settle again before recording. Remaining bodies stay in
 their randomized table cells. No extra duplicate assets are silently added.
 
-`python .\control_panel.py` provides `random`, `empty`, `full`, and `manual` tray
+`.\RUNME.ps1 -Mode panel` provides `random`, `empty`, `full`, and `manual` tray
 occupancy. In manual mode enter 0 or 1 per class; target must have count 0.
 Prepare applies the choices before Start. Multiple same-class instances,
 arbitrary omission of table bodies, and stacked targets are not implemented.
@@ -75,7 +75,7 @@ the target's final center/angle/containment measurements and initial occupancy.
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-python .\control_panel.py
+.\RUNME.ps1 -Mode panel
 ```
 
 One object, GUI, place segment only:
@@ -87,7 +87,7 @@ C:\IsaacLab\_isaac_sim\python.bat .\record.py --object scalpel --episodes 1 --ma
 All five, GUI, RGB and semantic GIFs:
 
 ```powershell
-.\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui -TrayOccupancy random
+.\scripts\launchers\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui -TrayOccupancy random
 ```
 
 Use `-TrayOccupancy full` to stress-test four neighboring instruments; `empty`

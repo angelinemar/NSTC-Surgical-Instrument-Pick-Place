@@ -27,9 +27,9 @@ def _validate_files(handler: ObjectHandler) -> Path:
     backend = BACKEND_ROOT / handler.backend
     required = (
         backend,
-        HERE / "phase3_shared_env_cfg.py",
-        HERE / "phase3_recorder_camera_patch.py",
-        HERE / "phase3_camera_tuning.py",
+        HERE / "env" / "phase3_shared_env_cfg.py",
+        HERE / "env" / "phase3_recorder_camera_patch.py",
+        HERE / "env" / "phase3_camera_tuning.py",
         HERE/'env'/"shared_layout.json",
     )
     missing = [str(path) for path in required if not path.is_file()]
@@ -63,6 +63,7 @@ def run_handler(handler: ObjectHandler, forwarded_args: list[str]) -> None:
 
     sys.path.insert(0, str(LEGACY_ROOT))
     sys.path.insert(0, str(HERE))
+    sys.path.insert(0, str(HERE / 'compat'))
     sys.argv = [str(backend), *forwarded_args]
 
     print("=" * 72)
@@ -70,7 +71,7 @@ def run_handler(handler: ObjectHandler, forwarded_args: list[str]) -> None:
     print("object       =", handler.name)
     print("object id    =", handler.object_type_id)
     print("motion       =", backend)
-    print("shared env   =", HERE / "phase3_shared_env_cfg.py")
+    print("shared env   =", HERE / "env" / "phase3_shared_env_cfg.py")
     print("scene layout =", HERE/'env'/"scene_layout.json")
     print("camera layout=", HERE/'env'/"camera_layout.json")
     print("=" * 72)

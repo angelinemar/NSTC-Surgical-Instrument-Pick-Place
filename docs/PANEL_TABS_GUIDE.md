@@ -4,7 +4,7 @@ Restart the panel after safely stopping an old run to load the new layout:
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-python .\control_panel.py
+.\RUNME.ps1 -Mode panel
 ```
 
 ## Pages in one window
