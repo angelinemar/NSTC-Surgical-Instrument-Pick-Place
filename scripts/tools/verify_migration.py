@@ -13,7 +13,7 @@ def main():
     mapping = json.loads((ROOT/'docs/FILE_MAP.json').read_text())
     def source_path(path):
         return ROOT/mapping[path.name] if path.parent==ROOT and path.name in mapping else path
-    manifest = json.loads((ROOT/'P3_COPY_MANIFEST.json').read_text())
+    manifest = json.loads((ROOT/'docs/history/P3_COPY_MANIFEST.json').read_text())
     for rel, record in manifest.items():
         src = SOURCE/rel
         assert hashlib.sha256(src.read_bytes()).hexdigest() == record['p3_sha256'], f'P3 source changed since copy: {rel}'

@@ -128,7 +128,7 @@ Use separate fresh output directories for further robustness tests.
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-.\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui -GifStride 3
+.\scripts\launchers\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui -GifStride 3
 ii .\test_runs\feedback_v4_smoke_20260915\gifs
 ```
 

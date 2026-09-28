@@ -18,7 +18,8 @@ flowchart LR
 | `recorder/` | Reset, spawn, control feedback, coverage, storage, status |
 | `ui/` | Panel, geometry preview, log display, commands |
 
-Root modules are compatibility shims loaded through `_p4_compat.py`, not disposable source duplicates.
+Legacy flat module names are grouped under `compat/` and loaded through
+`compat/_p4_compat.py`; they are not disposable source duplicates.
 Shims preserve import identity and resource roots; tracebacks point to the implementation.
 
 | Boundary | Allowed access |

@@ -114,9 +114,11 @@ Evidence: [training v2 contract](docs/TRAINING_V2.md). Deployment readiness has 
 | `scripts/`, `tests/` | CLI, audits, regression tests |
 | `assets/` | Scene and instrument dependencies |
 | `docs/` | Guides and historical evidence |
+| `compat/` | Legacy flat import names; canonical code remains in the folders above |
 | `datasets/`, `debug/`, `training/runs/` | Local output, not source for GitHub |
 
-Root compatibility shims are still used; they are not disposable duplicates.
+The root now contains only public launch and repository files. Compatibility
+shims are grouped under `compat/`; edit the canonical source instead.
 Do not publish raw H5, checkpoints, logs, or credentials. Run `python scripts/check_publish.py`; the scanner cannot guarantee that all secrets are detected.
 
 **Integration branch: `angel/main`.** Develop changes on the appropriate functional branch and review them before merging.

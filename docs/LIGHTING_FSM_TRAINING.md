@@ -124,11 +124,11 @@ choices, not values prescribed by those papers/documentation.
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-.\view_env.ps1 -Cameras
+.\scripts\launchers\view_env.ps1 -Cameras
 # One episode per object, GUI and the runner's default GIF outputs:
-.\run_all_v2_test.ps1 -Episodes 1 -Gui
+.\scripts\launchers\run_all_v2_test.ps1 -Episodes 1 -Gui
 # Read-only same-pose old/current light comparison:
-C:\IsaacLab\_isaac_sim\python.bat .\preview_env.py --headless --frames 5 --lighting-compare --capture-dir .\validation\lighting_compare
+C:\IsaacLab\_isaac_sim\python.bat .\scripts\p4.py tool preview_env --headless --frames 5 --lighting-compare --capture-dir .\debug\validation\lighting_compare
 ```
 
 The main viewport is not the recording crop. Inspect the six224x224 sensor

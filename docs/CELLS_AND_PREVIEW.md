@@ -30,9 +30,9 @@ The previously documented intermittent headless RGB startup issue remains open.
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-.\view_env.ps1
+.\scripts\launchers\view_env.ps1
 # Camera editing + clean recorder-framing preview + pose autosave:
-.\view_env.ps1 -Cameras
+.\scripts\launchers\view_env.ps1 -Cameras
 ```
 
 The floating **P4 Recording RGB | 224 x 224 | LIVE** panel displays actual native

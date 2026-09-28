@@ -4,7 +4,7 @@ Launch from PowerShell:
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-python .\control_panel.py
+.\RUNME.ps1 -Mode panel
 ```
 
 Restart an already-open panel to load the new interface. P3 is unchanged.
