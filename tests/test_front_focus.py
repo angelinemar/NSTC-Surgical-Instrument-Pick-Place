@@ -20,26 +20,31 @@ class FrontFocusTests(unittest.TestCase):
         self.assertEqual(installed['camera']['focal_length'],active['cam_front']['focal_length'])
         self.assertEqual(list(installed['cam_tray']['pos']),active['cam_tray']['pos'])
 
-    def test_full_task_surface_fits_four_static_views(self):
+    def test_split_spawn_regions_fill_static_views_without_unused_pad(self):
         with patch.dict(os.environ,{'P4_RESUME_CAMERA_MANIFEST':'','P4_CAMERA_FOV_SCALE':'0.75'}):
             importlib.reload(tuning)
             layout=json.loads((ROOT/'env/scene_layout.json').read_text())
-            length,width=layout['tray_dimensions_local_xy']
-            # Tray yaw=90 degrees, so its local width becomes world X and its
-            # local length becomes world Y. Include instrument footprint and
-            # lift-height margins around the complete spawn + tray envelope.
-            tx,ty=layout['tray_xy']
-            xs=(min(layout['grid_x'][0]-.05,tx-width/2-.025),
-                max(layout['grid_x'][1]+.05,tx+width/2+.025))
-            ys=(min(layout['grid_y'][0]-.05,ty-length/2-.03),
-                max(layout['grid_y'][1]+.08,ty+length/2+.03))
-            points=np.array([[x,y,z] for x in xs for y in ys for z in (0,.18)])
-            for name in ('camera','cam_top','cam_left','cam_right'):
+            # The long, narrow spawn grid cannot fill a square image without
+            # wasting pixels outside the active region. Static cameras use
+            # overlapping lower/upper crops; together they cover every cell.
+            xs=(layout['grid_x'][0]-.05,layout['grid_x'][1]+.05)
+            regions={
+                'camera': (layout['grid_y'][0],-.18),
+                'cam_top': (-.20,layout['grid_y'][1]),
+                'cam_left': (layout['grid_y'][0],-.26),
+                'cam_right': (-.12,layout['grid_y'][1]),
+            }
+            self.assertLessEqual(regions['camera'][0],layout['grid_y'][0])
+            self.assertGreaterEqual(regions['cam_top'][1],layout['grid_y'][1])
+            self.assertGreaterEqual(regions['camera'][1],regions['cam_top'][0])
+            for name,ys in regions.items():
+                points=np.array([[x,y,z] for x in xs for y in ys for z in (0,.18)])
                 c=tuning.PHASE3_CAMERAS[name]
                 q=c['rot']; rotation=Rotation.from_quat([*q[1:],q[0]]).as_matrix()
                 local=(points-np.array(c['pos']))@rotation
                 xy=local[:,:2]/local[:,2:]*c['focal_length']/c['horizontal_aperture']
                 self.assertTrue(np.all(local[:,2]>0),name)
+                self.assertGreater(float(np.abs(xy).max()),.34,name)
                 self.assertLess(float(np.abs(xy).max()),.48,name)
 
     def test_tray_fills_but_does_not_clip_tray_camera(self):

@@ -3,6 +3,7 @@
 No episodes are collected; only the camera tuner can persist camera edits.
 """
 import argparse
+import os
 import runpy
 import sys
 from pathlib import Path
@@ -24,7 +25,10 @@ def main():
     parser.add_argument('--probe-recording', action='store_true')
     parser.add_argument('--motion-check', action='store_true', help='Diagnostic: execute unchanged scalpel pick/place; do not save a training episode')
     parser.add_argument('--pose-h5', type=Path, help='Diagnostic: replay final robot joint state from an H5 segment')
+    parser.add_argument('--tray-occupancy', choices=('empty','random','full'), default='empty',
+                        help='Preview-only initial tray state; empty is deterministic for camera framing')
     args = parser.parse_args()
+    os.environ['P4_TRAY_OCCUPANCY'] = args.tray_occupancy
     backend = ROOT / 'backends' / 'phase3_grid_split_scalpel_recorder.py'
     sys.argv = [str(backend), '--episodes', '0', '--out_dir', str(ROOT/'validation'/'preview'),
                 '--camera_tuner' if args.cameras else '--layout_tuner']
