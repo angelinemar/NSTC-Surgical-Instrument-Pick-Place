@@ -8,7 +8,7 @@ Run in PowerShell using ordinary Python with Tkinter, not Isaac's Python:
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-python .\control_panel.py
+.\RUNME.ps1 -Mode panel
 ```
 
 1. Choose target instrument, manual/auto, saved skill and requested successful episodes. Maximum attempts must be at least the requested successes.
@@ -44,7 +44,7 @@ Stage names and data formats are shared; contact tolerances need not be identica
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-.\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui
+.\scripts\launchers\run_all_v2_test.ps1 -Episodes 1 -MaxAttempts 3 -Gui
 ```
 
 The batch also creates RGB and semantic GIFs unless `-SkipGif` is supplied. Default stride 3 with 60 ms/frame corresponds to the current 20 ms simulation step. Stride 1 with the same default GIF duration plays slower than simulation, not faster.

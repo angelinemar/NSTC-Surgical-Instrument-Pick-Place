@@ -6,7 +6,7 @@ import phase3_camera_tuning as tuning
 from phase4_camera_names import sensor_names, public_name, FRONT_PRIM
 
 root=next(p for p in Path(__file__).resolve().parents if (p/'record.py').exists())
-active=sensor_names(json.loads((root/'camera_layout.json').read_text())['cameras'])
+active=sensor_names(json.loads((root/'env/camera_layout.json').read_text())['cameras'])
 assert len(tuning.PHASE3_CAMERAS)==6
 assert tuning.PHASE3_CAMERAS['camera']['prim_path']=='{ENV_REGEX_NS}/cam_front'
 assert tuning.CAMERA_WIDTH in (224,448) and tuning.CAMERA_HEIGHT==tuning.CAMERA_WIDTH

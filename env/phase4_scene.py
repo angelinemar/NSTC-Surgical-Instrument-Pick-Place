@@ -32,18 +32,14 @@ def write_run_manifest(object_name, forwarded_args):
                                 int(os.environ.get('P4_RANDOMIZATION_SEED','17')),
                                 os.environ.get('P4_DATASET_SPLIT','unassigned'))
     (output/'capture_contract.json').write_text(json.dumps(contract,indent=2),encoding='utf-8')
-    files = [ROOT/'env'/'scene_layout.json', ROOT/'env'/'camera_layout.json',
-             ROOT/'phase4_feedback.py', ROOT/'phase4_grasp_validation.py', ROOT/'phase4_session.py', ROOT/'phase4_metrics.py', ROOT/'runner.py', ROOT/'record.py',
-             ROOT/'phase4_scene.py', ROOT/'phase4_runtime.py', ROOT/'phase4_fsm.py', ROOT/'phase4_camera_names.py', ROOT/'phase4_cell_spawn.py', ROOT/'phase3_shared_env_cfg.py',
+    files = [ROOT/'record.py', ROOT/'env'/'scene_layout.json',
+             ROOT/'env'/'camera_layout.json',
+             ROOT/'env'/'instrument_preview_geometry.json',
              ROOT/'assets'/LAYOUT['hospital_asset']]
-    files.append(ROOT/'phase4_tray_slots.py')
-    files.append(ROOT/'phase4_approach.py')
-    files.extend([ROOT/'phase4_reset.py',ROOT/'phase4_coverage.py',ROOT/'control_panel.py',ROOT/'phase4_panel_log.py',ROOT/'phase4_session.py'])
-    files.extend([ROOT/'phase4_panel_state.py',ROOT/'phase4_panel_geometry.py',ROOT/'phase4_panel_widgets.py',ROOT/'env'/'instrument_preview_geometry.json'])
     files.extend(sorted((ROOT/'backends').glob('*recorder.py')))
     files.extend(sorted((ROOT/'src').rglob('*.py')))
     files.extend(sorted((ROOT/'env').glob('*.py')))
-    files.append(ROOT/'_p4_compat.py')
+    files.extend(sorted((ROOT/'compat').glob('*.py')))
     payload = {
         'project': 'P4', 'object': object_name,
         'capture_contract': contract,

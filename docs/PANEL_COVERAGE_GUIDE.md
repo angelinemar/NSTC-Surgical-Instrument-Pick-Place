@@ -4,7 +4,7 @@ Run with ordinary Python (Tkinter), NOT Isaac's Python:
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-python .\control_panel.py
+.\RUNME.ps1 -Mode panel
 ```
 
 Close an old control panel and simulator before launching the updated version.

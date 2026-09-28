@@ -70,7 +70,7 @@ collecting production data; one success does not establish randomized reliabilit
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-.\run_all_v2_test.ps1 -Episodes 1 -Gui
+.\scripts\launchers\run_all_v2_test.ps1 -Episodes 1 -Gui
 ```
 
 All `validation/` outputs are diagnostics, not production data. Earlier diagnostic

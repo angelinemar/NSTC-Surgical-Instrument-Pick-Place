@@ -11,6 +11,7 @@ import numpy as np
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / 'record.py').is_file())
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'compat'))
 from phase4_feedback import rgb_has_spatial_detail
 
 CAMERAS = [('front','front_rgb','front_depth','front_semantic'),

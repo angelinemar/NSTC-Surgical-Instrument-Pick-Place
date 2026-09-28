@@ -14,12 +14,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ThisDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$IsaacRoot = (Resolve-Path (Join-Path $ThisDir '..\..\..\..')).Path
+$ProjectRoot = (Resolve-Path (Join-Path $ThisDir '..\..')).Path
+$IsaacRoot = (Resolve-Path (Join-Path $ProjectRoot '..\..\..\..')).Path
 $PythonBat = Join-Path $IsaacRoot '_isaac_sim\python.bat'
-$EntryPoint = Join-Path $ThisDir 'record.py'
-$GifMaker = Join-Path $ThisDir 'make_all_camera_gif.py'
-$SemanticGifMaker = Join-Path $ThisDir 'make_all_camera_semantic_gif.py'
-$RunRoot = Join-Path $ThisDir "test_runs\$RunName"
+$EntryPoint = Join-Path $ProjectRoot 'record.py'
+$GifMaker = Join-Path $ProjectRoot 'scripts\tools\make_all_camera_gif.py'
+$SemanticGifMaker = Join-Path $ProjectRoot 'scripts\tools\make_all_camera_semantic_gif.py'
+$RunRoot = Join-Path $ProjectRoot "debug\test_runs\$RunName"
 $LogDir = Join-Path $RunRoot 'logs'
 $DataDir = Join-Path $RunRoot 'datasets'
 $GifDir = Join-Path $RunRoot 'gifs'

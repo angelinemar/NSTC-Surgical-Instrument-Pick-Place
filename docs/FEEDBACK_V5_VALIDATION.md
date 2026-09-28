@@ -81,6 +81,6 @@ Actual mesh vertices in the PhysX rigid-link frame replace stale authored USD ex
 
 Simulator object geometry is expert/QC metadata, not an additional policy observation. Training still needs an explicit observation allowlist rather than loading every metadata field as an input.
 
-The updated `run_all_v2_test.ps1` filename is retained for compatibility, but headings now say P4. It displays attempt/success/failure counts, failure categories and saved outputs in separate tables. PASS requires the requested success count and exact expected H5 count. GIF duration follows the requested stride rather than accidentally slowing stride-1 playback.
+The five-recorder launcher now lives at `scripts/launchers/run_all_v2_test.ps1`. It displays attempt/success/failure counts, failure categories and saved outputs in separate tables. PASS requires the requested success count and exact expected H5 count. GIF duration follows the requested stride rather than accidentally slowing stride-1 playback.
 
 See `FEEDBACK_V5_GUIDE.md` for the GUI panel and automatic recording commands.

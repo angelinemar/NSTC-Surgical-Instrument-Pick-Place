@@ -12,10 +12,10 @@ collection until that rendering issue is resolved. Recording guards remain on.
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
-.\view_env.ps1
+.\scripts\launchers\view_env.ps1
 ```
 
-Camera tuner: `.\view_env.ps1 -Cameras` (same native 448x336 -> 224x224 crop as P3).
+Camera tuner: `.\scripts\launchers\view_env.ps1 -Cameras`.
 Use the **P4 Recording RGB | 224 x 224 | LIVE** panel to judge recorded framing.
 It shows six real sensor crops with no resize. The main viewport's window size
 does not determine recording resolution. Normal preview shows this panel too,
@@ -53,16 +53,16 @@ overridden by P4. Use the preview for inspection and `scene_layout.json` for edi
 ## Record / test
 
 ```powershell
-.\run_all_v2_test.ps1 -Episodes 1 -Gui
+.\scripts\launchers\run_all_v2_test.ps1 -Episodes 1 -Gui
 # Each recorder, headless:
 C:\IsaacLab\_isaac_sim\python.bat .\record.py --object love_retractor --episodes 1 --record_mode pick --headless --out_dir .\test_love
 # Check recorded images and shape/calibration contracts before training:
-C:\IsaacLab\_isaac_sim\python.bat .\validate_rgb_h5.py .\test_love
+C:\IsaacLab\_isaac_sim\python.bat .\scripts\p4.py tool validate_rgb_h5 .\test_love
 ```
 
 All five object backends, motion timings, gripper logic, stage IDs, state/action
 schema, crop settings and instrumentation are inherited from P3. The only backend
-edits relocate absolute asset paths to P4. See `P3_COPY_MANIFEST.json` for hashes.
+edits relocate absolute asset paths to P4. See `history/P3_COPY_MANIFEST.json` for hashes.
 Assets have relative internal dependencies, including their texture packages.
 P4's shared `phase4_cell_spawn.py` intentionally replaces the final initial
 placement coordinates for all backends. It does not modify grasp handling.
