@@ -10,11 +10,12 @@ flowchart LR
     D --> E
 ```
 
-| Isi | Peran |
+| Contents | Role |
 | --- | --- |
-| Hospital / table packages | Geometri scene dan dependensinya |
-| Instrument USD / meshes | Lima jenis instrumen |
-| Material / texture dependencies | Tampilan visual aset |
-| `readme/` | Diagram statis dokumentasi |
+| Hospital / table packages | Scene geometry and dependencies |
+| Instrument USD / meshes | Five instrument types |
+| Material / texture dependencies | Asset appearance |
+| `readme/` | Static documentation diagrams |
 
-Ada aset historis yang mungkin masih menjadi dependensi internal USD; nama file saja tidak membuktikan aset tidak terpakai. Sebelum menghapus, cek referensi USD, konfigurasi aktif, dan hasil environment test.
+Historical assets may still be internal USD dependencies; filenames alone do not prove that an asset is unused.
+Before deleting assets, inspect USD references, active configuration, and environment test results.

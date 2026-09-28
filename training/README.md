@@ -1,8 +1,8 @@
 # Training & dataset export
 
-[Overview](../README.md) · [Kontrak detail](../docs/TRAINING_V2.md) · [Inference](../docs/INFERENCE.md)
+[Overview](../README.md) · [Detailed contract](../docs/TRAINING_V2.md) · [Inference](../docs/INFERENCE.md)
 
-## Dua jalur dari raw yang sama
+## Two paths from the same raw data
 
 ```mermaid
 flowchart LR
@@ -14,17 +14,18 @@ flowchart LR
     E --> F
 ```
 
-| Jalur | Input | Supervision |
+| Path | Input | Supervision |
 | --- | --- | --- |
-| Detector terpisah | RGB native | Visible bounding boxes per instance, termasuk duplikat |
-| DP + perception | Enam RGB 224, 16-D robot state, target command | Aksi 8-D + semantic head 11 kelas |
-| Semantic perception | RGB | Kelas per piksel, bukan instance bounding-box detector |
+| Standalone detector | Native RGB | Visible bounding boxes per instance, including duplicates |
+| DP + perception | Six RGB 224 views, 16-D robot state, target command | 8-D actions + an 11-class semantic head |
+| Semantic perception | RGB | Per-pixel classes, not an instance bounding-box detector |
 
-Pose objek simulator, grid ID, slot target, expert stage, depth dan semantic GT bukan input policy. Semantic GT hanya label; target command berasal dari operator.
+Simulator object poses, grid IDs, target slots, expert stages, depth, and semantic GT are not policy inputs.
+Semantic GT is supervision only; the target command comes from the operator.
 
-## Export koleksi
+## Export a collection
 
-Dari root proyek, ganti semua placeholder. Source harus berisi sesi train, valid dan test independen. Output harus folder baru **di luar source**.
+Run from the project root and replace every placeholder. The source must contain independent train, validation, and test sessions. The output must be a new folder **outside the source**.
 
 ```powershell
 & C:\IsaacLab\_isaac_sim\python.bat training\export_recordings.py `
@@ -33,16 +34,16 @@ Dari root proyek, ganti semua placeholder. Source harus berisi sesi train, valid
   --purpose both
 ```
 
-| Output | Isi |
+| Output | Contents |
 | --- | --- |
-| `detection/` | RGB, anotasi detector dan masks |
-| `dp/` | Policy datasets + labels terpisah |
-| `export_complete.json` | Penanda export selesai, bukan sertifikat akurasi |
+| `detection/` | RGB, detector annotations, and masks |
+| `dp/` | Policy datasets and separate labels |
+| `export_complete.json` | Export completion marker, not an accuracy certificate |
 
-Gunakan `--purpose detection` atau `--purpose dp` untuk satu jalur.
-Export detector tidak otomatis melatih YOLO atau model detector lain.
+Use `--purpose detection` or `--purpose dp` for a single path.
+Detector export does not automatically train YOLO or any other detector.
 
-## Smoke test DP
+## DP smoke test
 
 ```powershell
 & C:\IsaacLab\_isaac_sim\python.bat training\train_sensor_policy.py `
@@ -51,28 +52,30 @@ Export detector tidak otomatis melatih YOLO atau model detector lain.
   --skill pick --steps 3 --batch-size 1 --smoke
 ```
 
-Ulangi dengan `--skill place` dan output berbeda. Smoke hanya memeriksa eksekusi. Untuk eksperimen training, hilangkan `--smoke` dan tetapkan budget/device.
+Repeat with `--skill place` and a different output folder. Smoke tests check execution only.
+For training experiments, remove `--smoke` and set the budget and device.
 
-| Kontrak | Nilai |
+| Contract | Value |
 | --- | --- |
 | Checkpoint input | `p4_sensor_task_v2` |
-| Default observation / prediction horizon | 2 / 16 langkah |
-| Aksi | `x, y, z, qw, qx, qy, qz, gripper`, frame robot-base |
-| Control tick | 0.02 detik |
-| Semantic head | 11 kelas; checkpoint 8 kelas lama tidak kompatibel |
-| Normalisasi | Statistik train saja |
-| Split | Antarsesi; pasangan Pick/Place tidak dipisah antar-split |
+| Default observation / prediction horizon | 2 / 16 steps |
+| Action | `x, y, z, qw, qx, qy, qz, gripper`, in the robot-base frame |
+| Control tick | 0.02 seconds |
+| Semantic head | 11 classes; older 8-class checkpoints are incompatible |
+| Normalization | Training-split statistics only |
+| Split | By session; paired Pick/Place segments stay in the same split |
 
-## Bukti yang diperlukan
+## Required evidence
 
 ```mermaid
 flowchart LR
-    A["Export valid"] --> B["Smoke pass"]
+    A["Valid export"] --> B["Smoke pass"]
     B --> C["Training"]
     C --> D["Held-out detection / semantic metrics"]
     D --> E["Closed-loop Pick / Place rollouts"]
 ```
 
-Belum ada klaim siap deployment. Periksa detail visual **input akhir 224**, bukan hanya raw 448. Bukti baseline historis bukan status training terbaru.
+Deployment readiness has not been established. Inspect detail in the **final 224 input**, not just raw 448 images.
+Historical baseline evidence does not describe the latest training status.
 
-[Data lokal](datasets/README.md) · [Debug](../debug/README.md)
+[Local data](datasets/README.md) · [Debug](../debug/README.md)
