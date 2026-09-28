@@ -7,7 +7,7 @@ flowchart LR
     S[Native 224 or 448 square sensors] --> R[Committed raw H5: RGB + depth + semantic + calibration]
     R --> D[Detection export: native PNG + masks + COCO visible boxes]
     R --> P[DP export: 224 RGB + proprio + requested target]
-    D --> M[Independent perception.pt]
+    D --> M[RF-DETR standalone detector]
     P --> J[Joint DP + segmentation training]
     J --> A[checkpoint.pt: policy]
     J --> B[perception.pt: independently loadable head]
@@ -20,6 +20,12 @@ parts. The bundled semantic model still predicts classes, not separate instances
 use the COCO instance boxes with an instance-aware detector for duplicate objects. Connecting
 these outputs to a different action model still requires that model's input adapter.
 GT labels never condition DP inference.
+
+For a new combined collection, record native 448 and export with `--purpose both`.
+The detection product now includes Roboflow-style COCO
+`train/valid/test/_annotations.coco.json` files and is accepted directly by the
+repository's RF-DETR pipeline. The DP product is separately resized to 224; the
+detector and DP policies remain separate models.
 
 With table distractors, DP needs an explicit requested target. The existing panel
 Target / CLI `--object` selection supplies that task during recording. Export stores

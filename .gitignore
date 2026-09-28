@@ -20,6 +20,7 @@ __pycache__/
 .mypy_cache/
 .vscode/
 .idea/
+.venv-rfdetr/
 Thumbs.db
 .DS_Store
 
