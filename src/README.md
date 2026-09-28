@@ -12,18 +12,19 @@ flowchart LR
     F --> G["Committed H5"]
 ```
 
-| Folder | Tanggung jawab |
+| Folder | Responsibility |
 | --- | --- |
-| `entry/` | Dispatch target instrument, preflight, runner |
+| `entry/` | Target-instrument dispatch, preflight, runner |
 | `recorder/` | Reset, spawn, control feedback, coverage, storage, status |
 | `ui/` | Panel, geometry preview, log display, commands |
 
-Root modules adalah compatibility shims melalui `_p4_compat.py`, bukan source duplikat yang aman dihapus. Shims menjaga identitas import dan root resource; traceback menunjuk implementasi sebenarnya.
+Root modules are compatibility shims loaded through `_p4_compat.py`, not disposable source duplicates.
+Shims preserve import identity and resource roots; tracebacks point to the implementation.
 
-| Boundary | Boleh mengakses |
+| Boundary | Allowed access |
 | --- | --- |
-| Expert recorder / QC | Geometry dan state simulator untuk verifikasi |
-| Policy input | RGB, robot proprioception, target command operator |
-| Training labels | Semantic GT terpisah dari input policy |
+| Expert recorder / QC | Simulator geometry and state for verification |
+| Policy inputs | RGB, robot proprioception, operator target command |
+| Training labels | Semantic GT, separate from policy inputs |
 
-Gunakan `python scripts/p4.py panel` atau `python scripts/p4.py record ...` dari root proyek.
+Run `python scripts/p4.py panel` or `python scripts/p4.py record ...` from the project root.
