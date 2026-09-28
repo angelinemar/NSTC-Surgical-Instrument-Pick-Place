@@ -12,23 +12,24 @@ flowchart LR
     G["Original session manifest"] -->|Resume| D
 ```
 
-| File | Fungsi |
+| File | Purpose |
 | --- | --- |
-| `scene_layout.json` | Meja, robot, grid, tray, lighting |
-| `camera_layout.json` | Pose kamera dan focal length; front aktif |
-| `phase4_scene.py` | Scene assembly dan provenance manifest |
-| `phase3_shared_env_cfg.py` | Builder Isaac environment; nama legacy masih aktif |
-| `phase3_camera_tuning.py` | Resolusi native, FOV dan layout loading |
-| `phase3_recorder_camera_patch.py` | Penerapan kamera ke recorder |
-| `phase4_camera_names.py` | Mapping nama sensor/public |
-| `instrument_preview_geometry.json` | Geometry preview panel |
-| `shared_layout.json` | Konfigurasi kompatibilitas |
-| `camera_layout_front_tray_candidate.json` | Kandidat historis, bukan layout aktif |
+| `scene_layout.json` | Table, robot, grid, tray, lighting |
+| `camera_layout.json` | Camera poses and focal length; active front view |
+| `phase4_scene.py` | Scene assembly and provenance manifest |
+| `phase3_shared_env_cfg.py` | Isaac environment builder; the legacy name remains active |
+| `phase3_camera_tuning.py` | Native resolution, FOV, layout loading |
+| `phase3_recorder_camera_patch.py` | Applying cameras to the recorder |
+| `phase4_camera_names.py` | Sensor / public name mapping |
+| `instrument_preview_geometry.json` | Panel preview geometry |
+| `shared_layout.json` | Compatibility configuration |
+| `camera_layout_front_tray_candidate.json` | Historical candidate, not the active layout |
 
-Root JSON aliases adalah hard links pada workspace terorganisasi ini. Jangan edit alias sebagai konfigurasi independen. Jalankan `python scripts/check_structure.py` setelah perubahan layout.
+Root JSON aliases are hard links in this organized workspace. Do not treat them as independent configurations.
+Run `python scripts/check_structure.py` after layout changes.
 
-| Perubahan | Aturan |
+| Change | Rule |
 | --- | --- |
-| Resolusi atau framing baru | Sesi baru, restart simulator |
-| Resume | Pertahankan konfigurasi dan layout manifest asli |
-| Frozen benchmark | Jangan ubah layout saat berjalan |
+| New resolution or framing | Start a new session and restart the simulator |
+| Resume | Preserve the original configuration and manifest layout |
+| Frozen benchmark | Do not change the layout while it is running |

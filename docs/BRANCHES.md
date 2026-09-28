@@ -2,13 +2,12 @@
 
 [Overview](../README.md)
 
-`angel/main` adalah branch integrasi Angel. Branch fungsi dimulai dari baseline
-yang sama supaya dependensi recorder, exporter dan runtime tetap kompatibel.
-Ini pemisahan jalur pengembangan, bukan pemotongan source menjadi paket mandiri.
+`angel/main` is Angel's integration branch. Functional branches start from the same baseline to keep recorder, exporter, and runtime dependencies compatible.
+These are separate development tracks, not independently packaged source subsets.
 
 ```mermaid
 flowchart TD
-    A["Angel namespace"] --> M["angel/main - integrasi"]
+    A["Angel namespace"] --> M["angel/main - integration"]
     A --> R["angel/recorder"]
     A --> T["angel/training"]
     A --> D["angel/debug"]
@@ -17,50 +16,50 @@ flowchart TD
     T -.-> M
     D -.-> M
     I -.-> M
-    J["jordan - orphan history terpisah"]
+    J["jordan - independent orphan history"]
 ```
 
-| Branch | Tanggung jawab | Panduan |
+| Branch | Responsibility | Guide |
 | --- | --- | --- |
-| `angel/main` | Integrasi/stabil; default GitHub | [Overview](../README.md) |
-| `angel/recorder` | Recorder, panel, camera, raw H5 | [Recorder](RECORDER.md) |
-| `angel/training` | Export, detector, DP, evaluasi | [Training](../training/README.md) |
-| `angel/debug` | Diagnosis dan eksperimen | [Debug](../debug/README.md) |
-| `angel/inference` | Runtime dan controller integration | [Inference](INFERENCE.md) |
-| `jordan` | Orphan history: awal hanya README, tanpa source Angel | README pada branch Jordan |
-| `main` | Snapshot sebelum reorganisasi; tidak untuk pekerjaan baru | Commit `7c37aed` |
+| `angel/main` | Stable integration; GitHub default | [Overview](../README.md) |
+| `angel/recorder` | Recorder, panel, cameras, raw H5 | [Recorder](RECORDER.md) |
+| `angel/training` | Export, detector, DP, evaluation | [Training](../training/README.md) |
+| `angel/debug` | Diagnostics and experiments | [Debug](../debug/README.md) |
+| `angel/inference` | Runtime and controller integration | [Inference](INFERENCE.md) |
+| `jordan` | Orphan history: initially README-only, with no Angel source | README on the Jordan branch |
+| `main` | Legacy code baseline; not for new feature work | Code baseline at `7c37aed`; documentation may receive maintenance updates |
 
-Git tidak punya branch parent/child; `angel/` hanya prefix nama.
-Tidak bisa membuat ref `angel` sekaligus `angel/main`.
+Git does not have parent/child branches; `angel/` is a naming prefix.
+A ref named `angel` cannot coexist with `angel/main`.
 
-| Aturan | Pelaksanaan |
+| Rule | Practice |
 | --- | --- |
-| Perubahan recorder / kamera | Kerjakan di `angel/recorder` |
-| Perubahan export / training | Kerjakan di `angel/training` |
-| Perubahan diagnosis / eksperimen | Kerjakan di `angel/debug` |
-| Perubahan runtime model | Kerjakan di `angel/inference` |
-| Integrasi | Review dan uji perubahan sebelum merge ke `angel/main` |
-| Export panel | Tetap tersedia pada baseline bersama; implementasi dipelihara di `angel/training` |
-| Dataset, log, credential | Tetap lokal/ignored; bukan isi branch Jordan |
+| Recorder / camera changes | Work on `angel/recorder` |
+| Export / training changes | Work on `angel/training` |
+| Diagnostics / experiments | Work on `angel/debug` |
+| Model runtime changes | Work on `angel/inference` |
+| Integration | Review and test changes before merging into `angel/main` |
+| Panel export | Available in the shared baseline; maintained on `angel/training` |
+| Datasets, logs, credentials | Keep local / ignored; not part of Jordan |
 
-## Cara kerja
+## Development flow
 
 ```mermaid
 flowchart LR
-    A["Pilih branch fungsi"] --> B["Edit dan test"]
-    B --> C["Commit + push branch fungsi"]
-    C --> D["Review perubahan"]
-    D --> E["Merge ke angel/main"]
+    A["Select a functional branch"] --> B["Edit and test"]
+    B --> C["Commit + push the functional branch"]
+    C --> D["Review changes"]
+    D --> E["Merge into angel/main"]
 ```
 
-Contoh setelah recorder berhenti dan working tree bersih:
+Example after stopping the recorder and cleaning up the working tree:
 
 ```powershell
 git switch angel/recorder
 git pull --ff-only
 ```
 
-Jangan merge seluruh branch Jordan ke Angel: riwayatnya sengaja terpisah.
-Branch tidak mengubah aturan data split, batas policy, atau kualitas dataset.
+Do not merge the entire Jordan branch into Angel; their histories are intentionally separate.
+Branches do not change data-split rules, policy boundaries, or dataset quality.
 
-Branch bukan tempat menyimpan dataset atau API key. Jangan switch branch saat recorder berjalan; gunakan checkout/worktree terpisah bila menjalankan workflow paralel.
+Do not store datasets or API keys in branches. Do not switch branches while recording; use separate checkouts/worktrees for parallel workflows.

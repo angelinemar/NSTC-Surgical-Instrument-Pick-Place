@@ -8,21 +8,22 @@ flowchart LR
     B --> C["Settle"]
     C --> D["Expert Pick / Place"]
     D --> E{"Physical + RGB checks"}
-    E -->|Lolos| F["H5 + checksum commit"]
-    E -->|Gagal| G["Discard + retry"]
+    E -->|Pass| F["H5 + checksum commit"]
+    E -->|Fail| G["Discard + retry"]
     G --> B
 ```
 
-| Pilihan | Mengontrol | Bukan |
+| Option | Controls | Does not control |
 | --- | --- | --- |
-| Pick / Place / Both | Segmen yang disimpan | Jenis model |
-| Detection / DP / Both | Tujuan export | Training saat recording |
-| 224 / 448 | Resolusi raw | Ukuran input DP; tetap 224 |
-| Tray occupancy | Isi awal pada slot tetap | Tempat clutter acak |
-| Distractor range | Total non-target, termasuk 4 base bodies | Jumlah target |
-| Split / seed otomatis | Pembagian sesi dan randomisasi | Split per frame |
+| Pick / Place / Both | Saved motion segments | Model type |
+| Detection / DP / Both | Export targets | Training during recording |
+| 224 / 448 | Raw resolution | DP input size, which remains 224 |
+| Tray occupancy | Initial occupants in fixed slots | Random clutter placement |
+| Distractor range | Total non-targets, including 4 base bodies | Target count |
+| Automatic split / seed | Session assignment and randomization | Per-frame splitting |
 
-Target type hanya satu. Duplikat tambahan hanya di meja. Scene tidak muat ditolak, bukan dialihkan ke tray.
+The target type appears exactly once. Extra duplicates are table-only.
+Scenes that do not fit are rejected rather than placing overflow in the tray.
 
 ## Run
 
@@ -31,20 +32,20 @@ cd "<PROJECT_DIRECTORY>"
 .\RUNME.ps1 -Mode panel
 ```
 
-| Tab | Fungsi |
+| Tab | Purpose |
 | --- | --- |
-| Record & live log | Target, spawn, skill, episode/coverage |
-| Dataset & tray | Dataset purpose, resolusi, folder, tray, distractors |
-| Files & export | Buka hasil dan export koleksi selesai |
+| Record & live log | Target, spawn, skill, episode count / coverage |
+| Dataset & tray | Dataset purpose, resolution, folder, tray, distractors |
+| Files & export | Open results and export completed collections |
 
 ## Resume
 
 ```mermaid
 flowchart LR
-    A["Stop recorder lama"] --> B["Folder run yang sama"]
+    A["Stop the previous recorder"] --> B["Use the same run folder"]
     B --> C["Validate H5 + commits"]
-    C --> D["Pertahankan konfigurasi"]
-    D --> E["Lanjut ke total goal"]
+    C --> D["Preserve configuration"]
+    D --> E["Continue toward the total goal"]
 ```
 
 ```powershell
@@ -57,13 +58,16 @@ flowchart LR
   --tray-occupancy <ORIGINAL_TRAY_MODE>
 ```
 
-Ganti semua placeholder, termasuk pilihan bertanda `|`, dengan satu nilai nyata.
-38 tersimpan menuju 100 berarti `--episodes 100`, bukan 62. Resume mempertahankan layout kamera manifest. Session JSON mempertahankan range distractor. Pastikan session tidak sedang meminta stop.
+Replace every placeholder, including alternatives separated by `|`, with one actual value.
+If 38 episodes are saved toward a goal of 100, use `--episodes 100`, not 62.
+Resume preserves the manifest's camera layout. The session JSON preserves the distractor range.
+Make sure the session is not requesting a stop.
 
-| Pertahankan | Jika ingin mengubah |
+| Preserve | To change it |
 | --- | --- |
-| Resolusi, layout, seed, split, skill, purpose | Buat sesi/folder baru |
-| H5 dan commit selesai | Jangan ditimpa |
-| Satu recorder per output | Jangan launch dua proses ke folder sama |
+| Resolution, layout, seed, split, skill, purpose | Start a new session / folder |
+| Completed H5 files and commits | Do not overwrite them |
+| One recorder per output folder | Do not launch two processes into the same folder |
 
-File valid bukan bukti visual cukup tajam atau policy mampu manipulasi. Periksa keenam kamera, hasil DP 224, serta evaluasi held-out.
+Valid files do not prove sufficient visual detail or manipulation competence.
+Inspect all six cameras, the DP 224 output, and held-out evaluation results.
