@@ -2,7 +2,7 @@
 
 IsaacLab recorder untuk lima instrumen, dataset detector terpisah, dan Diffusion Policy (DP).
 
-[Recorder](docs/RECORDER.md) · [Training](training/README.md) · [Inference](docs/INFERENCE.md) · [Debug](debug/README.md) · [Rencana branch](docs/BRANCHES.md)
+[Recorder](docs/RECORDER.md) · [Training](training/README.md) · [Inference](docs/INFERENCE.md) · [Debug](debug/README.md) · [Branch workflow](docs/BRANCHES.md)
 
 ## Pipeline
 
@@ -119,4 +119,6 @@ Detail bukti: [kontrak training v2](docs/TRAINING_V2.md). Belum ada klaim siap d
 Root compatibility shims masih dipakai, bukan duplikat yang aman dihapus.
 Raw H5, checkpoint, log dan credential tidak boleh dipublish. Jalankan `python scripts/check_publish.py`; scanner bukan jaminan bebas rahasia.
 
-**Branch saat ini: `main`.** `angel/*` dan `jordan` masih [rencana](docs/BRANCHES.md).
+**Branch integrasi: `angel/main`.** Kerjakan perubahan di branch fungsi yang sesuai,
+lalu review sebelum merge. `main` lama disimpan sebagai snapshot cadangan;
+`jordan` mempunyai riwayat terpisah. Lihat [branch workflow](docs/BRANCHES.md).
