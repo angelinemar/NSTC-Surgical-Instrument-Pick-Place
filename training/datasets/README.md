@@ -9,11 +9,11 @@ flowchart LR
     B --> D["DP dataset + labels"]
 ```
 
-| Simpan bersama dataset | Tujuan |
+| Keep alongside each dataset | Purpose |
 | --- | --- |
-| Manifest export | Kontrak, provenance, completion |
-| Source checksums | Pelacakan rekaman asli |
-| Train / valid / test assignments | Mencegah kebocoran antarsplit |
-| Konfigurasi kamera dan policy | Reproduksibilitas |
+| Export manifest | Contract, provenance, completion |
+| Source checksums | Traceability to raw recordings |
+| Train / validation / test assignments | Prevent split leakage |
+| Camera and policy configuration | Reproducibility |
 
-Output dataset diabaikan oleh Git. Jangan campur cohort dengan kalibrasi atau kontrak berbeda tanpa migrasi eksplisit.
+Dataset output is ignored by Git. Do not mix cohorts with different calibration or contracts without explicit migration.
