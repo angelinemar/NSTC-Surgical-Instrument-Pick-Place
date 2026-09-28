@@ -2,48 +2,50 @@
 
 [Overview](../README.md) · [Recorder](../docs/RECORDER.md)
 
-Output lokal di sini bukan otomatis dataset training.
+Local output here is not automatically approved training data.
 
 ```mermaid
 flowchart TD
-    A["Run berhenti / hasil aneh"] --> B["Log + run_metrics"]
-    B --> C["Gerakan: stage dan pose error"]
-    B --> D["Gambar: 6 kamera dan input DP 224"]
-    B --> E["Storage: commit dan checksum"]
-    C --> F["Perbaiki lalu uji kasus kecil"]
+    A["Run stopped / unexpected results"] --> B["Logs + run_metrics"]
+    B --> C["Motion: stage and pose error"]
+    B --> D["Images: 6 cameras and DP 224 inputs"]
+    B --> E["Storage: commits and checksums"]
+    C --> F["Fix, then test a small case"]
     D --> F
     E --> F
-    F --> G["Audit sebelum koleksi besar"]
+    F --> G["Audit before scaling collection"]
 ```
 
-| Lokasi | Isi |
+| Location | Contents |
 | --- | --- |
-| `logs/` | Console simulator/panel |
-| `test_runs/` | Run pengujian |
-| `validation/` | Laporan validasi |
-| `output/` | Hasil audit dan visualisasi |
-| `tmp/`, `archive/` | Scratch dan arsip, bukan import aktif |
-| `run_metrics.json` dalam folder run | Attempt, sukses, gagal |
-| `coverage_report.json` dalam folder run | Cakupan H5 dan complete |
-| `.commits/` dalam folder run | Bukti transaksi H5 |
+| `logs/` | Simulator / panel console output |
+| `test_runs/` | Test recordings |
+| `validation/` | Validation reports |
+| `output/` | Audit results and visualizations |
+| `tmp/`, `archive/` | Scratch files and archives, not active imports |
+| `run_metrics.json` in a run folder | Attempts, successes, failures |
+| `coverage_report.json` in a run folder | H5 coverage and completion |
+| `.commits/` in a run folder | H5 transaction evidence |
 
-| Pesan | Arti / tindakan |
+| Message | Meaning / action |
 | --- | --- |
-| `pose_timeout` | Pose belum mencapai toleransi; periksa stage/error |
-| `P4 STATUS WARNING` | File status GUI terkunci; telemetry retry, bukan kegagalan H5 |
-| `exit=0`, coverage belum lengkap | Proses berhenti tetapi goal belum tercapai |
-| Checksum / commit gagal | Jangan bypass pemeriksaan untuk training |
-| RGB pixelated | Periksa resolusi, framing, target pixel footprint dan hasil DP 224 |
+| `pose_timeout` | Pose has not reached tolerance; inspect the stage and error |
+| `P4 STATUS WARNING` | GUI status file is locked; telemetry retries, not an H5 failure |
+| `exit=0`, incomplete coverage | The process stopped without reaching its goal |
+| Checksum / commit failure | Do not bypass checks to train on the data |
+| Pixelated RGB | Check resolution, framing, target pixel footprint, and DP 224 output |
 
-## Audit detail RGB
+## RGB detail audit
 
-Jalankan dari root proyek:
+Run from the project root:
 
 ```powershell
 & C:\IsaacLab\_isaac_sim\python.bat scripts\audit_rgb_detail.py `
   "<RUN_DIRECTORY>" "<NEW_AUDIT_DIRECTORY>"
 ```
 
-Script membaca semua H5 yang cocok, mengambil awal/tengah/akhir tiap kamera, lalu menyimpan laporan dan contoh PNG. Ini **sampling**, bukan pemeriksaan seluruh frame atau pengukuran akurasi model.
+The script reads all matching H5 files, samples the beginning/middle/end of each camera stream, and saves a report and example PNGs.
+This is **sampling**, not a full-frame audit or model accuracy measurement.
 
-Root `validation`, `test_runs`, `archive`, `tmp`, `output` adalah alias/junction legacy. Jangan hitung alias dan folder kanonis sebagai dataset berbeda.
+Root `validation`, `test_runs`, `archive`, `tmp`, and `output` are legacy aliases/junctions.
+Do not count an alias and its canonical directory as separate datasets.
