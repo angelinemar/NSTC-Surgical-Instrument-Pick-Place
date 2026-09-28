@@ -1,19 +1,19 @@
 {
   "format_version": 1,
-  "preview": "native_square_task_surface_tight_v2_no_crop",
+  "preview": "native_square_split_spawn_regions_v4_no_crop",
   "cameras": {
     "cam_front": {
-      "focal_length": 17.0,
+      "focal_length": 23.0,
       "pos": [
-        1.0,
-        -1.55,
-        1.35
+        0.32,
+        -0.4424,
+        1.0
       ],
       "rot": [
-        -0.39178904661303066,
-        0.8750115876477289,
-        0.2595244866728486,
-        -0.11620286250109231
+        0.0,
+        1.0,
+        0.0,
+        0.0
       ]
     },
     "grip_cam_b": {
@@ -31,11 +31,11 @@
       ]
     },
     "cam_top": {
-      "focal_length": 14.0,
+      "focal_length": 23.0,
       "pos": [
-        0.2,
-        -0.32,
-        1.55
+        0.32,
+        0.0576,
+        1.0
       ],
       "rot": [
         0.0,
@@ -45,39 +45,39 @@
       ]
     },
     "cam_left": {
-      "focal_length": 17.0,
+      "focal_length": 23.0,
       "pos": [
-        0.2,
-        0.95,
-        1.25
+        0.32,
+        -0.5224,
+        1.0
       ],
       "rot": [
         0.0,
+        1.0,
         0.0,
-        0.919183743810234,
-        -0.39382895413491625
+        0.0
       ]
     },
     "cam_right": {
-      "focal_length": 17.0,
+      "focal_length": 23.0,
       "pos": [
-        0.2,
-        -1.65,
-        1.25
+        0.32,
+        0.1376,
+        1.0
       ],
       "rot": [
-        -0.4043825126143945,
-        0.914589953745212,
+        0.0,
+        1.0,
         0.0,
         0.0
       ]
     },
     "cam_tray": {
-      "focal_length": 18.0,
+      "focal_length": 19.0,
       "pos": [
         0.15,
         -0.89,
-        0.83
+        0.86
       ],
       "rot": [
         0.0,
