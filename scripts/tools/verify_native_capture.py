@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT/'compat'))
 from phase4_storage import require_commit
 from training.audit_training_topics import inspect
 from validate_feedback_dataset import audit

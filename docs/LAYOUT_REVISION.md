@@ -52,4 +52,4 @@ unchanged. Image dimensions/intrinsics remain the P3 settings (448x336 native,
 
 The headless recorder rendering problem remains unresolved. Do not interpret
 geometric reach or a preview-motion check as a successful production recorder
-run. Inspect the scene with `view_env.ps1` before further recording.
+run. Inspect the scene with `scripts/launchers/view_env.ps1` before further recording.

@@ -1,6 +1,11 @@
 """Offline randomized contract check; no Isaac application launch."""
 import json
+import sys
+from pathlib import Path
 import numpy as np
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'compat'))
 from phase4_cell_spawn import fit_spawn_to_cells,instrument_envelopes
 from phase4_scene import LAYOUT
 

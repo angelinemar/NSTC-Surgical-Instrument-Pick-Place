@@ -3911,7 +3911,7 @@ def run_camera_layout_tuner(env, stage):
         "cam_right": "/World/envs/env_0/CamRight",
         "cam_tray": "/World/envs/env_0/CamTray",
     }
-    save_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "camera_layout.json")
+    save_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "env", "camera_layout.json")
 
     print("\n[CAMERA TUNER READY]")
     print("  Pause timeline, then Move/Rotate camera prims listed below.")

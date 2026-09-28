@@ -84,10 +84,10 @@ CPU: **45 recorder/geometry/coverage/controller tests passed**, plus
 does not include Tk; UI tests must not be run in that runtime.
 
 Recorder tests:
-`C:\IsaacLab\_isaac_sim\python.bat -m unittest test_near_base_approach test_phase4_fsm test_grid_coverage test_grasp_evidence test_tray_slots test_camera_names`
+`C:\IsaacLab\_isaac_sim\python.bat -m unittest tests.legacy.test_near_base_approach tests.legacy.test_phase4_fsm tests.legacy.test_grid_coverage tests.legacy.test_grasp_evidence tests.legacy.test_tray_slots tests.legacy.test_camera_names`
 
 Panel tests:
-`python -m unittest test_panel_tabs test_panel_output test_panel_dashboard test_panel_retry.PanelTests`
+`python -m unittest tests.legacy.test_panel_tabs tests.legacy.test_panel_output tests.legacy.test_panel_dashboard tests.legacy.test_panel_retry.PanelTests`
 
 Physical regression history (one attempt per configuration, GUI rendering):
 
@@ -174,7 +174,7 @@ launch a fresh recorder after updating. Restart the panel if needed:
 
 ```powershell
 Set-Location 'C:\IsaacLab\scripts\custom\i4h_project\p4'
-python .\control_panel.py
+.\RUNME.ps1 -Mode panel
 ```
 
 ## Continuation: cross-instrument near-base checks, 2026-09-16

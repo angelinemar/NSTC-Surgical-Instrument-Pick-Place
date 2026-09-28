@@ -3,6 +3,7 @@ import sys,json,math,hashlib,itertools
 from pathlib import Path
 ROOT=Path(r'C:\IsaacLab\scripts\custom\i4h_project\p4')
 sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT/'compat'))
 import numpy as np,h5py
 from pxr import Usd,UsdGeom,UsdPhysics,Gf
 from scipy.spatial import ConvexHull
@@ -95,7 +96,7 @@ for n in dict.fromkeys(all_names):
                        chord_m=float(np.linalg.norm(xyz[-1]-xyz[0])),
                        path_m=float(np.linalg.norm(np.diff(xyz,axis=0),axis=1).sum())))
 data=dict(layout=LAYOUT,table=table,tray=tray,instruments=instruments,
-          cameras=json.loads((ROOT/'camera_layout.json').read_text())['cameras'],
+          cameras=json.loads((ROOT/'env/camera_layout.json').read_text())['cameras'],
           sample_attrs=attrs,topics=topics,calibrations=calibrations,stages=stages,
           trajectory_xyz=all_ee[::4].tolist(),reference_h5=str(sample.relative_to(ROOT)))
 out=Path(__file__).parent
