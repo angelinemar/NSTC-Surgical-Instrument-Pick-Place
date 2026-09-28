@@ -74,7 +74,9 @@ def export(splits, output, stride=20):
     manifest = dict(contract='p4_detection_v1', export_complete=False, production_ready=False,
                     stride=stride, box_convention='visible_xywh_per_rigid_instance',
                     categories=[dict(id=i+1, name=n) for i,n in enumerate(CLASSES)],
-                    sources=[], splits={}, split_rule='independent_run_no_frame_split')
+                    sources=[], splits={}, split_rule='independent_run_no_frame_split',
+                    rfdetr_compatible=True, rfdetr_dataset_file='roboflow',
+                    rfdetr_annotation='_annotations.coco.json')
     seen_transactions, seen_files, seen_images, seen_seeds = {}, {}, {}, {}
     image_id, annotation_id = 0, 0
     for split, files in inventory.items():
@@ -155,7 +157,12 @@ def export(splits, output, stride=20):
                             coco['annotations'].append(dict(id=annotation_id, image_id=image_id, **box))
         counts = {c['name']:sum(a['category_id']==c['id'] for a in coco['annotations']) for c in coco['categories']}
         manifest['splits'][split] = dict(images=len(coco['images']), visible_instances=counts)
-        (folder/'annotations.json').write_text(json.dumps(coco, indent=2))
+        encoded = json.dumps(coco, indent=2)
+        (folder/'annotations.json').write_text(encoded)
+        # RF-DETR auto-detects Roboflow-style COCO datasets by this filename.
+        # Keep annotations.json as the stable P4 artifact; both files describe
+        # the same image bytes and therefore do not duplicate the dataset.
+        (folder/'_annotations.coco.json').write_text(encoded)
     manifest['export_complete'] = True
     (output/'manifest.json').write_text(json.dumps(manifest, indent=2))
     return manifest
