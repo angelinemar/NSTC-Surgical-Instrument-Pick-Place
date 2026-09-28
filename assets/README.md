@@ -1,10 +1,20 @@
-# Assets
+# Scene assets
 
-This folder contains the local USD, mesh, texture and material dependencies used by P4.
-Asset filenames and internal references were not relocated or changed by source organization.
-The five instrument backends resolve assets relative to the P4 root. Scene configuration is
-under `env`; the active hospital/table choice is defined by `env/scene_layout.json`.
+[Overview](../README.md) · [Environment](../env/README.md)
 
-Some historical hospital/table packages remain as dependencies or provenance. Their presence
-does not mean they are spawned. Do not remove or rename asset files without validating USD
-references and rerunning the environment checks. P3 assets/code were not edited.
+```mermaid
+flowchart LR
+    A["env/scene_layout.json"] --> B["Selected scene assets"]
+    C["Instrument configuration"] --> D["Instrument USD / meshes"]
+    B --> E["Isaac environment"]
+    D --> E
+```
+
+| Isi | Peran |
+| --- | --- |
+| Hospital / table packages | Geometri scene dan dependensinya |
+| Instrument USD / meshes | Lima jenis instrumen |
+| Material / texture dependencies | Tampilan visual aset |
+| `readme/` | Diagram statis dokumentasi |
+
+Ada aset historis yang mungkin masih menjadi dependensi internal USD; nama file saja tidak membuktikan aset tidak terpakai. Sebelum menghapus, cek referensi USD, konfigurasi aktif, dan hasil environment test.

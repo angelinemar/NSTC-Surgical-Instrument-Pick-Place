@@ -1,119 +1,122 @@
-# P4 · Surgical Instrument Recording & Sensor-Only DP
+# Surgical Instrument Pick & Place
 
-Native-camera and independent-detector workflow: [training v2](docs/TRAINING_V2.md).
+IsaacLab recorder untuk lima instrumen, dataset detector terpisah, dan Diffusion Policy (DP).
 
-<p align="center"><img src="assets/readme/recording-options.svg" alt="Choose motion separately from dataset purpose; both share raw recordings" width="960"></p>
+[Recorder](docs/RECORDER.md) · [Training](training/README.md) · [Inference](docs/INFERENCE.md) · [Debug](debug/README.md) · [Rencana branch](docs/BRANCHES.md)
 
-## Control panel
+## Pipeline
 
-`1. Record & live log`: choose **Pick / Place / Both**, instrument and spawn mode.
-`2. Dataset & tray`: choose **Both: DP + detector (recommended)**, recorded image size and save folder. Split and seed are automatic.
-`3. Files & export`: export a completed collection with independent train, valid and test sessions. Recording does not train a model.
+```mermaid
+flowchart LR
+    A["Control panel"] --> B["Scene + expert motion"]
+    B --> C{"Physical + RGB checks"}
+    C -->|Gagal| D["Discard + log + retry"]
+    D --> B
+    C -->|Lolos| E["Committed raw H5"]
+    E --> F["Detector export"]
+    E --> G["DP export"]
+    F --> H["Native RGB + COCO boxes"]
+    G --> I["RGB 224 + state + target command"]
+    I --> J["Pick / Place models"]
+    J --> K["Held-out tests + closed-loop rollout"]
+```
 
-Both shares raw data once. All dataset modes support randomized duplicate distractors on the table only. Tray objects stay organized in their fixed slots; the target type appears exactly once. Failed attempts never become training samples. Console details go to `debug/logs/`.
+**Record bukan train. Export berhasil bukan bukti model sudah akurat.**
 
-<p align="center"><img src="assets/readme/pipeline.svg" alt="Six camera recording pipeline" width="960"></p>
-<p align="center"><img src="assets/readme/camera-contract.svg" alt="Six synchronized camera streams" width="960"></p>
+## Buka control panel
 
-## Run
-
-> Replace every `<PLACEHOLDER>` before running it. Do not copy the angle brackets literally.
+Ganti placeholder dengan lokasi checkout, lalu jalankan dari root proyek.
 
 ```powershell
+cd "<PROJECT_DIRECTORY>"
 .\RUNME.ps1 -Mode check
-.\RUNME.ps1 -Mode objects
-.\RUNME.ps1 -Mode record-dry-run -Object <OBJECT_NAME>
 .\RUNME.ps1 -Mode panel
-.\RUNME.ps1 -Mode validate -RunDirectory <RUN_DIRECTORY>
-.\RUNME.ps1 -Mode export -Source <COMPLETED_RUN_DIRECTORY> -Output <NEW_DATASET_DIRECTORY>
-.\RUNME.ps1 -Mode train-smoke -Dataset <EXPORTED_DATASET_DIRECTORY> -Skill <pick|place>
 ```
 
-## What is recorded
+| Pengaturan | Untuk koleksi baru | Arti |
+| --- | --- | --- |
+| Save skill | `both` | Simpan Pick dan Place |
+| Dataset purpose | `Both: DP + detector (recommended)` | Satu raw recording, dua tujuan export |
+| Recorded image size | `448` | Detail sumber lebih banyak; DP tetap 224 |
+| Save raw to | Folder baru | Jangan campur kalibrasi/resolusi lama |
+| Distractors | Rentang yang dipilih | Target unik; duplikat tambahan hanya di meja |
+| Tray | Random / full / manual | Isi awal pada slot tetap |
 
-Interrupted runs can use `record.py --resume` with the **same** output folder,
-session JSON, camera size, seed, purpose, split and skill. `--episodes` is the
-final total, not the number remaining (38 saved toward 100 means use 100).
-Resume validates committed H5 files before continuing and will not overwrite
-completed episodes. Never run two recorders against the same output folder.
-Windows GUI-status file locks now retry; a persistent permission lock skips
-only that telemetry update, not the recording. H5 commit errors remain fatal.
-The panel reports `Stopped / incomplete` when the saved goal is not met,
-even when the simulator returns exit code zero.
+Mulai beberapa episode, periksa enam kamera dan **hasil export DP 224**, baru lanjut koleksi besar.
 
-Raw RGB defaults to **448 x 448 with spatial FXAA**. New sessions use a closer,
-downward-facing front view of the main work area; tray coverage has its own camera.
-Resume preserves the saved session's camera layout. DP export remains 224 x 224
-(Lanczos); detector export retains 448.
-The lower-memory 224 option sacrifices small-tool detail. Preview PNG folders
-include front, grip/wrist, top, left, right and tray. Restart the simulator and
-use a fresh session after changing resolution; old RGB cannot recover lost detail.
-
-Policy recording windows (all five instruments):
+## Kamera: raw dan input model
 
 ```mermaid
 flowchart LR
-    A[Setup: OPEN_HOVER - not saved] --> B[Pick: LOWER_PRE → LOWER_GRASP → optional LOWER_EXTRA → CLOSE → LIFT_CLEAR]
-    B --> C[Transfer: MOVE_TO_TARGET - not saved]
-    C --> D[Place: LOWER_PLACE → OPEN → RETREAT]
+    A["6 kamera native 448"] --> B["Raw H5 tanpa crop"]
+    B --> C["Detector: tetap 448"]
+    B --> D["Lanczos resize"]
+    D --> E["DP: 224 x 224"]
+    F["Opsi native 224"] --> G["Raw dan DP tetap 224"]
 ```
 
-Setup and transfer still run under the controller, but are excluded from saved
-policy H5 files and their exports. `OPEN` remains in Place to release the object.
-Deployment must position the robot at the corresponding start pose before each
-policy. Use a new recording folder: older full-motion datasets are not modified
-and cannot be resumed into this new window contract.
+| Kamera | RGB di H5 | Fungsi |
+| --- | --- | --- |
+| Front | `observations/front_rgb` | Area kerja utama |
+| Wrist / grip | `observations/wrist_rgb` | Detail dekat gripper |
+| Top | `observations/cam_top_rgb` | Konteks atas meja |
+| Left | `observations/cam_left_rgb` | Sudut kiri |
+| Right | `observations/cam_right_rgb` | Sudut kanan |
+| Tray | `observations/cam_tray_rgb` | Area tray |
 
-| Six synchronized views | Per-view supervision | Robot / task evidence | DP uses |
-| --- | --- | --- | --- |
-| front · wrist · top · left · right · tray | RGB · depth · semantic + instance masks · camera calibration | 16-D robot proprioception · 8-D action · success/physical gates · episode commit | RGB + proprioception + requested target; learns robot-base actions |
+Preview PNG berisi sampel frame; H5 menyimpan semua frame dalam segmen terpilih.
+448 + FXAA membantu sampling dan tepi, tetapi tidak menjamin objek kecil tetap jelas pada input akhir 224.
+Resume memakai layout kamera sesi asli; gunakan sesi baru untuk framing baru.
 
-Simulator object pose, grid cell, target slot, teacher grasp, stage ID, automatic class ID, depth and semantic GT are not policy inputs. Semantic masks are separate labels for the recognition head.
-
-DP additionally receives the operator's requested instrument type (the panel's
-Target selection). At inference select it with `policy.set_target('scissor')`.
-This makes the intended pick explicit when several instruments are on the table.
-
-## Dataset gate
+## Segmen policy
 
 ```mermaid
 flowchart LR
-    P[Panel: distractors 12-18] --> S[1 target + random duplicate non-targets]
-    S --> T[Table: random clutter / Tray: fixed ordered slots]
-    T --> R[Native RGB + depth]
-    T --> L[Semantic: robot, table, tray, tools, floor, room]
-    T --> I[Per-body instance masks]
-    I --> D[Separate detector: one COCO box per instrument]
-    R --> DP[DP: RGB 224 + robot state + requested target]
+    A["OPEN_HOVER: tidak disimpan"] --> B["Pick: LOWER_PRE sampai LIFT_CLEAR"]
+    B --> C["MOVE_TO_TARGET: tidak disimpan"]
+    C --> D["Place: LOWER_PLACE sampai RETREAT"]
 ```
 
-The target type appears once. Extra duplicate distractors spawn only on the table;
-the entire tray is reserved for fixed-slot objects. The drape stays green with seeded shade/roughness variation. See the
-[capture and label contract](docs/TRAINING_V2.md) for limits and verification.
-
-<p align="center"><img src="assets/readme/readiness.svg" alt="Dataset readiness" width="960"></p>
-
-The checked `baseline_v11` export contains **50 pick + 50 place** demos, split 40/10 by episode. It is valid for export/training smoke tests, not a production detector or deployable DP policy: it still needs independent sessions, lighting, occlusions, within-cell jitter, held-out class IoU, and closed-loop learned-policy evaluation.
-
-New capture supports randomized episode lighting, drape appearance, auto XY/yaw and automatic 70/20/10 session splits. The default shared-raw plan has 200 pairs across five target classes and checks storage before starting. This is a collection budget, **not a quality guarantee**; physical scale stays fixed and learned-policy validation remains required.
-
-Windows recorder completion uses checksum-gated process exit to avoid a reproduced native USD cleanup crash. It does not convert arbitrary crashes to success. Details: [training contract](docs/TRAINING_V2.md).
-
-## Repository boundary
-
-Source, configurations, tests and visual docs go to GitHub. Raw H5 recordings, exports, logs, checkpoints and debug output stay local and are ignored.
-Run `python scripts/check_publish.py` before publishing. Credentials remain excluded even in a private repository; the scanner is a heuristic, not a guarantee.
-
-## Layout
-
-| Folder | Role |
+| Segmen | Stage yang disimpan |
 | --- | --- |
-| `src/` | active recorder, runtime, UI |
-| `backends/` | instrument-specific expert recorders |
-| `env/` | scene and camera configuration |
-| `training/` | sensor-only exporter, model, runtime |
-| `tests/` | contract and regression tests |
-| `scripts/` | stable CLI and inspection tools |
-| `debug/`, `datasets/` | local only; ignored by Git |
+| Pick | LOWER_PRE, LOWER_GRASP, LOWER_EXTRA jika perlu, CLOSE, LIFT_CLEAR |
+| Place | LOWER_PLACE, OPEN, RETREAT |
+| Persiapan / transfer | Tetap dijalankan controller, bukan data policy |
 
-Detailed operational evidence remains under `docs/`; this is the visual GitHub entry point.
+## Pilih workflow
+
+| Tujuan | Panduan | Hasil |
+| --- | --- | --- |
+| Record / resume | [Recorder](docs/RECORDER.md) | H5, commit, coverage |
+| Export / train | [Training](training/README.md) | Dataset dan checkpoint |
+| Jalankan model | [Inference](docs/INFERENCE.md) | Prediksi aksi; perlu integrasi controller |
+| Cari masalah | [Debug](debug/README.md) | Log, audit, failure preview |
+| Pahami modul | [Source](src/README.md) / [Environment](env/README.md) | Dependency dan konfigurasi |
+
+## Status kualitas
+
+| Pemeriksaan | Sudah diketahui | Belum membuktikan |
+| --- | --- | --- |
+| H5 / commit / resume | Ada checksum dan consistency checks | Semua attempt sukses |
+| Enam kamera / front baru | Preview scene dan tes proyeksi diperiksa | Semua objek terlihat saat robot bergerak |
+| Data lama 224 | Sampel target front terlalu kecil | Semua dataset pasti buruk |
+| Export DP 224 | Jalur resize diuji | Kualitas visual seluruh koleksi disetujui |
+| Training smoke | Jalur komputasi berjalan | Akurasi atau sukses manipulasi |
+
+Detail bukti: [kontrak training v2](docs/TRAINING_V2.md). Belum ada klaim siap deployment.
+
+## Struktur dan publikasi
+
+| Lokasi | Isi |
+| --- | --- |
+| `src/`, `backends/`, `env/` | Recorder, panel, konfigurasi |
+| `training/` | Export, model, runtime |
+| `scripts/`, `tests/` | CLI, audit, regression tests |
+| `assets/` | Dependensi scene/instrumen |
+| `docs/` | Panduan dan bukti historis |
+| `datasets/`, `debug/`, `training/runs/` | Output lokal; bukan source untuk GitHub |
+
+Root compatibility shims masih dipakai, bukan duplikat yang aman dihapus.
+Raw H5, checkpoint, log dan credential tidak boleh dipublish. Jalankan `python scripts/check_publish.py`; scanner bukan jaminan bebas rahasia.
+
+**Branch saat ini: `main`.** `angel/*` dan `jordan` masih [rencana](docs/BRANCHES.md).

@@ -1,28 +1,29 @@
-# Runtime source
+# Source map
 
-- `entry`: dispatches the requested instrument to `backends`.
-- `recorder`: shared expert controller, feedback gates, robot reset, scene spawn integration,
-  coverage accounting, storage transactions and logs.
-- `ui`: panel state/widgets, commands and previews.
+[Overview](../README.md) · [Recorder](../docs/RECORDER.md)
 
-Root modules are compatibility shims loaded by `_p4_compat.py`; import names stay stable.
-They execute these sources in the original module namespace, so patching a module variable
-still affects the functions that use it. `__file__` retains the legacy resource root while
-tracebacks refer to the real implementation file. Use `scripts/p4.py` to run commands.
-
-Dependency flow:
-
-```text
-panel / scripts CLI -> entry runner -> instrument backend
-                                      |
-                                      +-> env + assets
-                                      +-> shared recorder hooks and physical QC
-                                      +-> storage transaction -> raw diagnostic H5
-
-completed-case manifest -> training export -> sensor-only policy files + separate labels
-                         -> training/model -> runtime RGB/proprio API
+```mermaid
+flowchart LR
+    A["Panel / CLI"] --> B["entry"]
+    B --> C["Instrument backend"]
+    C --> D["Environment + assets"]
+    C --> E["Recorder hooks + physical checks"]
+    E --> F["Storage transaction"]
+    F --> G["Committed H5"]
 ```
 
-Expert/QC dependencies may access simulator object geometry. Neural-network input code is
-under `training` and must not import the expert geometry/state builders. Its live sensor
-reader uses only robot FK and camera RGB.
+| Folder | Tanggung jawab |
+| --- | --- |
+| `entry/` | Dispatch target instrument, preflight, runner |
+| `recorder/` | Reset, spawn, control feedback, coverage, storage, status |
+| `ui/` | Panel, geometry preview, log display, commands |
+
+Root modules adalah compatibility shims melalui `_p4_compat.py`, bukan source duplikat yang aman dihapus. Shims menjaga identitas import dan root resource; traceback menunjuk implementasi sebenarnya.
+
+| Boundary | Boleh mengakses |
+| --- | --- |
+| Expert recorder / QC | Geometry dan state simulator untuk verifikasi |
+| Policy input | RGB, robot proprioception, target command operator |
+| Training labels | Semantic GT terpisah dari input policy |
+
+Gunakan `python scripts/p4.py panel` atau `python scripts/p4.py record ...` dari root proyek.
