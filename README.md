@@ -15,7 +15,8 @@ flowchart LR
     C -->|Pass| E["Committed raw H5"]
     E --> F["Detector export"]
     E --> G["DP export"]
-    F --> H["Native RGB + COCO boxes"]
+    F --> H["448 RGB + COCO boxes"]
+    H --> L["RF-DETR standalone detector"]
     G --> I["RGB 224 + state + target command"]
     I --> J["Pick / Place models"]
     J --> K["Held-out tests + closed-loop rollout"]
@@ -43,6 +44,39 @@ cd "<PROJECT_DIRECTORY>"
 | Tray | Random / full / manual | Initial occupants use fixed slots |
 
 Start with a few episodes. Inspect all six cameras and the **exported DP 224 images** before collecting at scale.
+
+## After recording: DP + RF-DETR
+
+Choose **Both: DP + detector** and **448** in the panel. The same raw sessions are exported into two independent training inputs; this does not merge the two models.
+
+```mermaid
+flowchart LR
+    A["Raw sessions: native 448"] --> B["Audit + session split"]
+    B --> C["DP export: Lanczos to 224"]
+    B --> D["Detection export: retain 448"]
+    C --> E["Separate Pick / Place DP models"]
+    D --> F["RF-DETR standalone detector"]
+    F --> G["Held-out test mAP / mAR / F1"]
+```
+
+```powershell
+# 1. Export both products after train, valid, and test sessions are complete.
+.\RUNME.ps1 -Mode export -Source "<RAW_COLLECTION>" -Output "<NEW_EXPORT_DIRECTORY>"
+
+# 2. Install RF-DETR once in an isolated Python 3.11 environment.
+.\RUNME.ps1 -Mode rfdetr-setup
+
+# 3. Refuse malformed, non-448, or incomplete detector data.
+.\RUNME.ps1 -Mode rfdetr-check -Dataset "<NEW_EXPORT_DIRECTORY>\detection"
+
+# 4. Train RF-DETR Small, then evaluate the held-out test split.
+.\RUNME.ps1 -Mode rfdetr-train `
+  -Dataset "<NEW_EXPORT_DIRECTORY>\detection" `
+  -Output "<NEW_RFDETR_RUN_DIRECTORY>" `
+  -RFDetrModel small -Epochs 50 -BatchSize 4 -GradAccumSteps 4
+```
+
+The final checkpoint is `<NEW_RFDETR_RUN_DIRECTORY>\checkpoint_best_total.pth`; held-out results are saved in `p4_rfdetr_result.json`. Full instructions and GPU notes are in [Training](training/README.md).
 
 ## Cameras: raw recordings and model inputs
 
