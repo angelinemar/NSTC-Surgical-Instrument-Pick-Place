@@ -91,20 +91,21 @@ flowchart LR
 
 | Camera | RGB dataset in H5 | Purpose |
 | --- | --- | --- |
-| Front | `observations/front_rgb` | Steep diagonal view of the complete task surface |
+| Front | `observations/front_rgb` | Tight top-down view of the lower spawn cells; tray excluded |
 | Wrist / grip | `observations/wrist_rgb` | Moving close-up of the grasp and nearby instruments |
-| Top | `observations/cam_top_rgb` | Vertical overview of the full spawn grid and tray |
-| Left | `observations/cam_left_rgb` | Steep oblique overview from the grid end |
-| Right | `observations/cam_right_rgb` | Steep oblique overview from the tray end |
+| Top | `observations/cam_top_rgb` | Tight top-down view of the upper spawn cells |
+| Left | `observations/cam_left_rgb` | Overlapping lower-spawn top-down view |
+| Right | `observations/cam_right_rgb` | Overlapping upper-spawn top-down view |
 | Tray | `observations/cam_tray_rgb` | Vertical close-up of the complete tray |
 
 PNG previews contain sampled frames; H5 stores every frame within the selected segments.
 448 + FXAA improves sampling and edges, but does not guarantee that small objects remain clear at the final 224 resolution.
 Resume preserves the original session's camera layout; start a new session to use new framing.
-The four static overview cameras are framed against the full task envelope, not the
-robot. The robot can still enter or occlude these views because it operates above
-the instruments. The tray and moving wrist cameras are specialized close-ups and
-are not intended to show the complete table at once.
+The four static spawn cameras use overlapping optical views. Together they cover
+every spawn cell without spending most square-image pixels on the long table,
+unused pad, room, or floor. The tray has its own close-up. Robot parts can still
+cross a spawn view during manipulation because the arm physically operates above
+the target; the complete robot is not the subject of any static view.
 
 ## Policy segments
 
