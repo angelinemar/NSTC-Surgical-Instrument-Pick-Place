@@ -40,10 +40,10 @@ The longest instrument is approximately 15.02cm. After settling, any escaped
 footprint is recentered in XY and settled/validated again before recording.
 A 55x22cm tray sits on the left narrow blue pad at XY=(0.15,-0.89).
 Tray dimensions change in-plane only, not height. Geometric reach checks are preliminary; run physical
-tests before collecting production data. Static camera positions are adjusted;
-the tray camera also rotates toward the tray from an oblique viewpoint to reduce
-robot occlusion. Wrist camera attachment/pose, focal lengths and image dimensions
-are preserved.
+tests before collecting production data. Four static overview cameras use close,
+steep views of the complete task envelope: front/left/right are oblique and top
+is vertical. The tray camera is a vertical close-up of the complete tray. The
+wrist camera remains attached to the gripper as a manipulation close-up.
 
 P4 scene transforms use `scene_layout.json` as authority. Do not use the old
 workspace/layout GUI to persist robot/table/hospital transformations: inherited
