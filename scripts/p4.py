@@ -5,6 +5,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'compat'))
 
 if len(sys.argv) < 2:
     raise SystemExit(__doc__)
@@ -15,9 +16,9 @@ if command == 'tool':
     name = sys.argv.pop(1).removesuffix('.py')
     if '/' in name or '\\' in name or not (ROOT/'scripts/tools'/f'{name}.py').is_file():
         raise SystemExit('Unknown tool')
-    entry = ROOT / (name + '.py')
+    entry = ROOT / 'compat' / (name + '.py')
 elif command in ('record', 'panel'):
-    entry = ROOT / ('record.py' if command == 'record' else 'control_panel.py')
+    entry = ROOT / ('record.py' if command == 'record' else 'compat/control_panel.py')
 else:
     raise SystemExit('Unknown command: ' + command)
 sys.argv[0] = str(entry)

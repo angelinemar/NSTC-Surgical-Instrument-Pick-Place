@@ -1,6 +1,6 @@
 """
 Generates proposal_dual_track.docx
-Run: python generate_proposal_docx.py
+Run from the project root: python reporting/generate_proposal_docx.py
 Requires: pip install python-docx
 """
 
@@ -682,6 +682,6 @@ rf.font.size = Pt(7.5)
 rf.font.color.rgb = TEXT_MUTED
 
 # ── Save ──────────────────────────────────────────────────────────────────────
-out_path = r'C:\IsaacLab\scripts\custom\i4h_project\p4\proposal_dual_track.docx'
+out_path = r'C:\IsaacLab\scripts\custom\i4h_project\p4\reporting\artifacts\proposal_dual_track.docx'
 doc.save(out_path)
 print(f'Saved: {out_path}')

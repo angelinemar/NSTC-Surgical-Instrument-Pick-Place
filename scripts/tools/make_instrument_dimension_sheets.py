@@ -12,6 +12,7 @@ from pxr import Gf, Usd, UsdGeom, UsdPhysics
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'compat'))
 from phase3_shared_env_cfg import INSTRUMENTS
 
 OUT = ROOT / 'output/instrument_dimension_sheets'

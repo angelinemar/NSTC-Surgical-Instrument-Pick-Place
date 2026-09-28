@@ -18,6 +18,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'compat'))
 from phase4_storage import require_commit
 from phase4_feedback import rgb_has_spatial_detail
 
