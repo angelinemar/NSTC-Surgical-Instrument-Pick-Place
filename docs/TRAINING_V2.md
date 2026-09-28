@@ -37,10 +37,14 @@ skill can train across all five targets. At inference call
 
 ## Camera
 
-2026-09-27 front framing: new sessions use a closer oblique-downward view of
-the main tabletop work grid, rather than including the front table fascia and
-large room margins. Tray-specific detail remains the tray camera's role. Front
-pose and focal length are stored in camera_layout.json. Resume loads the original
+2026-09-28 task-surface framing: new sessions use four close static views whose
+validated envelope includes the complete table spawn grid, tray, instrument
+footprint margin, and 18 cm lift height. Front/left/right are steep oblique views;
+top is vertical. The dedicated tray camera is a close vertical view of the full
+tray, while the gripper camera remains a moving manipulation close-up. This
+removes most room, floor, table fascia, and side-table pixels; robot parts may
+still occlude instruments during real motion. Camera poses and focal lengths are
+stored in camera_layout.json. Resume loads the original
 session manifest's layout, preserving its old view; use a new session for the
 new framing. No stored RGB is cropped or upscaled by this change.
 The final 448 front view passed a simulator scene audit and visual inspection;
