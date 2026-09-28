@@ -31,4 +31,8 @@ allowed = {'.gitignore', 'README.md', 'RUNME.ps1', 'record.py'}
 unexpected = sorted(p.name for p in ROOT.iterdir() if p.is_file() and p.name not in allowed)
 if unexpected:
     raise RuntimeError('Unexpected root files: ' + ', '.join(unexpected))
+for required in ('training/rfdetr_pipeline.py', 'training/rfdetr/requirements.txt',
+                 'scripts/launchers/setup_rfdetr.ps1'):
+    if not (ROOT/required).is_file():
+        raise RuntimeError('Missing training pipeline file: ' + required)
 print('PASS: clean root, organized compatibility shims, canonical env files, and five recorder backends')
