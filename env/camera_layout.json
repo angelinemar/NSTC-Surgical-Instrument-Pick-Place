@@ -1,9 +1,9 @@
 {
   "format_version": 1,
-  "preview": "native_square_directional_task_views_v5_no_crop",
+  "preview": "native_square_full_spawn_front_top_v6_no_crop",
   "cameras": {
     "cam_front": {
-      "focal_length": 23.0,
+      "focal_length": 15.0,
       "pos": [
         1.05,
         -0.1924,
@@ -31,11 +31,11 @@
       ]
     },
     "cam_top": {
-      "focal_length": 21.0,
+      "focal_length": 13.5,
       "pos": [
         0.32,
-        0.0576,
-        1.0
+        -0.1924,
+        1.15
       ],
       "rot": [
         0.0,

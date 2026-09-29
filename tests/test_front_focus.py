@@ -25,7 +25,7 @@ class FrontFocusTests(unittest.TestCase):
             importlib.reload(tuning)
             layout=json.loads((ROOT/'env/scene_layout.json').read_text())
             # Overlapping side-view regions jointly cover all spawn cells.
-            regions={'camera':(-.5224,.1376), 'cam_left':(-.2124,.3076),
+            regions={'camera':layout['grid_y'], 'cam_left':(-.2124,.3076),
                      'cam_right':(-.6924,-.1724)}
             self.assertLessEqual(regions['cam_right'][0],layout['grid_y'][0])
             self.assertGreaterEqual(regions['cam_left'][1],layout['grid_y'][1])
@@ -48,14 +48,26 @@ class FrontFocusTests(unittest.TestCase):
             self.assertLess(directions['cam_left'][1],-.5)
             self.assertGreater(directions['cam_right'][1],.5)
 
-    def test_top_is_vertical_and_covers_upper_cells(self):
+    def test_front_and_top_each_cover_entire_spawn_with_margin(self):
+        # This must fail for the old partial-grid framing even if other
+        # cameras cover the omitted cells. Each of these views is an overview.
+        layout=json.loads((ROOT/'env/scene_layout.json').read_text())
+        points=np.array([[x,y,z]
+                         for x in (layout['grid_x'][0]-.02,layout['grid_x'][1]+.02)
+                         for y in (layout['grid_y'][0]-.02,layout['grid_y'][1]+.02)
+                         for z in (0,.18)])
+        for name in ('camera','cam_top'):
+            c=tuning.PHASE3_CAMERAS[name];q=c['rot']
+            rotation=Rotation.from_quat([*q[1:],q[0]]).as_matrix()
+            local=(points-np.array(c['pos']))@rotation
+            self.assertTrue(np.all(local[:,2]>0),name)
+            xy=local[:,:2]/local[:,2:]*c['focal_length']/c['horizontal_aperture']
+            self.assertLess(float(np.abs(xy).max()),.48,name)
+
+    def test_top_is_vertical(self):
         c=tuning.PHASE3_CAMERAS['cam_top'];q=c['rot']
         rotation=Rotation.from_quat([*q[1:],q[0]]).as_matrix()
         np.testing.assert_allclose(rotation[:,2],[0,0,-1],atol=1e-6)
-        points=np.array([[x,y,z] for x in (.12,.52)
-                         for y in (-.1924,.3076) for z in (0,.12)])
-        local=(points-np.array(c['pos']))@rotation
-        self.assertLess(float(np.abs(local[:,:2]/local[:,2:]*c['focal_length']/c['horizontal_aperture']).max()),.48)
 
     def test_tray_fills_but_does_not_clip_tray_camera(self):
         with patch.dict(os.environ,{'P4_RESUME_CAMERA_MANIFEST':'','P4_CAMERA_FOV_SCALE':'0.75'}):

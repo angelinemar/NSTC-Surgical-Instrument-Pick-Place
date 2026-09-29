@@ -78,9 +78,9 @@ flowchart LR
 
 | Camera | RGB dataset in H5 | Purpose |
 | --- | --- | --- |
-| Front | `observations/front_rgb` | Tight elevated frontal view of the central spawn region |
+| Front | `observations/front_rgb` | Elevated frontal view covering the entire spawn grid |
 | Wrist / grip | `observations/wrist_rgb` | Moving close-up of the grasp and nearby instruments |
-| Top | `observations/cam_top_rgb` | Vertical close-up of the upper spawn cells |
+| Top | `observations/cam_top_rgb` | Vertical overview covering the entire spawn grid |
 | Left | `observations/cam_left_rgb` | Oblique view from the positive-Y side, focused on upper spawn cells |
 | Right | `observations/cam_right_rgb` | Oblique view from the negative-Y side, focused on lower spawn cells |
 | Tray | `observations/cam_tray_rgb` | Tight vertical close-up of the complete tray |
@@ -90,9 +90,9 @@ flowchart LR
 PNG previews contain sampled frames; H5 stores every frame within the selected segments.
 448 + FXAA improves sampling and edges, but does not guarantee that small objects remain clear at the final 224 resolution.
 Resume preserves the original session's camera layout; start a new session to use new framing.
-Front, left, and right retain distinct oblique viewing directions. Overlapping
-left/right regions jointly cover every spawn cell; front focuses on the middle
-and top on the upper cells. Tray has
+Front, left, and right retain distinct oblique viewing directions. Front and top
+each cover the entire spawn grid, including a 2 cm XY margin through 18 cm above
+the table. Left/right provide overlapping closer side views. Tray has
 its own tighter vertical view. A long rectangular work area cannot fill a square
 image in both axes, so some surrounding table remains visible. Robot parts can still
 cross a spawn view during manipulation because the arm physically operates above
