@@ -85,6 +85,11 @@ flowchart LR
 | Right | `observations/cam_right_rgb` | Oblique view from the negative-Y side, focused on lower spawn cells |
 | Tray | `observations/cam_tray_rgb` | Tight vertical close-up of the complete tray |
 
+Front is positioned at `(0.85, -0.1924, 0.85)` m in the scene frame, aimed
+downward at the spawn-grid center. Its field of view preserves the complete
+grid after moving the camera closer and lower. Raw frames remain 448 × 448;
+DP export remains 224 × 224.
+
 ![Directional camera framing: front, left, right, top, tray and wrist. Static preview at native 448; green grid is diagnostic only.](docs/media/camera_views.png)
 
 PNG previews contain sampled frames; H5 stores every frame within the selected segments.

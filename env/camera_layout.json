@@ -1,19 +1,19 @@
 {
   "format_version": 1,
-  "preview": "native_square_full_spawn_front_top_v6_no_crop",
+  "preview": "native_square_close_low_front_full_spawn_v7_no_crop",
   "cameras": {
     "cam_front": {
-      "focal_length": 15.0,
+      "focal_length": 10.49,
       "pos": [
-        1.05,
+        0.85,
         -0.1924,
-        1.15
+        0.85
       ],
       "rot": [
-        -0.21238378350404719,
-        0.6744576550862967,
-        0.6744576550862967,
-        -0.21238378350404719
+        -0.19915816003104994,
+        0.6784806756961075,
+        0.6784806756961075,
+        -0.19915816003104994
       ]
     },
     "grip_cam_b": {
@@ -31,7 +31,7 @@
       ]
     },
     "cam_top": {
-      "focal_length": 13.5,
+      "focal_length": 14.0,
       "pos": [
         0.32,
         -0.1924,
