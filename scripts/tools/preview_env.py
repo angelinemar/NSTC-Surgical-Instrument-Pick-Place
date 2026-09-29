@@ -20,8 +20,12 @@ def main():
     parser.add_argument('--headless', action='store_true')
     parser.add_argument('--frames', type=int, default=0)
     parser.add_argument('--capture-dir')
+    parser.add_argument('--frozen-preview', action='store_true',
+                        help='Capture static framing after spawn; skip final settling; never training data')
     parser.add_argument('--diagnose-rgb', action='store_true')
     parser.add_argument('--lighting-compare', action='store_true', help='Capture current and former P3 light levels in the same pose; restore current afterward')
+    parser.add_argument('--randomization-sweep', action='store_true',
+                        help='Capture eight real lighting/drape samples with fixed geometry; diagnostic only')
     parser.add_argument('--probe-recording', action='store_true')
     parser.add_argument('--motion-check', action='store_true', help='Diagnostic: execute unchanged scalpel pick/place; do not save a training episode')
     parser.add_argument('--pose-h5', type=Path, help='Diagnostic: replay final robot joint state from an H5 segment')
@@ -52,6 +56,11 @@ def main():
         spawn = scope['ensure_two_distractors'](spawn, 'scalpel', rng)
         spawn = scope['phase3_ensure_all_5_objects_in_spawn'](spawn, 'scalpel', rng)
         scope['force_episode_objects'](env, spawn, scope['choose_scalpel_pose_mode'](2))
+        if args.randomization_sweep or args.frozen_preview:
+            # This is a frozen illumination comparison, never a training episode.
+            # Avoid the recorder's second settling pass; retain requested geometry.
+            print('[P4 LIGHTING DIAGNOSTIC] Frozen spawn geometry; not certified for training.', flush=True)
+            return
         try:
             scope['wait_for_settle'](env)
         except RuntimeError as error:
@@ -152,6 +161,29 @@ def main():
                             h, w = rgb.shape[:2]
                             Image.fromarray(rgb).save(output/f'{label}_{name}.png')
                 capture('baseline')
+                if args.randomization_sweep:
+                    import json
+                    from src.recorder.domain_randomization import apply_episode_lighting
+                    saved_seed = os.environ.get('P4_RANDOMIZATION_SEED')
+                    saved_mode = os.environ.get('P4_RANDOMIZATION')
+                    records = []
+                    try:
+                        os.environ['P4_RANDOMIZATION'] = 'train'
+                        for sample_seed in (17, 91, 207, 503, 991, 2026, 4099, 8191):
+                            os.environ['P4_RANDOMIZATION_SEED'] = str(sample_seed)
+                            apply_episode_lighting(env, scope)
+                            label = f'seed_{sample_seed}'
+                            capture(label)
+                            records.append(dict(label=label, config=scope['_p4_domain_randomization']))
+                            (output/'randomization_samples.json').write_text(
+                                json.dumps(records, indent=2), encoding='utf-8')
+                    finally:
+                        for key, value in (('P4_RANDOMIZATION_SEED', saved_seed), ('P4_RANDOMIZATION', saved_mode)):
+                            if value is None:
+                                os.environ.pop(key, None)
+                            else:
+                                os.environ[key] = value
+                        apply_episode_lighting(env, scope)
                 if args.lighting_compare:
                     paths = {'/World/SharedAmbientLight':1800.,
                              '/World/envs/env_0/SharedKeyLight':45000.,
@@ -204,6 +236,8 @@ def main():
     try:
         scope['main']()
     except BaseException:
+        import traceback
+        traceback.print_exc()  # Preserve the actual failure before simulator teardown.
         env = scope.get('_p4_env')
         if env is not None:
             env.close()

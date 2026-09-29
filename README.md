@@ -78,19 +78,23 @@ flowchart LR
 
 | Camera | RGB dataset in H5 | Purpose |
 | --- | --- | --- |
-| Front | `observations/front_rgb` | Tight top-down view of the lower spawn cells; tray excluded |
+| Front | `observations/front_rgb` | Tight elevated frontal view of the central spawn region |
 | Wrist / grip | `observations/wrist_rgb` | Moving close-up of the grasp and nearby instruments |
-| Top | `observations/cam_top_rgb` | Tight top-down view of the upper spawn cells |
-| Left | `observations/cam_left_rgb` | Overlapping lower-spawn top-down view |
-| Right | `observations/cam_right_rgb` | Overlapping upper-spawn top-down view |
-| Tray | `observations/cam_tray_rgb` | Vertical close-up of the complete tray |
+| Top | `observations/cam_top_rgb` | Vertical close-up of the upper spawn cells |
+| Left | `observations/cam_left_rgb` | Oblique view from the positive-Y side, focused on upper spawn cells |
+| Right | `observations/cam_right_rgb` | Oblique view from the negative-Y side, focused on lower spawn cells |
+| Tray | `observations/cam_tray_rgb` | Tight vertical close-up of the complete tray |
+
+![Directional camera framing: front, left, right, top, tray and wrist. Static preview at native 448; green grid is diagnostic only.](docs/media/camera_views.png)
 
 PNG previews contain sampled frames; H5 stores every frame within the selected segments.
 448 + FXAA improves sampling and edges, but does not guarantee that small objects remain clear at the final 224 resolution.
 Resume preserves the original session's camera layout; start a new session to use new framing.
-The four static spawn cameras use overlapping optical views. Together they cover
-every spawn cell without spending most square-image pixels on the long table,
-unused pad, room, or floor. The tray has its own close-up. Robot parts can still
+Front, left, and right retain distinct oblique viewing directions. Overlapping
+left/right regions jointly cover every spawn cell; front focuses on the middle
+and top on the upper cells. Tray has
+its own tighter vertical view. A long rectangular work area cannot fill a square
+image in both axes, so some surrounding table remains visible. Robot parts can still
 cross a spawn view during manipulation because the arm physically operates above
 the target; the complete robot is not the subject of any static view.
 
