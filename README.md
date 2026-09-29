@@ -2,25 +2,14 @@
 
 An IsaacLab recorder for five surgical instruments, standalone detector datasets, and Diffusion Policy (DP).
 
-[Recorder](docs/RECORDER.md) · [Training](training/README.md) · [Inference](docs/INFERENCE.md) · [Debug](debug/README.md) · [Branch workflow](docs/BRANCHES.md)
+[Recorder](docs/RECORDER.md) · [Training](training/README.md) · [Inference](docs/INFERENCE.md) · [Branch workflow](docs/BRANCHES.md)
 
 ## Pipeline
 
-```mermaid
-flowchart LR
-    A["Control panel"] --> B["Scene + expert motion"]
-    B --> C{"Physical + RGB checks"}
-    C -->|Fail| D["Discard + log + retry"]
-    D --> B
-    C -->|Pass| E["Committed raw H5"]
-    E --> F["Detector export"]
-    E --> G["DP export"]
-    F --> H["448 RGB + COCO boxes"]
-    H --> L["RF-DETR standalone detector"]
-    G --> I["RGB 224 + state + target command"]
-    I --> J["Pick / Place models"]
-    J --> K["Held-out tests + closed-loop rollout"]
-```
+![Six-camera recording feeds independent DP and RF-DETR training and inference.](docs/media/pipeline.png)
+
+One recording feeds Pick DP, Place DP, and a standalone RF-DETR detector.
+RF-DETR is not an input to the current DP implementation.
 
 **Recording is not training. A successful export does not prove model accuracy.**
 
@@ -30,7 +19,6 @@ Replace the placeholder with your checkout location and run from the project roo
 
 ```powershell
 cd "<PROJECT_DIRECTORY>"
-.\RUNME.ps1 -Mode check
 .\RUNME.ps1 -Mode panel
 ```
 
@@ -51,9 +39,8 @@ Choose **Both: DP + detector** and **448** in the panel. The same raw sessions a
 
 ```mermaid
 flowchart LR
-    A["Raw sessions: native 448"] --> B["Audit + session split"]
-    B --> C["DP export: Lanczos to 224"]
-    B --> D["Detection export: retain 448"]
+    A["Raw sessions: native 448"] --> C["DP export: Lanczos to 224"]
+    A --> D["Detection export: retain 448"]
     C --> E["Separate Pick / Place DP models"]
     D --> F["RF-DETR standalone detector"]
     F --> G["Held-out test mAP / mAR / F1"]
@@ -129,20 +116,10 @@ flowchart LR
 | Record / resume | [Recorder](docs/RECORDER.md) | H5, commits, coverage |
 | Export / train | [Training](training/README.md) | Datasets and checkpoints |
 | Run a model | [Inference](docs/INFERENCE.md) | Action predictions; controller integration required |
-| Investigate a problem | [Debug](debug/README.md) | Logs, audits, failure previews |
 | Understand the modules | [Source](src/README.md) / [Environment](env/README.md) | Dependencies and configuration |
 
-## Quality status
-
-| Check | What is established | What it does not establish |
-| --- | --- | --- |
-| H5 / commit / resume | Checksum and consistency checks are implemented | Every attempt succeeds |
-| Six cameras / new front view | Scene previews and projection tests were inspected | Every object stays visible during robot motion |
-| Older 224 data | Sampled front-view targets were too small | Every dataset is unusable |
-| DP 224 export | The resize path is tested | The entire collection has passed visual review |
-| Training smoke test | The computation path executes | Recognition accuracy or manipulation success |
-
-Evidence: [training v2 contract](docs/TRAINING_V2.md). Deployment readiness has not been established.
+Runtime validation remains enabled. Recording success does not establish model
+accuracy or deployment readiness; see the training and inference guides.
 
 ## Structure and publication
 
@@ -150,9 +127,9 @@ Evidence: [training v2 contract](docs/TRAINING_V2.md). Deployment readiness has 
 | --- | --- |
 | `src/`, `backends/`, `env/` | Recorder, panel, configuration |
 | `training/` | Exporters, models, runtime |
-| `scripts/`, `tests/` | CLI, audits, regression tests |
+| `scripts/`, `tests/` | CLI, maintained utilities, regression tests |
 | `assets/` | Scene and instrument dependencies |
-| `docs/` | Guides and historical evidence |
+| `docs/` | Usage guides and pipeline illustration |
 | `compat/` | Legacy flat import names; canonical code remains in the folders above |
 | `datasets/`, `debug/`, `training/runs/` | Local output, not source for GitHub |
 
