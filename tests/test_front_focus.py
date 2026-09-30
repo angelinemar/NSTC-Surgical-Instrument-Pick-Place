@@ -69,6 +69,15 @@ class FrontFocusTests(unittest.TestCase):
         rotation=Rotation.from_quat([*q[1:],q[0]]).as_matrix()
         np.testing.assert_allclose(rotation[:,2],[0,0,-1],atol=1e-6)
 
+    def test_front_keeps_low_frontal_reference_angle(self):
+        c=tuning.PHASE3_CAMERAS['camera'];q=c['rot']
+        rotation=Rotation.from_quat([*q[1:],q[0]]).as_matrix()
+        self.assertGreater(c['pos'][2],.20)
+        self.assertLess(c['pos'][2],.40)
+        down=np.degrees(np.arcsin(-rotation[2,2]))
+        self.assertGreater(down,8.)
+        self.assertLess(down,20.)
+
     def test_tray_fills_but_does_not_clip_tray_camera(self):
         with patch.dict(os.environ,{'P4_RESUME_CAMERA_MANIFEST':'','P4_CAMERA_FOV_SCALE':'0.75'}):
             importlib.reload(tuning)

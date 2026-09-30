@@ -184,12 +184,14 @@ class Panel:
             button=self.help_button(buttons,label,command,hint); button.pack(side='left',padx=4); self.action_buttons[label]=button
         ttk.Label(traypage,text='GRID CYCLES\n1 round = one saved success in each cell. 2 rounds = two per cell.\nCells run in order 0-9; offset, yaw and distractors randomize. A failure never advances the cell.\n\nMAP LEGEND\nBlue CURRENT = active cell. Green DONE = full quota. PARTIAL = some rounds completed.\nMarkers exist only in this panel, not in recorded RGB/semantic images.\n\nREACHABILITY\nCoverage is a requested schedule, not proof every pose is reachable. Near-base cells can fail.\nThe yellow circle is hidden; existing safety validation is unchanged.',justify='left',padding=8).pack(anchor='w')
         ttk.Label(results,text='Files from the active or selected run',font=('Segoe UI',13,'bold'),padding=8).pack(anchor='w')
-        ttk.Label(results,text='Saved skill selects pick_policy / place_policy. Dataset purpose selects downstream consumers.\nBoth consumers share raw RGB once; exporters create separate training artifacts. No model is trained by Record.\nFailure previews are diagnostics, not training samples. capture_contract.json records your choices.',padding=8).pack(anchor='w')
+        ttk.Label(results,text='Saved skill selects pick_policy / place_policy. Dataset purpose selects downstream consumers.\nBoth consumers share raw RGB once; exporters create separate training artifacts. No model is trained by Record.\nFailure evidence is JSON only; PNG previews are exported on demand below.',padding=8).pack(anchor='w')
         output_bar=ttk.LabelFrame(results,text='Open in File Explorer',padding=12); output_bar.pack(fill='x',pady=8)
-        for label,kind in (('Run folder','run'),('Pick H5','pick'),('Place H5','place'),('GIF / previews','gif'),('Failure previews','failure')):
+        for label,kind in (('Run folder','run'),('Pick H5','pick'),('Place H5','place'),('Existing GIFs','gif'),('Failure evidence','failure')):
             self.help_button(output_bar,label,lambda k=kind:self.open_output(k),'Open '+label+' for the active/selected run. Missing outputs are explained; files are never fabricated.').pack(side='left',padx=3)
         self.help_button(results,'Browse saved run...',self.choose_output,'Select an older run/object folder to inspect its H5, GIF and failure previews. Available when no run is active.').pack(anchor='w',pady=8)
         self.help_button(results,'Export collection for training...',self.export_collection,'Select the parent folder containing completed train / valid / test sessions. Exports selected dataset purpose without recording again.').pack(anchor='w',pady=4)
+        self.help_button(results,'Export PNG previews from folder...',self.export_png_previews,'Choose a saved dataset folder, then a separate destination. Exports all available camera RGB, depth previews and semantic ID PNGs. No GIF or video.').pack(anchor='w',pady=4)
+        ttk.Label(results,text='Recording saves H5 sensor data, not automatic PNG previews. Export PNGs only when needed.',padding=6,wraplength=750).pack(anchor='w')
         ttk.Label(results,text='Selected output path (copyable):',padding=6).pack(anchor='w')
         ttk.Entry(results,textvariable=self.output_text,state='readonly').pack(fill='x',pady=4)
         ttk.Separator(footer,orient='horizontal').pack(fill='x',pady=5)
@@ -421,6 +423,37 @@ class Panel:
         folder=filedialog.askdirectory(title='Destination for new recordings (existing data stays untouched)')
         if folder: self.destination.set(folder)
 
+    def export_png_previews(self):
+        if self.process or self.export_process:
+            messagebox.showinfo('Busy','Finish the active recording or export first.'); return
+        source=filedialog.askdirectory(title='Source: recorded run or collection containing H5 files')
+        if not source: return
+        from src.ui.preview_export_dialog import PreviewSelectionDialog
+        selection=PreviewSelectionDialog(self.root,source).result
+        if not selection: return
+        parent=filedialog.askdirectory(title='Destination for PNG previews (outside the source dataset)')
+        if not parent: return
+        src,dst=Path(source).resolve(),Path(parent).resolve()
+        if src==dst or src in dst.parents:
+            messagebox.showerror('Separate destination required','Choose a destination outside the source dataset.'); return
+        stride=selection['stride']
+        if not messagebox.askyesno('Export PNG images?',f"Selected H5 files: {len(selection['files'])}\nFrames: {selection['mode']} | interval: {stride}\nDestination: {parent}\n\nAll available cameras: RGB + colored semantics + raw ID masks + depth.\nAll-frame exports can use substantial disk space. Continue?"): return
+        stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        output=dst/('png_previews_'+stamp)
+        log=ROOT/'debug'/'logs'/('png_export_'+stamp+'.log'); log.parent.mkdir(parents=True,exist_ok=True)
+        self.export_log=log.open('w',encoding='utf-8')
+        launcher=ROOT.parents[3]/'_isaac_sim'/'python.bat'
+        try:
+            self.export_process=subprocess.Popen([str(launcher),str(ROOT/'scripts/tools/export_preview_png.py'),
+                '--source',source,'--output',str(output),'--stride',str(stride),
+                '--frame-mode',selection['mode'],'--color-semantic','--files',*selection['files']],cwd=ROOT,
+                stdout=self.export_log,stderr=subprocess.STDOUT)
+        except Exception as exc:
+            self.export_log.close(); self.export_log=None
+            messagebox.showerror('PNG export could not start',str(exc)); return
+        self.status.set(f'Exporting PNG previews: {output}. Log: {log}')
+        self.root.after(500,lambda:self.poll_export(output,log))
+
     def export_collection(self):
         if self.process or self.export_process:
             messagebox.showinfo('Busy','Finish the active recording or export first.'); return
@@ -638,7 +671,7 @@ class Panel:
             explanation={'pick':'No pick folder yet; wait for a saved episode and check record mode.',
                          'place':'No place folder yet; pick-only recording does not produce place data.',
                          'gif':'No GIF has been generated in this run. H5 recording and GIF export are separate.',
-                         'failure':'No diagnostic failure previews have been written.'}.get(kind,'Folder unavailable.')
+                         'failure':'No failure evidence has been written. New recordings retain JSON evidence, not PNG snapshots.'}.get(kind,'Folder unavailable.')
             messagebox.showinfo('Not available yet',explanation+'\n\nRun: '+str(output)); return
         try:
             os.startfile(str(target))

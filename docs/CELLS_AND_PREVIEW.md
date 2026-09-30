@@ -16,8 +16,6 @@
 ## Verified
 
 `verify_cell_spawn.py`: 5000 randomized spawn sets passed for all five targets.
-`verify_migration.py`: all five backend sources remain asset-path-only copies
-of P3, with P4 shared hooks supplying the new requested placement behavior.
 `validation/cells_tuner.log`: all five settled footprints passed after recenter;
 RGB readiness passed; six live 224x224 RGB uploads completed without resize.
 Test camera pose save/load comparison passed (max translation error <5e-8m,

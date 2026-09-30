@@ -96,4 +96,4 @@ saves, not attempts. There is no guarantee of 100% physical success.
 
 Use GUI for now: the headless validation exposed intermittent flat gray RGB
 buffers on this installation. The cause is unresolved; a new pre-save guard
-rejects them. See `TRAY_PLACEMENT_VALIDATION.md` before production collection.
+rejects them. Inspect representative recordings before collecting at scale.

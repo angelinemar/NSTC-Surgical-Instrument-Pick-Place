@@ -78,21 +78,35 @@ flowchart LR
 
 | Camera | RGB dataset in H5 | Purpose |
 | --- | --- | --- |
-| Front | `observations/front_rgb` | Elevated frontal view covering the entire spawn grid |
+| Front | `observations/front_rgb` | Low frontal perspective covering the entire spawn grid |
 | Wrist / grip | `observations/wrist_rgb` | Moving close-up of the grasp and nearby instruments |
 | Top | `observations/cam_top_rgb` | Vertical overview covering the entire spawn grid |
 | Left | `observations/cam_left_rgb` | Oblique view from the positive-Y side, focused on upper spawn cells |
 | Right | `observations/cam_right_rgb` | Oblique view from the negative-Y side, focused on lower spawn cells |
 | Tray | `observations/cam_tray_rgb` | Tight vertical close-up of the complete tray |
 
-Front is positioned at `(0.85, -0.1924, 0.85)` m in the scene frame, aimed
-downward at the spawn-grid center. Its field of view preserves the complete
-grid after moving the camera closer and lower. Raw frames remain 448 × 448;
+Front is positioned at `(1.10, -0.1924, 0.32)` m in the scene frame, with a
+13-degree downward angle inspired by the low Perspective viewport reference.
+Its square view retains the full spawn grid and lift envelope; it is not an
+exact copy of a landscape viewport. Background and robot occlusions may remain.
+Raw frames remain 448 × 448;
 DP export remains 224 × 224.
 
 ![Directional camera framing: front, left, right, top, tray and wrist. Static preview at native 448; green grid is diagnostic only.](docs/media/camera_views.png)
 
-PNG previews contain sampled frames; H5 stores every frame within the selected segments.
+Recorders save sensor frames in H5, without automatic episode, failure, or scene-audit PNGs.
+Existing previews are not deleted. Restart the recorder process to use this behavior.
+
+To create images on demand: **Control panel → Files & export → Export PNG previews from folder...**
+Choose a source run/collection, filter **Pick / Place / Both**, and select the episode
+files to inspect. Use **Middle frame** for a quick check, First/Last, or all frames with
+an interval (`1` = every frame). Then choose a separate destination. All available cameras are exported at their
+stored resolution, without cropping or resizing. RGB PNGs preserve recorded pixels;
+semantic PNGs include both raw class IDs and a separate `semantic_color` visualization
+using H5 class metadata; `semantic_legend.json` records the colors. Depth PNGs are 0–2 m
+display previews, not metric training data. No GIFs or videos are generated.
+The source H5 files remain unchanged; failed-attempt images cannot be recovered from
+H5 because failed trajectories are not saved. Failure evidence JSON remains available.
 448 + FXAA improves sampling and edges, but does not guarantee that small objects remain clear at the final 224 resolution.
 Resume preserves the original session's camera layout; start a new session to use new framing.
 Front, left, and right retain distinct oblique viewing directions. Front and top

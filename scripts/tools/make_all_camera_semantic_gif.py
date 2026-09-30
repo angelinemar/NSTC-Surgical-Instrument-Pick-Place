@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import h5py
@@ -19,29 +20,26 @@ CAMERAS = (
     ("TRAY", "cam_tray_semantic"),
 )
 
-CLASSES = (
-    (0, "background", (20, 20, 20)),
-    (1, "robot", (60, 150, 255)),
-    (2, "tray", (255, 150, 40)),
-    (3, "scalpel", (80, 220, 100)),
-    (4, "scissor", (245, 220, 60)),
-    (5, "love", (225, 80, 210)),
-    (6, "kelly", (80, 225, 220)),
-    (7, "scalpel2", (255, 90, 90)),
-)
-PALETTE = {class_id: color for class_id, _, color in CLASSES}
+COLORS = {
+    "background": (20, 20, 20), "robot": (60, 150, 255),
+    "surgical_tray": (255, 150, 40), "scalpel": (80, 220, 100),
+    "scissor": (245, 220, 60), "love_retractor": (225, 80, 210),
+    "kelly": (80, 225, 220), "scalpel_type2": (255, 90, 90),
+    "table": (45, 150, 75), "floor": (110, 110, 120),
+    "room": (180, 170, 155),
+}
 
 
 def decode_text(value) -> str:
     return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else str(value)
 
 
-def colorize(segmentation: np.ndarray) -> Image.Image:
+def colorize(segmentation: np.ndarray, classes: dict[str, int]) -> Image.Image:
     segmentation = np.asarray(segmentation)
     rgb = np.zeros((*segmentation.shape[:2], 3), dtype=np.uint8)
-    for class_id, color in PALETTE.items():
-        rgb[segmentation == class_id] = color
-    unknown = ~np.isin(segmentation, tuple(PALETTE))
+    for label, class_id in classes.items():
+        rgb[segmentation == class_id] = COLORS.get(label, (255, 255, 255))
+    unknown = ~np.isin(segmentation, tuple(classes.values()))
     rgb[unknown] = (255, 255, 255)
     return Image.fromarray(rgb, "RGB")
 
@@ -74,6 +72,9 @@ def main() -> None:
 
     for phase, path in zip(("PICK", "PLACE"), files):
         with h5py.File(path, "r") as h5:
+            if "semantic_class_ids" not in h5.attrs:
+                raise KeyError(f"semantic_class_ids metadata missing in {path}")
+            classes = json.loads(h5.attrs["semantic_class_ids"])
             obs = h5["observations"]
             available = [(label, key) for label, key in CAMERAS if key in obs]
             if not available:
@@ -95,7 +96,7 @@ def main() -> None:
                 for camera_index, (label, key) in enumerate(available):
                     row, col = divmod(camera_index, 3)
                     x, y = col * args.panel_width, row * (panel_h + header_h)
-                    panel = colorize(obs[key][index]).resize(
+                    panel = colorize(obs[key][index], classes).resize(
                         (args.panel_width, panel_h), Image.Resampling.NEAREST)
                     frame.paste(panel, (x, y + header_h))
                     draw.text((x + 7, y + 7), label, fill=(255, 255, 255))
@@ -103,12 +104,14 @@ def main() -> None:
                 legend_y = 2 * (panel_h + header_h) + 8
                 draw.text((7, legend_y), f"{phase} | frame {global_frame:04d}", fill=(255, 220, 80))
                 draw.text((7, legend_y + 20), stage, fill=(230, 230, 230))
-                for legend_index, (_, label, color) in enumerate(CLASSES):
+                ordered_classes = sorted(classes.items(), key=lambda item: item[1])
+                for legend_index, (label, class_id) in enumerate(ordered_classes):
                     col, row = divmod(legend_index, 4)
                     lx = args.panel_width + col * 145
                     ly = legend_y + row * 22
+                    color = COLORS.get(label, (255, 255, 255))
                     draw.rectangle((lx, ly, lx + 14, ly + 14), fill=color)
-                    draw.text((lx + 19, ly), label, fill=(235, 235, 235))
+                    draw.text((lx + 19, ly), f"{class_id}:{label}", fill=(235, 235, 235))
 
                 frames.append(frame.quantize(colors=128, method=Image.Quantize.MEDIANCUT))
                 global_frame += 1

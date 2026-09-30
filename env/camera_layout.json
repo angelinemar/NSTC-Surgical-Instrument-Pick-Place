@@ -1,19 +1,19 @@
 {
   "format_version": 1,
-  "preview": "native_square_close_low_front_full_spawn_v7_no_crop",
+  "preview": "native_square_low_frontal_reference_v8_no_crop",
   "cameras": {
     "cam_front": {
-      "focal_length": 10.49,
+      "focal_length": 8.28,
       "pos": [
-        0.85,
+        1.1,
         -0.1924,
-        0.85
+        0.32
       ],
       "rot": [
-        -0.19915816003104994,
-        0.6784806756961075,
-        0.6784806756961075,
-        -0.19915816003104994
+        -0.4402103171500078,
+        0.5533668554175337,
+        0.5533668554175337,
+        -0.4402103171500078
       ]
     },
     "grip_cam_b": {

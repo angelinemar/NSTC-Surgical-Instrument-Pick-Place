@@ -651,24 +651,16 @@ def install_feedback(ns, other_get):
             env.reset()
 
     def failure_preview(recorder, stage):
-        # Diagnostic PNGs only, never failed trajectories in policy H5 folders.
+        # Retain failure evidence, but do not duplicate RGB as diagnostic PNGs.
         if not hasattr(ns['args_cli'], 'out_dir'):
             return
         try:
-            from PIL import Image
             output = Path(ns['args_cli'].out_dir)/'failure_previews'/f"attempt_{ns.get('_p4_attempt_number',0):04d}_{stage}"
-            images = {'cam_front':getattr(recorder,'front_rgb',[]),
-                      'grip_cam_b':getattr(recorder,'grip_b_rgb',[])}
-            images.update(getattr(recorder,'extra_camera_rgb',{}))
-            for name, frames in images.items():
-                if len(frames):
-                    output.mkdir(parents=True,exist_ok=True)
-                    Image.fromarray(frames[-1]).save(output/f'{name}.png')
             evidence=getattr(recorder,'_p4_evidence',None)
             if evidence:
                 output.mkdir(parents=True,exist_ok=True)
                 (output/'evidence.json').write_text(json.dumps(evidence.summary(),indent=2),encoding='utf-8')
-            print('[P4 FAILURE PREVIEW]',output,'(last recorded frame, not training data)',flush=True)
+            print('[P4 FAILURE EVIDENCE]',output,'(JSON only; no PNGs)',flush=True)
         except Exception as exc:
             print('[P4 FAILURE PREVIEW ERROR]',repr(exc),flush=True)
 

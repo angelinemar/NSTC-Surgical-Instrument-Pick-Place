@@ -1,6 +1,6 @@
 # Recorder
 
-[Overview](../README.md) · [Environment](../env/README.md) · [Debug](../debug/README.md)
+[Overview](../README.md) · [Environment](../env/README.md)
 
 ```mermaid
 flowchart LR

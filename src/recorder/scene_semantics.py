@@ -24,23 +24,16 @@ def audit_preview(env, ns):
     import json
     from pathlib import Path
     import numpy as np
-    from PIL import Image, ImageDraw
     names = ('camera','grip_cam_b','cam_top','cam_left','cam_right','cam_tray')
     size = env.scene['camera'].cfg.width
-    canvas = Image.new('RGB',(size*3,size*4))
     counts = {}
-    for i,name in enumerate(names):
+    for name in names:
         camera = env.scene[name]
-        rgb = camera.data.output['rgb'][0,...,:3].detach().cpu().numpy().astype(np.uint8)
         semantic = ns['_phase3_extract_semantic_u16'](camera,size,size,cam_name=name)
         ids, pixels = np.unique(semantic, return_counts=True)
         counts[name] = {str(int(k)):int(v) for k,v in zip(ids,pixels)}
-        x,y = (i%3)*size,(i//3)*size*2
-        canvas.paste(Image.fromarray(rgb),(x,y))
-        canvas.paste(Image.fromarray(ns['colorize_semantic'](semantic)),(x,y+size))
-        ImageDraw.Draw(canvas).text((x+4,y+4),name,fill='white',stroke_width=1,stroke_fill='black')
     out = Path(ns['args_cli'].out_dir)
-    canvas.save(out/'scene_camera_semantic_preview.png')
+    # Semantic validation remains mandatory; image previews are on-demand only.
     report = dict(pixel_counts=counts, classes=ns['PHASE3_SEMANTIC_CLASS_IDS'],clutter=ns.get('_p4_clutter'))
     (out/'scene_label_audit.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     for label in ('robot','surgical_tray','table',ns['PHASE3_TARGET_OBJECT']):

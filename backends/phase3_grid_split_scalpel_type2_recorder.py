@@ -1767,7 +1767,7 @@ class EpisodeRecorder:
             ns.create_dataset("action_mean", data=actions.mean(0).astype(np.float32))
             ns.create_dataset("action_std", data=(actions.std(0) + 1e-8).astype(np.float32))
 
-        self._export_preview_folders(ep_idx)
+        # PNG previews are exported on demand from H5 in the control panel.
 
         print(f"[Recorder] Saved episode {ep_idx} | steps={T} | path={path}")
         self._reset()
@@ -2636,7 +2636,7 @@ def save_realcompat_segment(recorder, ep_idx, segment, out_dir, success, object_
         ns.create_dataset("action_mean", data=actions.mean(0).astype(np.float32))
         ns.create_dataset("action_std", data=(actions.std(0) + 1e-8).astype(np.float32))
 
-    export_segment_preview(recorder, out_dir, ep_idx, indices, dict(meta or {}, policy_skill=segment, target_object=object_name_l))
+    # Keep sensor data in H5 only; PNG export is an explicit offline action.
     print(f"[SEGMENT SAVE] {segment} | object={object_name_l} | steps={T} | path={path}")
     return True
 
@@ -4247,7 +4247,7 @@ def main():
             "distractor_objects": "scissor,scalpel,love_retractor",
         })
 
-        print("[POSTPROCESS] motion complete; compressing pick/place H5 and exporting previews...")
+        print("[POSTPROCESS] motion complete; compressing pick/place H5 (no automatic PNG previews)...")
         ok_pick = save_realcompat_segment(recorder, saved_count, "pick", pick_out_dir, success, "scalpel_type2", meta=meta)
         ok_place = save_realcompat_segment(recorder, saved_count, "place", place_out_dir, success, "scalpel_type2", meta=meta)
         print("[POSTPROCESS] episode files finished")

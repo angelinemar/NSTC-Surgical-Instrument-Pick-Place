@@ -6,6 +6,8 @@
 
 Choose **Both: DP + detector** and **448** in the recorder panel.
 
+![RF-DETR surgical-instrument pipeline from recording through held-out evaluation and inference.](../docs/media/rfdetr_pipeline_white_v1.png)
+
 ```mermaid
 flowchart LR
     A["Completed raw sessions: 6 cameras at 448"] --> B["Commit, alignment, and split audit"]
@@ -124,4 +126,4 @@ flowchart LR
 
 Passing the export and RF-DETR gate means the files are structurally safe to start training. It does not guarantee accuracy, class balance, real-camera transfer, or manipulation success; those require metric review and closed-loop evaluation.
 
-[Local data](datasets/README.md) | [Debug](../debug/README.md)
+[Local data](datasets/README.md)

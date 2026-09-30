@@ -5,7 +5,6 @@
 !/training/datasets/README.md
 /training/runs/
 /debug/*
-!/debug/README.md
 /archive/
 /output/
 /test_runs/
@@ -32,3 +31,26 @@ Thumbs.db
 *.key
 credentials.json
 service-account*.json
+
+# Historical reports stay local; keep only the public illustration builder.
+/reporting/*
+!/reporting/draw_pipeline.py
+/docs/ACTIVE_FILES.md
+/docs/CURRENT_STATUS.md
+/docs/FEEDBACK_FIXES.md
+/docs/FEEDBACK_V5_GUIDE.md
+/docs/FEEDBACK_V5_VALIDATION.md
+/docs/FEEDBACK_VALIDATION.md
+/docs/LAYOUT_REVISION.md
+/docs/NEAR_BASE_APPROACH_FIX.md
+/docs/README_P4.md
+/docs/README_PRE_ORGANIZATION.md
+/docs/ROOT_FILE_AUDIT.json
+/docs/ROOT_FILE_AUDIT.md
+/docs/SCALE_READINESS.md
+/docs/TRAINING_AND_GRID_AUDIT.md
+/docs/TRAY_PLACEMENT_VALIDATION.md
+/docs/VALIDATION.md
+/docs/history/
+/scripts/tools/verify_migration.py
+/compat/verify_migration.py

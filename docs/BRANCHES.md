@@ -24,7 +24,7 @@ flowchart TD
 | `angel/main` | Stable integration; GitHub default | [Overview](../README.md) |
 | `angel/recorder` | Recorder, panel, cameras, raw H5 | [Recorder](RECORDER.md) |
 | `angel/training` | Export, detector, DP, evaluation | [Training](../training/README.md) |
-| `angel/debug` | Diagnostics and experiments | [Debug](../debug/README.md) |
+| `angel/debug` | Diagnostics and experiments | Branch-local documentation |
 | `angel/inference` | Runtime and controller integration | [Inference](INFERENCE.md) |
 | `jordan` | Orphan history: initially README-only, with no Angel source | README on the Jordan branch |
 | `main` | Legacy code baseline; not for new feature work | Code baseline at `7c37aed`; documentation may receive maintenance updates |
