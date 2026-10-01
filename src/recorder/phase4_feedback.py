@@ -52,11 +52,13 @@ def completed_episode_count(out_dir, object_name, mode):
     import h5py
     root = Path(out_dir)
     from phase4_storage import recover, require_commit
-    recover(root)
+    from src.recorder.episode_split import roots, episode_files
+    for base in roots(root):
+        recover(base)
     excluded = 'place' if mode == 'pick' else 'pick' if mode == 'place' else None
-    if excluded and any(root.glob(excluded+'_policy/*/episode_*.h5')):
+    if excluded and episode_files(root, excluded):
         raise RuntimeError('Existing opposite-skill data would be pruned; use a separate output directory')
-    groups = {skill:sorted((root/(skill+'_policy')/object_name).glob('episode_*.h5'))
+    groups = {skill:episode_files(root, skill, object_name)
               for skill in ('pick','place')}
     selected = ('pick','place') if mode == 'both' else (mode,)
     if any(groups[s] for s in groups if s not in selected):
@@ -742,7 +744,14 @@ def install_feedback(ns, other_get):
                    bound.arguments['object_name'], bound.arguments['ep_idx'])
             if key not in transactions:
                 mode = getattr(ns.get('args_cli'), 'record_mode', 'both')
-                transactions[key] = EpisodeTransaction(*key, mode)
+                if os.environ.get('P4_DATASET_SPLIT') == 'auto':
+                    from src.recorder.episode_split import assignment
+                    assigned = assignment(key[0], key[1], key[2], meta)
+                    transactions[key] = EpisodeTransaction(
+                        Path(key[0]) / assigned['dataset_split'], key[1], key[2], mode, assigned)
+                    print(f"[P4 SPLIT] episode {key[2]} cell {assigned['split_cell_id']} -> {assigned['dataset_split']}", flush=True)
+                else:
+                    transactions[key] = EpisodeTransaction(*key, mode)
             result = transactions[key].save(original_save, bound)
             if bound.arguments['segment'] == 'place':
                 transactions.pop(key, None)
@@ -756,8 +765,12 @@ def install_feedback(ns, other_get):
         limit = int(os.environ.get('P4_MAX_ATTEMPTS', 0))
         if limit > 0 and attempt >= limit:
             raise RuntimeError(f'ATTEMPT_BUDGET_EXHAUSTED: {saved_count}/{target_success} successes in {attempt}/{limit} attempts')
-        ns['_p4_attempt_number'] = attempt+1
+        if os.environ.get('P4_DATASET_SPLIT') == 'auto' and '_p4_split_attempt_offset' not in ns:
+            from src.recorder.episode_split import committed_assignments
+            history=committed_assignments(ns['args_cli'].out_dir,ns['PHASE3_TARGET_OBJECT'])
+            ns['_p4_split_attempt_offset']=max((r.get('split_randomization_attempt',0) for r in history),default=0)
+        ns['_p4_attempt_number'] = attempt+1+ns.get('_p4_split_attempt_offset',0)
         from phase4_session import before_attempt
-        before_attempt(ns,attempt+1,saved_count,target_success)
+        before_attempt(ns,ns['_p4_attempt_number'],saved_count,target_success)
     ns['_p4_attempt_guard'] = attempt_guard
     print('[P4 FEEDBACK] binary close/open + measured two-finger gate; pose timeout aborts; object-specific grasp geometry retained', flush=True)

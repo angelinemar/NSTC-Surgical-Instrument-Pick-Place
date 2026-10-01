@@ -70,6 +70,12 @@ def require_commit(path, h5):
     relative = str(Path(path).resolve().relative_to(root))
     if data['transaction_id'] != h5.attrs['pair_transaction_id'] or relative not in data['files']:
         raise ValueError('Commit does not match episode')
+    if h5.attrs.get('split_contract') == 'episode_grid_balanced_v1':
+        for field in ('split_contract','dataset_split','split_cell_id','split_yaw_bin'):
+            if data.get(field) != h5.attrs.get(field):
+                raise ValueError('Commit split metadata differs from episode')
+        if root.name != data['dataset_split']:
+            raise ValueError('Episode folder differs from committed split')
     if any(not contained(root, p).is_file() for p in data['files']):
         raise ValueError('Committed episode is missing a segment')
     if h5.attrs['storage_contract'] == 'journaled_episode_v2':
@@ -80,11 +86,12 @@ def require_commit(path, h5):
 
 
 class EpisodeTransaction:
-    def __init__(self, root, object_name, index, mode):
+    def __init__(self, root, object_name, index, mode, split_metadata=None):
         self.root = Path(root).resolve()
         self.name = f'episode_{index:06d}'
         self.skills = ('pick', 'place') if mode == 'both' else (mode,)
         self.object_name = object_name
+        self.split_metadata = split_metadata or {}
         self.token = uuid.uuid4().hex
         self.stage = self.root / '.pending' / self.token
         self.stage.mkdir(parents=True)
@@ -94,6 +101,7 @@ class EpisodeTransaction:
             raise FileExistsError('Refusing to replace existing episode')
         self.journal = dict(transaction_id=self.token, files=files,
                             commit=str(self.commit.relative_to(self.root)), storage_contract='journaled_episode_v2')
+        self.journal.update(self.split_metadata)
         atomic_json(self.stage / 'journal.json', self.journal)
         self.saved = set()
 
@@ -104,6 +112,7 @@ class EpisodeTransaction:
         destination = self.stage / (skill + '_policy') / self.object_name
         bound.arguments['out_dir'] = str(destination)
         bound.arguments['meta'].update(storage_contract='journaled_episode_v2', pair_transaction_id=self.token)
+        bound.arguments['meta'].update(self.split_metadata)
         if not writer(*bound.args, **bound.kwargs):
             raise RuntimeError('Segment writer did not complete')
         from src.recorder.instance_labels import append_segment

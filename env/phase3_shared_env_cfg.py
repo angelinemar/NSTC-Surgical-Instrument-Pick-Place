@@ -117,6 +117,8 @@ INSTRUMENTS = {
     "scalpel_type2": AssetSpec("scalpel_type2_root.usd", "ScalpelType2", (0.00715074,) * 3, 0.10, (0.62, 0.30, 0.006)),
 }
 
+from env.instrument_materials import INSTRUMENT_MATERIAL_OVERRIDES
+
 # Optional static environment assets. Disabled by default to preserve the
 # original dataset scene. Add their names to RecorderEnvRequest.environment.
 @dataclass(frozen=True)
@@ -337,12 +339,21 @@ def apply_shared_env_cfg(env_cfg, request: RecorderEnvRequest, *, camera_width: 
 
     def rigid_cfg(name: str, *, prim_name: str | None = None, canonical: bool = False):
         spec = INSTRUMENTS[name]
+        material = INSTRUMENT_MATERIAL_OVERRIDES.get(name)
         return RigidObjectCfg(
             prim_path=f"{{ENV_REGEX_NS}}/{prim_name or spec.prim_name}",
             spawn=sim_utils.UsdFileCfg(
                 usd_path=str(ASSET_DIR / spec.usd),
                 scale=spec.scale,
                 semantic_tags=[("class", name)],
+                visual_material=(
+                    sim_utils.PreviewSurfaceCfg(
+                        diffuse_color=material.diffuse_color,
+                        metallic=material.metallic,
+                        roughness=material.roughness,
+                    )
+                    if material is not None else None
+                ),
                 rigid_props=sim_utils.RigidBodyPropertiesCfg(
                     disable_gravity=False,
                     linear_damping=0.0 if canonical else 0.8,

@@ -30,7 +30,8 @@ def require_saved_goal(metrics, args):
     requested = int(_forwarded_value(args,('--episodes',),'1'))
     mode = _forwarded_value(args,('--record_mode',),'both')
     selected = ('pick','place') if mode=='both' else (mode,)
-    sets = [{p.name for p in (metrics.out_dir/(s+'_policy')/metrics.object_name).glob('episode_*.h5')} for s in selected]
+    from src.recorder.episode_split import episode_files
+    sets = [{p.name for p in episode_files(metrics.out_dir,s,metrics.object_name)} for s in selected]
     count = len(set.intersection(*sets))
     if count < requested:
         raise RuntimeError(f'COLLECTION_INCOMPLETE: saved={count}/{requested}; inspect run_metrics_summary.txt')

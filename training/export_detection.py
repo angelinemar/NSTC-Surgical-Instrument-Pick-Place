@@ -74,7 +74,7 @@ def export(splits, output, stride=20):
     manifest = dict(contract='p4_detection_v1', export_complete=False, production_ready=False,
                     stride=stride, box_convention='visible_xywh_per_rigid_instance',
                     categories=[dict(id=i+1, name=n) for i,n in enumerate(CLASSES)],
-                    sources=[], splits={}, split_rule='independent_run_no_frame_split',
+                    sources=[], splits={}, split_rule='committed_episode_or_legacy_session_no_frame_split',
                     rfdetr_compatible=True, rfdetr_dataset_file='roboflow',
                     rfdetr_annotation='_annotations.coco.json')
     seen_transactions, seen_files, seen_images, seen_seeds = {}, {}, {}, {}
@@ -116,6 +116,14 @@ def export(splits, output, stride=20):
                                 randomization=json.loads(h.attrs.get('domain_randomization', '{}')))
                 manifest['sources'].append(metadata)
                 seed = metadata['randomization'].get('session_seed')
+                if h.attrs.get('split_contract') == 'episode_grid_balanced_v1':
+                    # Episodes are independently reset/randomized within the session.
+                    # Sharing its base seed is intentional; an actual episode seed
+                    # must never cross splits. Pair/duplicate-image gates still apply.
+                    episode_seed = metadata['randomization'].get('seed')
+                    if episode_seed is None:
+                        raise ValueError('Automatic split requires recorded episode randomization seed')
+                    seed = ('episode', seed, episode_seed, str(h.attrs['target_object']))
                 if seed is not None and seen_seeds.setdefault(seed,split) != split:
                     raise ValueError('Randomization session seed crosses dataset splits')
                 for camera in CAMERAS:

@@ -28,7 +28,19 @@ RF-DETR and DP are trained separately. Replacing DP with OpenVLA later does not 
 
 ## 1. Export after collection
 
-The raw collection must contain complete, independently recorded `train`, `valid`, and `test` sessions. Frames from one session are never randomly divided across splits.
+The raw collection must contain saved `train`, `valid`, and `test` episodes.
+New automatic collections split complete episode pairs within each session;
+legacy fixed-split sessions remain supported. Frames, cameras, and Pick/Place
+segments from one episode always remain together. Session seeds may be shared
+by automatic splits, but repeated episode randomization seeds and duplicate
+images across splits are rejected. This tests new randomized episodes in the
+same simulated environment; it is not a held-out room or real-world evaluation.
+
+For 10 grid cells and 10 cycles, each cell supplies 7 Train, 2 Valid, and 1 Test
+episode. Small collections prioritize Train, then Valid, then Test; incomplete
+collections can be imbalanced until more episodes are saved. See the recorder
+README for the folder structure. Export still requires all three splits before
+starting the full training/evaluation workflow.
 
 ```powershell
 cd "<PROJECT_DIRECTORY>"

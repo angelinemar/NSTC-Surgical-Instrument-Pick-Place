@@ -20,7 +20,7 @@ flowchart LR
 | 224 / 448 | Raw resolution | DP input size, which remains 224 |
 | Tray occupancy | Initial occupants in fixed slots | Random clutter placement |
 | Distractor range | Total non-targets, including 4 base bodies | Target count |
-| Automatic split / seed | Session assignment and randomization | Per-frame splitting |
+| Automatic split / seed | Committed episode assignment, grid balance, seeded randomization | Per-frame splitting |
 
 The target type appears exactly once. Extra duplicates are table-only.
 Scenes that do not fit are rejected rather than placing overflow in the tray.

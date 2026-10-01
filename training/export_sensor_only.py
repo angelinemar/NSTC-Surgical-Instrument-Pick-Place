@@ -106,7 +106,7 @@ def export(source, output, validation_cells, panel_pairs=None):
     from training.audit_training_topics import inspect
     source, output = source.resolve(), output.resolve()
     pairs, source_complete, split_rule = (source_pairs(source, validation_cells) if panel_pairs is None
-                                        else (panel_pairs,True,'explicit_panel_session_split'))
+                                        else (panel_pairs,True,'committed_episode_or_legacy_session_split'))
     if not pairs:
         raise ValueError('No independently audited successful pairs')
     output.mkdir(parents=True, exist_ok=False)

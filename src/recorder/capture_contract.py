@@ -20,7 +20,8 @@ def capture_contract(purpose, skill, size, seed, split='unassigned'):
                 consumers=PURPOSES[purpose], saved_skill=skill, camera_size=size,
                 session_seed=int(seed), split=split, duplicate_raw=False,
                 production_ready=False,
-                note='Consumers are export targets, not trained models. Keep this session in one split.')
+                split_contract='episode_grid_balanced_v1' if split=='auto' else 'whole_session_v1',
+                note='Auto: split complete episode pairs across train/valid/test subfolders; balance each grid in blocks of ten. Explicit split: whole session.')
 
 
 def storage_budget(destination, episodes, size, reserve_gb=30):

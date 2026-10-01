@@ -252,15 +252,17 @@ def apply_scene(env_cfg):
     env_cfg.scene.shared_surgical_tray.spawn.scale = tray_scale_for_layout(env_cfg.scene.shared_surgical_tray.spawn.usd_path)
     for name in ('shared_key_light', 'shared_fill_light'):
         getattr(env_cfg.scene, name).spawn.func = spawn_sensor_safe_light
-    # P4-only exposure correction. Keep instrument metallic/roughness/textures
-    # intact; do not confuse specular glare with an uninitialized RGB buffer.
+    # P4-only exposure correction. Authored instrument materials remain intact;
+    # the shared asset config adds a brushed-steel fallback only to the scissor
+    # source mesh, which has no material binding of its own.
     for name, intensity in LAYOUT.get('lighting', {}).items():
         if name not in ('shared_ambient_light','shared_key_light','shared_fill_light'):
             raise ValueError(f'Unsupported P4 light: {name}')
         if not math.isfinite(float(intensity)) or float(intensity) < 0:
             raise ValueError(f'Invalid light intensity: {name}={intensity}')
         getattr(env_cfg.scene, name).spawn.intensity = float(intensity)
-    print('[P4 LIGHTING] shared intensities=', LAYOUT.get('lighting', {}), 'instrument materials unchanged', flush=True)
+    print('[P4 LIGHTING] shared intensities=', LAYOUT.get('lighting', {}),
+          'authored materials preserved; scissor fallback active', flush=True)
     # The imported floor is below table Z=0. Keep task ground at that floor.
     if getattr(env_cfg.scene, "ground", None) is not None:
         env_cfg.scene.ground.init_state.pos = (0.,0.,g["room_pos"][2]-0.01)

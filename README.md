@@ -33,6 +33,59 @@ cd "<PROJECT_DIRECTORY>"
 
 Start with a few episodes. Inspect all six cameras and the **exported DP 224 images** before collecting at scale.
 
+## Automatic Train / Valid / Test
+
+The panel and CLI default to automatic episode splitting. Each successful
+Pick/Place pair is assigned once; every frame and camera stays in that split.
+Failed attempts consume no quota. Resume reads committed assignments and does
+not move previously saved episodes. Each target run has its own balance.
+
+```mermaid
+flowchart LR
+    A["Record selected grid"] --> B{"Successful complete episode?"}
+    B -->|No| A
+    B -->|Yes| C["Check committed counts per target and grid"]
+    C --> D["Choose split with remaining quota"]
+    D --> T["Train: 70%"]
+    D --> V["Valid: 20%"]
+    D --> E["Test: 10%"]
+    T --> P["Keep Pick + Place + all cameras together"]
+    V --> P
+    E --> P
+```
+
+| Completed collection | Train | Valid | Test |
+| --- | ---: | ---: | ---: |
+| 1 episode | 1 | 0 | 0 |
+| 2 episodes | 1 | 1 | 0 |
+| 3 episodes | 1 | 1 | 1 |
+| 10 grids x 10 cycles | 70 | 20 | 10 |
+| Each grid in that 10-cycle collection | 7 | 2 | 1 |
+
+Each block of ten successes per grid has a 7/2/1 quota. The allocator fills
+global split deficits within those quotas. Partial cycles have approximate
+ratios; fewer than three examples of a grid cannot represent it in all splits.
+Yaw is still sampled randomly; 90-degree yaw bins break equal allocation scores,
+but exact yaw, lighting, and distractor balance is not guaranteed.
+
+```text
+<OUTPUT>/sessions/<TIMESTAMP>/<TARGET>/
+  session.json
+  capture_contract.json
+  train/{pick_policy,place_policy}/<TARGET>/episode_*.h5
+  valid/{pick_policy,place_policy}/<TARGET>/episode_*.h5
+  test/{pick_policy,place_policy}/<TARGET>/episode_*.h5
+```
+
+The panel shows saved Train / Valid / Test counts; `session.status.json` also
+contains per-grid counts. Restart the panel and start a new recording to use
+this layout. Existing sessions retain their original fixed split on resume.
+Old recordings are not redistributed. Explicit CLI `--dataset-split train`,
+`valid`, or `test` still assigns the entire session to that split.
+
+See [Split allocation details](docs/DATASET_SPLITS.md) for worked examples,
+partial-run behavior, resume, and the scope of the evaluation.
+
 ## After recording: DP + RF-DETR
 
 Choose **Both: DP + detector** and **448** in the panel. The same raw sessions are exported into two independent training inputs; this does not merge the two models.
@@ -47,7 +100,7 @@ flowchart LR
 ```
 
 ```powershell
-# 1. Export both products after train, valid, and test sessions are complete.
+# 1. Export both products after the collection has saved train, valid, and test episodes.
 .\RUNME.ps1 -Mode export -Source "<RAW_COLLECTION>" -Output "<NEW_EXPORT_DIRECTORY>"
 
 # 2. Install RF-DETR once in an isolated Python 3.11 environment.
@@ -116,6 +169,21 @@ its own tighter vertical view. A long rectangular work area cannot fill a square
 image in both axes, so some surrounding table remains visible. Robot parts can still
 cross a spawn view during manipulation because the arm physically operates above
 the target; the complete robot is not the subject of any static view.
+
+## Instrument appearance
+
+| Instrument | Visual material used by the recorder |
+| --- | --- |
+| Scalpel | Authored blade and handle PBR materials |
+| Scissor | Recorder-provided brushed-steel fallback; source USD has no material binding |
+| Love retractor | Authored textured USD material |
+| Kelly | Authored metal PBR material |
+| Scalpel type 2 | Authored metal PBR material |
+
+The fallback is visual only and is shared by target, base, and duplicate scissor
+instances. It does not change geometry, collision, mass, semantic IDs, instance
+masks, or trajectories. Materials improve surface contrast and highlights; they
+cannot add pixels or recover detail absent from a 224/448 render.
 
 ## Policy segments
 

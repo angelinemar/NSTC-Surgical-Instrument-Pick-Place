@@ -24,9 +24,13 @@ Read-only source-material audit found an additional issue: `my_scissor_clean.usd
 has a mesh with no bound material or authored displayColor; love retractor's
 bound shader has metallic=0, roughness=1. In contrast scalpel has metallic=1
 and roughness about0.24-0.31; Kelly/type2 metal is about0.83 and roughness0.26.
-Thus a white instrument is not automatically a metallic highlight. Correcting
-missing/nonmetal finishes is a separate visual revision, not done by this
-lighting patch. Runtime material overrides, if any, should also be checked.
+Thus a white instrument is not automatically a metallic highlight. The shared
+asset configuration now supplies the scissor with a visual-only brushed-steel
+fallback (`diffuse=(0.48, 0.50, 0.52)`, `metallic=0.78`, `roughness=0.36`).
+It applies to the target, base object, and duplicate table distractors because
+they all use the same `rigid_cfg` factory. Existing authored material bindings
+on the other four instruments are preserved. The fallback does not alter mesh,
+scale, collision, mass, semantic class, instance masks, or grasp behavior.
 
 ### Motion candidate (DISABLED by default after a release failure)
 

@@ -19,7 +19,8 @@ def verify_and_exit(root, object_name, skill, requested, exit_process=None):
         raise ValueError('Invalid completion goal')
     names=None; checked=[]
     for selected in skills:
-        paths=sorted((root/(selected+'_policy')/object_name).glob('episode_*.h5'))
+        from src.recorder.episode_split import episode_files
+        paths=episode_files(root,selected,object_name)
         current={p.name for p in paths}
         if len(paths)<requested or (names is not None and names!=current):
             raise RuntimeError('Incomplete committed segment set')

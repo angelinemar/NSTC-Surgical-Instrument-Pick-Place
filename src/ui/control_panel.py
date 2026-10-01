@@ -118,7 +118,7 @@ class Panel:
             ttk.Label(dataset,text=label).grid(row=row,column=0,sticky='w',padx=4)
             widget=ttk.Combobox(dataset,textvariable=var,values=values,state='readonly',width=36)
             widget.grid(row=row,column=1,sticky='ew',pady=2); self.controls.append(widget)
-        self.split_preview=tk.StringVar(value='Split: auto 70/20/10   Seed: auto')
+        self.split_preview=tk.StringVar(value='Auto per episode: Train 70% / Valid 20% / Test 10%; balanced per grid')
         ttk.Label(dataset,textvariable=self.split_preview).grid(row=2,column=0,columnspan=3,sticky='w',padx=4,pady=2)
         ttk.Label(dataset,text='Save raw to').grid(row=3,column=0,sticky='w',padx=4)
         widget=ttk.Entry(dataset,textvariable=self.destination,width=55)
@@ -497,25 +497,9 @@ class Panel:
         self.dataset_hint.set(text+' Distractor range below applies to every mode. Raw RGB: 448 recommended for small tools; DP export stays 224. 224 is lower-detail / low-memory mode.')
 
     def choose_auto_split(self,destination):
-        counts={s:0 for s in ('train','valid','test')}
-        for path in Path(destination).resolve().rglob('capture_contract.json'):
-            try:
-                split=json.loads(path.read_text(encoding='utf-8')).get('split')
-            except (OSError,ValueError):
-                continue
-            if split in counts:
-                counts[split]+=1
-        total=sum(counts.values())+1
-        desired=dict(train=max(1,round(total*.7)),valid=round(total*.2),test=0)
-        desired['test']=max(0,total-desired['train']-desired['valid'])
-        if total>=3 and desired['test']==0:
-            desired['test']=1; desired['train']=max(1,desired['train']-1)
-        if total>=5 and desired['valid']==0:
-            desired['valid']=1; desired['train']=max(1,desired['train']-1)
-        for split in ('train','valid','test'):
-            if counts[split]<desired[split]:
-                return split
-        return min(counts,key=lambda s:counts[s]/(.7 if s=='train' else .2 if s=='valid' else .1))
+        # A session is a collection, not a split. Assignment happens only when
+        # a complete successful episode is committed by the recorder.
+        return 'auto'
 
     def prepare(self,start=True):
         try:
@@ -550,11 +534,11 @@ class Panel:
             stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f')
             auto_split=self.dataset_split.get()=='auto'
             seed=int(datetime.now().timestamp()*1000)%2_147_483_647 if auto_split else self.session_seed.get()
-            split=self.choose_auto_split(self.destination.get()) if auto_split else self.dataset_split.get()
+            split='auto' if auto_split else self.dataset_split.get()
             self.session_seed.set(seed)
-            self.split_preview.set(f'Split: {split} (auto 70/20/10)   Seed: {seed} (auto)')
+            self.split_preview.set('Auto per episode: Train 70% / Valid 20% / Test 10%; balanced per grid' if auto_split else f'Split: {split}')
             contract=capture_contract(purpose,self.skill.get(),int(self.camera_size.get()),seed,split)
-            output=Path(self.destination.get()).resolve()/split/stamp/self.target.get()
+            output=Path(self.destination.get()).resolve()/('sessions' if auto_split else split)/stamp/self.target.get()
             budget=storage_budget(output,episodes,int(self.camera_size.get()))
             if not budget['capacity_pass']:
                 raise ValueError(f"Not enough storage: estimate {budget['estimated_bytes']/1e9:.1f} GB + 30 GB reserve, free {budget['free_bytes']/1e9:.1f} GB. Choose another folder, fewer episodes or native 224.")
@@ -613,6 +597,9 @@ class Panel:
             code=self.process.poll()
             if code is None:
                 state=self.read_status()
+                if state.get('dataset_splits'):
+                    counts=state['dataset_splits']['counts']
+                    self.split_preview.set(f"Saved pairs: Train {counts['train']} / Valid {counts['valid']} / Test {counts['test']} | Auto 70/20/10 per grid")
                 self.live_geometry=state.get('instrument_geometry')
                 live=state.get('table_positions')
                 if live and set(live)==set(NAMES): self.live_positions=live
@@ -664,6 +651,8 @@ class Panel:
                     'gif':[output/'gifs',output/'gifs_semantic',output/'previews'],
                     'failure':[output/'failure_previews']}[kind]
         target=next((p for p in candidates if p.is_dir()),None)
+        if kind in ('pick','place') and any((output/split/(kind+'_policy')).is_dir() for split in ('train','valid','test')):
+            target=output  # Show all three split folders, not an arbitrary first split.
         if kind=='gif' and target is None:
             # Recorder previews may be saved beside an episode rather than in a gifs directory.
             target=next((p.parent for p in output.rglob('*.gif')),None)

@@ -22,7 +22,7 @@ def main() -> None:
     parser.add_argument('--distractor-max', type=int, default=18)
     parser.add_argument('--scene-audit-only', action='store_true',help='Settle and save six-camera label preview, then exit without recording demonstrations.')
     parser.add_argument('--dataset-purpose', choices=('detection','dp','both'), default='detection')
-    parser.add_argument('--dataset-split', choices=('train','valid','test','unassigned'), default='unassigned')
+    parser.add_argument('--dataset-split', choices=('auto','train','valid','test','unassigned'), default='auto')
     parser.add_argument('--shutdown-mode', choices=('native','verified-exit'),
                         default='verified-exit' if os.name=='nt' else 'native')
     parser.add_argument('--session-config',help='Control-panel session JSON')
@@ -83,7 +83,15 @@ def main() -> None:
         if not manifest.is_file():
             parser.error('Resume requires the original scene_manifest.json to preserve camera calibration')
         os.environ['P4_RESUME_CAMERA_MANIFEST'] = str(manifest)
-    existing = list(Path(output.out_dir).glob('*_policy/*/episode_*.h5'))
+    from src.recorder.episode_split import episode_files
+    existing = episode_files(output.out_dir,'pick') + episode_files(output.out_dir,'place')
+    if output.resume:
+        import json
+        contract_path = Path(output.out_dir) / 'capture_contract.json'
+        if contract_path.exists():
+            original_contract = json.loads(contract_path.read_text())
+            os.environ['P4_DATASET_SPLIT'] = original_contract['split']
+            os.environ['P4_RANDOMIZATION_SEED'] = str(original_contract['session_seed'])
     if existing and not output.resume:
         parser.error('Output already contains episodes; use --resume or a fresh --out_dir')
     if output.resume:

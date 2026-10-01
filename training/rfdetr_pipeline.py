@@ -77,7 +77,8 @@ def validate_dataset(dataset: Path, require_size: int = 448) -> dict[str, Any]:
     _require(manifest_path.is_file(), 'Missing detector manifest.json; pass <EXPORT_DIRECTORY>\\detection')
     manifest = json.loads(manifest_path.read_text())
     _require(manifest.get('export_complete') is True, 'Detection export is incomplete')
-    _require(manifest.get('split_rule') == 'independent_run_no_frame_split', 'Unsafe split contract')
+    _require(manifest.get('split_rule') in ('independent_run_no_frame_split',
+             'committed_episode_or_legacy_session_no_frame_split'), 'Unsafe split contract')
     _require(manifest.get('rfdetr_dataset_file') == 'roboflow', 'Export predates RF-DETR contract; export again')
     report: dict[str, Any] = {'dataset': str(dataset), 'native_size': require_size, 'splits': {}}
     for split in SPLITS:

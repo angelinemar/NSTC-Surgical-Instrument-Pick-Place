@@ -22,6 +22,9 @@ def status(ns, state, **values):
                    tray_objects=ns.get('_p4_tray_objects',[]),coverage=ns.get('_p4_coverage'),**values)
     payload['instrument_geometry']=ns.get('_p4_panel_geometry')
     payload['scene_clutter']=ns.get('_p4_clutter',{})
+    if os.environ.get('P4_DATASET_SPLIT') == 'auto':
+        from src.recorder.episode_split import summary
+        payload['dataset_splits'] = summary(Path(path).parent, ns['PHASE3_TARGET_OBJECT'])
     spawn=ns.get('_p4_force_args',(None,{},None))[1]
     payload['table_positions']={name:dict(x=p.get('center_x',p.get('x')),y=p.get('center_y',p.get('y')),yaw_deg=p['yaw_deg'])
                                for name,p in spawn.items() if name!='grid' and 'yaw_deg' in p}

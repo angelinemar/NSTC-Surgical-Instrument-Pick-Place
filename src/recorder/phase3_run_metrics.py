@@ -84,8 +84,9 @@ class RunMetrics:
 
     def _count_saved_episodes(self) -> int:
         """Count complete successful demonstrations without double-counting segments."""
-        pick = len(list(self.out_dir.glob("pick_policy/*/episode_*.h5")))
-        place = len(list(self.out_dir.glob("place_policy/*/episode_*.h5")))
+        from src.recorder.episode_split import episode_files
+        pick = len(episode_files(self.out_dir,'pick'))
+        place = len(episode_files(self.out_dir,'place'))
         return max(pick, place)
 
     def _start_attempt(self, number: int):

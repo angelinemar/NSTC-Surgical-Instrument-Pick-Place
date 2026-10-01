@@ -14,7 +14,8 @@ def audit_directory(root,target,mode,cycles,rows,cols):
     import h5py
     from pathlib import Path
     selected=('pick','place') if mode=='both' else (mode,)
-    paths={s:{p.name:p for p in (Path(root)/(s+'_policy')/target).glob('episode_*.h5')} for s in selected}
+    from src.recorder.episode_split import episode_files
+    paths={s:{p.name:p for p in episode_files(root,s,target)} for s in selected}
     names=sorted(set().union(*(set(p) for p in paths.values())))
     counts=[0]*(rows*cols); errors=[]; valid=[]
     for name in names:
