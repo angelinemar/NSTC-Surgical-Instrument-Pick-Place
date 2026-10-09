@@ -57,7 +57,7 @@ def visible_boxes(mask, min_pixels=8, instances=None, instance_classes=None):
     return result
 
 
-def export(splits, output, stride=20):
+def export(splits, output, stride=20, max_files_per_run=None):
     if stride < 1:
         raise ValueError('Stride must be positive')
     roots = [Path(p).resolve() for runs in splits.values() for p in runs]
@@ -65,7 +65,7 @@ def export(splits, output, stride=20):
         raise ValueError('Runs must be distinct and non-overlapping across splits')
     inventory = {}
     for split, runs in splits.items():
-        files = [p for root in runs for p in sorted(Path(root).glob('*_policy/*/episode_*.h5'))]
+        files = [p for root in runs for p in sorted(Path(root).glob('*_policy/*/episode_*.h5'))[:max_files_per_run]]
         if not files:
             raise ValueError('No committed episode candidates in ' + split)
         inventory[split] = files

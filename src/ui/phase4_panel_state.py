@@ -16,9 +16,13 @@ class Dashboard:
             self.attempt,self.saved,self.goal=map(int,match.groups())
             self.phase='reset'; self.stage='Spawn / settle'; return
         if s.startswith('[P4 ACTIVE STAGE]'):
-            self.phase='recording'; self.stage=s.split(']',1)[1].strip(); return
+            self.stage=s.split(']',1)[1].strip()
+            self.phase='reset' if self.stage.endswith(('OPEN_HOVER','MOVE_TO_TARGET')) else 'recording'
+            return
         if s.startswith('[REC ') and 'stage=' in s:
-            self.phase='recording'; self.stage=s.split('stage=',1)[1]; return
+            self.stage=s.split('stage=',1)[1]
+            self.phase='reset' if self.stage.endswith(('OPEN_HOVER','MOVE_TO_TARGET')) else 'recording'
+            return
         if any(t in s for t in ('[PHASE FAIL]','[SPAWN FAIL]','[SENSOR FAIL]','[QUALITY FAIL]')) or ('[QUALITY]' in s and 'FAIL' in s):
             if self.attempt and self.attempt not in self.outcomes:
                 self.outcomes[self.attempt]='fail'; self.failures+=1

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import replace
 import json
+import os
 from pathlib import Path
 from typing import Iterable
 
@@ -339,7 +340,10 @@ def apply_shared_env_cfg(env_cfg, request: RecorderEnvRequest, *, camera_width: 
 
     def rigid_cfg(name: str, *, prim_name: str | None = None, canonical: bool = False):
         spec = INSTRUMENTS[name]
-        material = INSTRUMENT_MATERIAL_OVERRIDES.get(name)
+        material_mode = os.environ.get("P4_INSTRUMENT_MATERIALS", "recorder").strip().lower()
+        if material_mode not in ("recorder", "usd"):
+            raise ValueError("P4_INSTRUMENT_MATERIALS must be 'recorder' or 'usd'")
+        material = INSTRUMENT_MATERIAL_OVERRIDES.get(name) if material_mode == "recorder" else None
         return RigidObjectCfg(
             prim_path=f"{{ENV_REGEX_NS}}/{prim_name or spec.prim_name}",
             spawn=sim_utils.UsdFileCfg(

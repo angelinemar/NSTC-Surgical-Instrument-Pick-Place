@@ -31,6 +31,11 @@ def main() -> None:
     parser.add_argument("--max-attempts", type=int, default=None,
                         help="Stop with nonzero exit after this many attempts; 0 = unlimited")
     known, forwarded = parser.parse_known_args()
+    # Dataset capture is locked to the validated native-resolution mode.  This
+    # is a renderer-wide setting, so it applies uniformly to all six cameras.
+    # Diagnostic utilities may still compare other modes without going through
+    # the recorder entry point.
+    os.environ['P4_ANTIALIASING_MODE'] = 'DLAA'
     os.environ['P4_CAMERA_SIZE'] = str(known.camera_size)
     if not 4 <= known.distractor_min <= known.distractor_max <= 30:
         parser.error('Distractor range must satisfy 4 <= min <= max <= 30')

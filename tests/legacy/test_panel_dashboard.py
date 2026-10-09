@@ -25,6 +25,13 @@ class DashboardTests(unittest.TestCase):
         d.finish(dict(success_count=1,failure_count=0,total_attempts=1),0)
         self.assertEqual(d.stage,'Complete')
 
+    def test_setup_stages_are_not_shown_as_recording(self):
+        d=Dashboard(1)
+        d.feed('[P4 ACTIVE STAGE] SCALPEL_OPEN_HOVER')
+        self.assertEqual(d.phase,'reset')
+        d.feed('[P4 ACTIVE STAGE] SCALPEL_LOWER_PRE')
+        self.assertEqual(d.phase,'recording')
+
     def test_asset_axis_not_universal_yaw_line(self):
         item=dict(hull_xy_m=[[-.01,-.075],[.01,-.075],[.01,.075],[-.01,.075]],axis_xy=[0,1])
         a=rotate_outline(item,dict(x=.42,y=-.59,yaw_deg=0))

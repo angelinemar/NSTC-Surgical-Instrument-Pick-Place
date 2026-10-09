@@ -567,6 +567,9 @@ class Panel:
             self.log_file=log.open('w',encoding='utf-8')
             self.session['console_log']=str(log); self.write()
             env=os.environ.copy(); env.pop('P4_SYMMETRIC_GRASP',None)
+            # Never inherit an experimental AA override from the shell. Every
+            # panel recording uses the validated native DLAA path on all cams.
+            env['P4_ANTIALIASING_MODE']='DLAA'
             self.process=subprocess.Popen(args,cwd=ROOT,stdout=self.log_file,stderr=subprocess.STDOUT,env=env)
             for control in self.controls: control.configure(state='disabled')
             self.status.set('Launching Isaac GUI; preparing the shared scene…')

@@ -6,8 +6,12 @@ class LogFilter:
     def feed(self,line):
         text=re.sub(r'\x1b\[[0-9;]*m','',line).strip()
         if not text: return None
+        if text.startswith('[P4 RENDER QUALITY]'):
+            return ('success','Renderer: '+text.split(']',1)[1].strip())
         if text.startswith('[P4 ACTIVE STAGE]'):
-            self.stage=text.split(']',1)[1].strip(); return ('info','Recording: '+self.stage)
+            self.stage=text.split(']',1)[1].strip()
+            setup=self.stage.endswith(('OPEN_HOVER','MOVE_TO_TARGET'))
+            return ('info',('Setup motion (not saved): ' if setup else 'Recording: ')+self.stage)
         if text.startswith('[P4 STAGE]'):
             self.stage=text.split(']',1)[1].strip(); return None
         if text.startswith('Steps ') and self.stage:

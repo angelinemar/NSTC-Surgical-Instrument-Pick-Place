@@ -6,10 +6,25 @@ No size changes are applied to the hospital, its furniture, or cameras.
 """
 import json
 import math
+import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-LAYOUT = json.loads((ROOT/'env'/"scene_layout.json").read_text(encoding="utf-8"))
+_SOURCE = Path(globals().get("__implementation__", __file__)).resolve()
+ROOT = _SOURCE.parent.parent if _SOURCE.parent.name == "env" else _SOURCE.parent
+LAYOUT = json.loads((ROOT / "env" / "scene_layout.json").read_text(encoding="utf-8"))
+
+
+def render_quality_from_environment():
+    """Return validated AA settings; DLAA is the tested native-448 default."""
+    mode = os.environ.get("P4_ANTIALIASING_MODE", "DLAA").strip().upper()
+    canonical = {"OFF": "Off", "FXAA": "FXAA", "TAA": "TAA",
+                 "DLAA": "DLAA", "DLSS": "DLSS"}
+    if mode not in canonical:
+        raise ValueError("P4_ANTIALIASING_MODE must be Off, FXAA, TAA, DLAA, or DLSS")
+    dlss_mode = int(os.environ.get("P4_DLSS_MODE", "2"))
+    if dlss_mode not in (0, 1, 2, 3):
+        raise ValueError("P4_DLSS_MODE must be 0, 1, 2, or 3")
+    return canonical[mode], dlss_mode
 
 
 def write_run_manifest(object_name, forwarded_args):
@@ -214,13 +229,17 @@ def spawn_sensor_safe_light(prim_path, cfg, translation=None, orientation=None, 
 
 
 def apply_scene(env_cfg):
-    # DLSS rendered the old small sensors below output resolution. Preserve
-    # actual native samples; higher-res recordings can be downsampled in export.
-    # Spatial AA avoids temporal history/ghosting on moving thin instruments.
-    # Native 448 supplies real detail; FXAA only smooths edge stair-stepping.
-    env_cfg.sim.render.antialiasing_mode = 'FXAA'
+    # Preserve native 448 samples; higher-res recordings can be downsampled in
+    # export. Controlled native-448 renders found DLAA sharper on all five thin
+    # instrument classes. DLSS produced black sensor frames and is never the
+    # default. The override remains available for repeatable diagnostics.
+    aa_mode, dlss_mode = render_quality_from_environment()
+    env_cfg.sim.render.antialiasing_mode = aa_mode
+    env_cfg.sim.render.dlss_mode = dlss_mode
     env_cfg.sim.render.enable_dlssg = False
     env_cfg.sim.render.samples_per_pixel = 4
+    print(f"[P4 RENDER QUALITY] antialiasing={aa_mode} dlss_mode={dlss_mode} "
+          "DLSS-G=off samples_per_pixel=4", flush=True)
     # Headless and GUI must provide identical physical tray raycast support.
     env_cfg.sim.enable_scene_query_support = True
     # Upstream IK TCP=107 mm but observed EE TCP=103.4 mm. A hold command

@@ -65,8 +65,11 @@ wider view than the historical center crop. No crop or image resize
 occurs while saving raw H5. `--camera-size 448` is the default for small tools,
 sampling the same field of view with four times the pixels of low-memory 224.
 DLSS upscaling and frame generation are disabled; direct lighting uses 4 samples/pixel.
-Spatial FXAA smooths jagged edges without temporal accumulation. It does not
-restore missing detail; direct-lighting samples are not resolution supersampling.
+DLAA is the native-448 default after a controlled identical-scene comparison
+against Off, FXAA, TAA, and DLSS Quality. It produced the sharpest tested thin-
+instrument crops. DLSS Quality produced black output on all six camera sensors
+and is rejected. Anti-aliasing does not restore missing detail; direct-lighting
+samples are not resolution supersampling.
 Compare saved frames at native scale. RGB preview folders now include all six
 cameras; these PNGs remain a sampled preview, while H5 contains every saved frame.
 An old center crop itself did not interpolate pixels; renderer resolution and small
@@ -75,6 +78,13 @@ instrument pixel footprint also affect apparent sharpness.
 The DP exporter and live DP sensor adapter both use the same Lanczos resize from
 448 to 224. Semantic labels use nearest-neighbor. Detection exports retain native
 pixels. Higher resolution cannot retroactively recover detail from old recordings.
+
+All five instrument classes receive recorder-owned neutral stainless-steel PBR
+finishes. Metallic response and moderate roughness improve edge contrast without
+using synthetic class colours. This covers the target, canonical/base objects,
+and every duplicate table distractor because they share one spawn factory. It
+changes RGB appearance only; geometry, dynamics, semantic IDs, and instance IDs
+are unchanged.
 
 Native-448 + FXAA scene audit (2026-09-26) completed successfully with six RGB
 and semantic views and 12 distractors. The preview was visually inspected;

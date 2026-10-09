@@ -31,8 +31,13 @@ def main():
     parser.add_argument('--pose-h5', type=Path, help='Diagnostic: replay final robot joint state from an H5 segment')
     parser.add_argument('--tray-occupancy', choices=('empty','random','full'), default='empty',
                         help='Preview-only initial tray state; empty is deterministic for camera framing')
+    parser.add_argument('--instrument-materials', choices=('recorder','usd'), default='recorder',
+                        help='Diagnostic A/B: recorder steel overrides or untouched source USD materials')
+    parser.add_argument('--scene-seed', type=int, default=20261007,
+                        help='Deterministic spawn seed for controlled preview comparisons')
     args = parser.parse_args()
     os.environ['P4_TRAY_OCCUPANCY'] = args.tray_occupancy
+    os.environ['P4_INSTRUMENT_MATERIALS'] = args.instrument_materials
     backend = ROOT / 'backends' / 'phase3_grid_split_scalpel_recorder.py'
     sys.argv = [str(backend), '--episodes', '0', '--out_dir', str(ROOT/'validation'/'preview'),
                 '--camera_tuner' if args.cameras else '--layout_tuner']
@@ -51,7 +56,7 @@ def main():
     def prepare_scene(env):
         import numpy as np
         env.reset()
-        rng = np.random.default_rng(scope['RANDOM_SEED'])
+        rng = np.random.default_rng(args.scene_seed)
         spawn = scope['sample_episode_spawn_grid'](rng, 2, 'scalpel')
         spawn = scope['ensure_two_distractors'](spawn, 'scalpel', rng)
         spawn = scope['phase3_ensure_all_5_objects_in_spawn'](spawn, 'scalpel', rng)

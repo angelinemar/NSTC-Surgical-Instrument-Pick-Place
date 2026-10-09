@@ -16,6 +16,185 @@ import time
 _ACTIVE_METRICS = None
 
 
+def failure_signature(attempt):
+    """Return stable stage/reason labels without copying noisy numeric telemetry."""
+    text = str(attempt.get("reason", ""))
+    stage_match = re.search(r"\[PHASE FAIL\]\s+(?:pick|place)\s*\|\s*([^|;]+)", text, re.I)
+    stage = stage_match.group(1).strip() if stage_match else {
+        "spawn_fail": "SPAWN", "sensor_fail": "SENSOR", "runtime_error": "RUNTIME"
+    }.get(attempt.get("status"), "OTHER")
+    detail = text.split("|", 2)[-1].strip() if "[PHASE FAIL]" in text else text.strip()
+    detail = detail.split(";", 1)[0].strip()
+    detail = re.sub(r":\s*(?:error|distance)=[^,;]+(?:[,;]\s*angle=[^,;]+)?", "", detail, flags=re.I)
+    detail = re.sub(r"\b(?:error|angle|base_budget|progressing_grace|steps?)\s*[=:<>]+\s*[-+\d.]+\s*(?:mm|m|deg|rad)?", "", detail, flags=re.I)
+    detail = re.sub(r"\s+", " ", detail).strip(" ,;:-")
+    if not detail:
+        detail = attempt.get("status", "unknown_failure")
+    return stage, detail
+
+
+def failure_breakdown(attempts):
+    counts = Counter(failure_signature(a) for a in attempts if a.get("status") != "success")
+    total = sum(counts.values())
+    return [{"stage": stage, "reason": reason, "count": count,
+             "percent": round(100.0 * count / total, 1) if total else 0.0}
+            for (stage, reason), count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))]
+
+
+def reconcile_attempt_timeline(data):
+    """Fill legacy/consolidated aggregate-only attempts so graph endpoints match totals."""
+    attempts = list(data.get("attempts", []))
+    have_success = sum(a.get("status") == "success" for a in attempts)
+    have_failure = len(attempts) - have_success
+    missing_success = max(0, int(data.get("success_count", have_success)) - have_success)
+    missing_failure = max(0, int(data.get("failure_count", have_failure)) - have_failure)
+    attempts.extend({"status": "success", "reason": "aggregate-only recovered attempt"}
+                    for _ in range(missing_success))
+    attempts.extend({"status": "legacy_fail", "reason": "aggregate-only recovered attempt"}
+                    for _ in range(missing_failure))
+    return attempts
+
+
+def write_failure_chart(path, rows, object_name):
+    """Write a compact dependency-free PNG ranking; detailed attempts stay in JSON."""
+    if not rows:
+        return None
+    from PIL import Image, ImageDraw, ImageFont
+    width, left, right, top, row_h = 1200, 390, 90, 90, 52
+    height = top + row_h * len(rows) + 55
+    image = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(image)
+    try:
+        font = ImageFont.truetype("arial.ttf", 18)
+        title = ImageFont.truetype("arialbd.ttf", 25)
+    except OSError:
+        font = title = ImageFont.load_default()
+    draw.text((35, 25), f"{object_name} - failure ranking", fill="#172033", font=title)
+    maximum = max(row["count"] for row in rows)
+    bar_width = width - left - right
+    colors = {"pick_fail": "#dc6b5d", "place_fail": "#7656c9", "spawn_fail": "#d99a2b",
+              "sensor_fail": "#278ca5", "runtime_error": "#777777"}
+    for index, row in enumerate(rows):
+        y = top + index * row_h
+        label = f'{row["stage"]}: {row["reason"]}'
+        if len(label) > 42:
+            label = label[:39] + "..."
+        draw.text((35, y + 10), label, fill="#263244", font=font)
+        length = round(bar_width * row["count"] / maximum)
+        draw.rounded_rectangle((left, y + 7, left + length, y + 39), radius=7, fill="#4776c5")
+        draw.text((left + length + 12, y + 10), f'{row["count"]} ({row["percent"]:.1f}%)', fill="#172033", font=font)
+    image.save(path)
+    return path
+
+
+def write_attempt_timeline(path, attempts, object_name, goal=100):
+    """Plot cumulative success/failure lines against attempt number."""
+    from PIL import Image, ImageDraw, ImageFont
+    width, height = 1200, 650
+    left, right, top, bottom = 95, 45, 80, 85
+    image = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(image)
+    try:
+        font = ImageFont.truetype("arial.ttf", 18)
+        title = ImageFont.truetype("arialbd.ttf", 27)
+    except OSError:
+        font = title = ImageFont.load_default()
+    draw.text((left, 25), f"{object_name} - cumulative recording outcome", fill="#172033", font=title)
+    plot_w, plot_h = width - left - right, height - top - bottom
+    x_max = max(1, len(attempts))
+    success_total = sum(a.get("status") == "success" for a in attempts)
+    failure_total = len(attempts) - success_total
+    y_max = max(goal, success_total, failure_total, 1)
+    for tick in range(0, 6):
+        value = round(y_max * tick / 5)
+        y = top + plot_h - round(plot_h * value / y_max)
+        draw.line((left, y, left + plot_w, y), fill="#dfe5ec", width=1)
+        draw.text((45, y - 10), str(value), fill="#526070", font=font)
+    for tick in range(0, 6):
+        value = round(x_max * tick / 5)
+        x = left + round(plot_w * value / x_max)
+        draw.line((x, top, x, top + plot_h), fill="#eef1f5", width=1)
+        draw.text((x - 10, top + plot_h + 12), str(value), fill="#526070", font=font)
+    draw.line((left, top, left, top + plot_h), fill="#344154", width=2)
+    draw.line((left, top + plot_h, left + plot_w, top + plot_h), fill="#344154", width=2)
+    draw.text((width // 2 - 65, height - 38), "Attempt", fill="#172033", font=font)
+    draw.text((15, top + plot_h // 2), "Count", fill="#172033", font=font)
+    successes = failures = 0
+    success_points = [(left, top + plot_h)]
+    failure_points = [(left, top + plot_h)]
+    for index, attempt in enumerate(attempts, 1):
+        if attempt.get("status") == "success": successes += 1
+        else: failures += 1
+        x = left + round(plot_w * index / x_max)
+        success_points.append((x, top + plot_h - round(plot_h * successes / y_max)))
+        failure_points.append((x, top + plot_h - round(plot_h * failures / y_max)))
+    if len(success_points) > 1:
+        draw.line(success_points, fill="#218c63", width=4, joint="curve")
+        draw.line(failure_points, fill="#d35b53", width=4, joint="curve")
+    draw.rounded_rectangle((left + 12, top + 12, left + 330, top + 62), 8, fill="#f7f9fb", outline="#d5dce5")
+    draw.line((left + 28, top + 29, left + 73, top + 29), fill="#218c63", width=4)
+    draw.text((left + 82, top + 18), f"Success {successes}", fill="#172033", font=font)
+    draw.line((left + 185, top + 29, left + 230, top + 29), fill="#d35b53", width=4)
+    draw.text((left + 239, top + 18), f"Fail {failures}", fill="#172033", font=font)
+    image.save(path)
+    return path
+
+
+def write_failure_reason_line(path, rows, object_name):
+    """Plot ranked failure categories as a line with a readable reason legend."""
+    from PIL import Image, ImageDraw, ImageFont
+    width, height = 1300, 720
+    left, top, plot_w, plot_h = 85, 90, 720, 520
+    image = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(image)
+    try:
+        font = ImageFont.truetype("arial.ttf", 17)
+        bold = ImageFont.truetype("arialbd.ttf", 18)
+        title = ImageFont.truetype("arialbd.ttf", 27)
+    except OSError:
+        font = bold = title = ImageFont.load_default()
+    draw.text((left, 25), f"{object_name} - failure reasons ranked", fill="#172033", font=title)
+    if not rows:
+        draw.text((left + 250, top + 220), "NO FAILURES RECORDED", fill="#6b7480", font=title)
+        image.save(path)
+        return path
+    maximum = max(row["count"] for row in rows)
+    y_max = max(5, maximum)
+    for tick in range(6):
+        value = round(y_max * tick / 5)
+        y = top + plot_h - round(plot_h * value / y_max)
+        draw.line((left, y, left + plot_w, y), fill="#dfe5ec", width=1)
+        draw.text((35, y - 10), str(value), fill="#526070", font=font)
+    draw.line((left, top, left, top + plot_h), fill="#344154", width=2)
+    draw.line((left, top + plot_h, left + plot_w, top + plot_h), fill="#344154", width=2)
+    denominator = max(1, len(rows) - 1)
+    points = []
+    for index, row in enumerate(rows):
+        x = left + round(plot_w * index / denominator)
+        y = top + plot_h - round(plot_h * row["count"] / y_max)
+        points.append((x, y))
+        draw.ellipse((x - 7, y - 7, x + 7, y + 7), fill="#7656c9", outline="white", width=2)
+        draw.text((x - 12, top + plot_h + 14), f"R{index + 1}", fill="#172033", font=bold)
+        draw.text((x - 8, y - 32), str(row["count"]), fill="#172033", font=bold)
+    if len(points) > 1:
+        draw.line(points, fill="#7656c9", width=4, joint="curve")
+        for x, y in points:
+            draw.ellipse((x - 7, y - 7, x + 7, y + 7), fill="#7656c9", outline="white", width=2)
+    draw.text((left + 290, height - 38), "Failure reason rank", fill="#172033", font=font)
+    draw.text((15, top + 245), "Count", fill="#172033", font=font)
+    draw.text((850, 70), "REASON KEY", fill="#172033", font=bold)
+    for index, row in enumerate(rows):
+        y = 108 + index * 57
+        reason = str(row["reason"])
+        if len(reason) > 35:
+            reason = reason[:32] + "..."
+        draw.text((850, y), f"R{index + 1}  {row['count']} ({row['percent']:.1f}%)", fill="#7656c9", font=bold)
+        draw.text((850, y + 22), str(row["stage"]), fill="#263244", font=font)
+        draw.text((850, y + 40), reason, fill="#526070", font=font)
+    image.save(path)
+    return path
+
+
 def activate_metrics(metrics):
     global _ACTIVE_METRICS
     _ACTIVE_METRICS = metrics
@@ -207,6 +386,7 @@ class RunMetrics:
             "startup_save_shutdown_minutes": round(overhead_seconds / 60.0, 3),
             "attempts": self.attempts,
         }
+        payload["failure_breakdown"] = failure_breakdown(self.attempts)
 
         self.out_dir.mkdir(parents=True, exist_ok=True)
         output_path = self.out_dir / "run_metrics.json"
@@ -230,22 +410,25 @@ class RunMetrics:
             f"  {'Total wall minutes':<24} : {payload['total_wall_minutes']:.3f}",
             f"  {'Metrics source':<24} : {payload['metrics_source']}",
             "----------------------------------------------------------------",
-            "  FAILED ATTEMPTS",
+            "  FAILURE BREAKDOWN (highest first)",
         ]
-        failed_attempts = [a for a in self.attempts if a["status"] != "success"]
-        if failed_attempts:
-            for attempt in failed_attempts:
-                summary_lines.extend([
-                    f"  Attempt #{attempt['attempt']:04d}",
-                    f"    status   : {attempt['status']}",
-                    f"    minutes  : {attempt['minutes']:.3f}",
-                    f"    reason   : {attempt['reason']}",
-                ])
+        if payload["failure_breakdown"]:
+            summary_lines.append("  COUNT   PERCENT   STAGE                         REASON")
+            for row in payload["failure_breakdown"]:
+                summary_lines.append(
+                    f"  {row['count']:>5}   {row['percent']:>6.1f}%   {row['stage']:<29} {row['reason']}"
+                )
         else:
             summary_lines.append("  None")
         summary_lines.append("================================================================")
         text_path = self.out_dir / "run_metrics_summary.txt"
         text_path.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+        chart_path = write_failure_chart(
+            self.out_dir / "failure_breakdown.png", payload["failure_breakdown"], self.object_name)
+        reason_line_path = write_failure_reason_line(
+            self.out_dir / "failure_reason_line.png", payload["failure_breakdown"], self.object_name)
+        timeline_path = write_attempt_timeline(
+            self.out_dir / "attempt_timeline.png", self.attempts, self.object_name)
 
         green, red, yellow, cyan, reset = "\033[92m", "\033[91m", "\033[93m", "\033[96m", "\033[0m"
         width = 64
@@ -272,6 +455,10 @@ class RunMetrics:
         print(cyan + "-" * width + reset)
         print(f"  JSON : {output_path}")
         print(f"  TXT  : {text_path}")
+        if chart_path:
+            print(f"  PNG  : {chart_path}")
+        print(f"  FAIL LINE: {reason_line_path}")
+        print(f"  LINE : {timeline_path}")
         print(cyan + "=" * width + reset)
         self._finished_payload = payload
         return payload

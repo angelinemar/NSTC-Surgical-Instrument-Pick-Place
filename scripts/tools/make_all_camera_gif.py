@@ -42,6 +42,8 @@ def main() -> None:
                         help="Folder containing pick_policy and place_policy")
     parser.add_argument("--object", default="scalpel")
     parser.add_argument("--episode", type=int, default=0)
+    parser.add_argument("--skill", choices=("pick", "place", "both"), default="both",
+                        help="Export only pick, only place, or the complete pair")
     parser.add_argument("--stride", type=int, default=3,
                         help="Use every Nth simulation frame")
     parser.add_argument("--panel-width", type=int, default=288)
@@ -50,10 +52,8 @@ def main() -> None:
     args = parser.parse_args()
 
     filename = f"episode_{args.episode:06d}.h5"
-    files = [
-        args.episode_root / "pick_policy" / args.object / filename,
-        args.episode_root / "place_policy" / args.object / filename,
-    ]
+    phases = ("pick", "place") if args.skill == "both" else (args.skill,)
+    files = [args.episode_root / f"{phase}_policy" / args.object / filename for phase in phases]
     missing = [str(path) for path in files if not path.exists()]
     if missing:
         raise FileNotFoundError("Missing split H5: " + ", ".join(missing))
@@ -64,7 +64,7 @@ def main() -> None:
     global_frame = 0
     camera_count = 0
 
-    for phase, path in zip(("PICK", "PLACE"), files):
+    for phase, path in zip((value.upper() for value in phases), files):
         with h5py.File(path, "r") as h5:
             obs = h5["observations"]
             available = [(label, key) for label, key in CAMERAS if key in obs]

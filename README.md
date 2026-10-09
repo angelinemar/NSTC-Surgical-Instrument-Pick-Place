@@ -160,7 +160,11 @@ using H5 class metadata; `semantic_legend.json` records the colors. Depth PNGs a
 display previews, not metric training data. No GIFs or videos are generated.
 The source H5 files remain unchanged; failed-attempt images cannot be recovered from
 H5 because failed trajectories are not saved. Failure evidence JSON remains available.
-448 + FXAA improves sampling and edges, but does not guarantee that small objects remain clear at the final 224 resolution.
+Native 448 + DLAA provides the sharpest tested anti-aliased edges for the thin
+instruments. A controlled identical-scene comparison also tested Off, FXAA,
+TAA, and DLSS Quality. DLSS produced black camera frames and is rejected.
+Anti-aliasing does not guarantee that a tiny object remains clear after the DP
+export is reduced to 224.
 Resume preserves the original session's camera layout; start a new session to use new framing.
 Front, left, and right retain distinct oblique viewing directions. Front and top
 each cover the entire spawn grid, including a 2 cm XY margin through 18 cm above
@@ -174,16 +178,18 @@ the target; the complete robot is not the subject of any static view.
 
 | Instrument | Visual material used by the recorder |
 | --- | --- |
-| Scalpel | Authored blade and handle PBR materials |
-| Scissor | Recorder-provided brushed-steel fallback; source USD has no material binding |
-| Love retractor | Authored textured USD material |
-| Kelly | Authored metal PBR material |
-| Scalpel type 2 | Authored metal PBR material |
+| Scalpel | Neutral stainless steel, medium brushed finish |
+| Scissor | Neutral stainless steel fallback for the unmaterialed source mesh |
+| Love retractor | Slightly darker, rougher stainless steel |
+| Kelly | Neutral stainless steel with controlled highlights |
+| Scalpel type 2 | Warm-neutral stainless steel with controlled highlights |
 
-The fallback is visual only and is shared by target, base, and duplicate scissor
-instances. It does not change geometry, collision, mass, semantic IDs, instance
-masks, or trajectories. Materials improve surface contrast and highlights; they
-cannot add pixels or recover detail absent from a 224/448 render.
+These recorder-owned finishes are shared by targets, canonical objects, and all
+duplicate table distractors through the same spawn factory. Their differences
+are neutral rather than class colours, so a detector cannot classify from an
+artificial colour code. They do not change geometry, collision, mass, semantic
+IDs, instance masks, or trajectories. Materials improve surface contrast and
+highlights; they cannot add pixels absent from a 224/448 render.
 
 ## Policy segments
 

@@ -85,6 +85,12 @@ class CoverageTests(unittest.TestCase):
 
     def test_log_filters_noise_and_keeps_fail_save(self):
         f=LogFilter()
+        renderer=f.feed('[P4 RENDER QUALITY] antialiasing=DLAA dlss_mode=2')
+        self.assertEqual(renderer[0],'success'); self.assertIn('DLAA',renderer[1])
+        setup=f.feed('[P4 ACTIVE STAGE] SCALPEL_OPEN_HOVER')
+        self.assertIn('not saved',setup[1])
+        active=f.feed('[P4 ACTIVE STAGE] SCALPEL_LOWER_PRE')
+        self.assertTrue(active[1].startswith('Recording:'))
         self.assertIsNone(f.feed('[REC step=0100] stage=LOVE_CLOSE'))
         self.assertEqual(f.feed('[PHASE FAIL] object did not lift')[0],'error')
         self.assertIn('did not lift',f.last_reason)
