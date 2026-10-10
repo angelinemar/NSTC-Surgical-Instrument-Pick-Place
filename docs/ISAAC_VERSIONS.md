@@ -36,7 +36,11 @@ uncheck **Render without an Isaac viewport** to display the simulator window.
 
 Use a new output directory. To continue the same collection, retain its seed and
 capture parameters, add `--resume`, and increase `--scenes` to the desired total.
-The GUI's **Stop after scene** finishes the current scene before stopping.
+The GUI's **Stop after current scene** finishes the scene before stopping.
+The GUI remembers the selected collection and restores its saved counts on reopen.
+Use **Load collection** to inspect another folder and **Resume selected** to continue
+it. Resume preserves displayed progress during simulator startup. **Start new
+collection** creates a separate dataset starting at zero.
 
 For the separate DP panel, run `./scripts/launchers/run_linux6.sh panel`.
 `run_linux6.sh train` uses the separate `.venv-dp`; `run_linux6.sh rfdetr` uses

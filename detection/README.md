@@ -34,8 +34,10 @@ cd C:\IsaacLab\scripts\custom\i4h_project\p4
 ```
 
 Use **Start new** to create a timestamped collection. **Stop after scene** finishes
-the current scene first. **Resume collection** selects its folder; the Scenes field
-is the desired total, not the number of extra scenes. Keep the same seed/settings
+the current scene first. **Load collection** selects an existing folder and displays its saved progress.
+**Resume selected** continues that collection; the Scenes field is the desired
+total, not the number of extra scenes. Reopening the GUI restores the last
+selected collection without automatically starting recording. Keep the same seed/settings
 for resume. DP continues to use `RUNME.ps1 -Mode panel`.
 
 | Setting | Behavior |

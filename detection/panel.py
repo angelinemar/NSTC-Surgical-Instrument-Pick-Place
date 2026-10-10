@@ -17,6 +17,7 @@ from src.entry.runtime_python import isaac_python
 class DetectionPanel:
     def __init__(self, win):
         self.win=win; self.process=None; self.log=None; self.run=None; self.controls=[]
+        self.selection_file=ROOT/'debug'/'detection_panel_state.json'
         win.title('Instrument Dataset Studio'); win.geometry('1080x780'); win.minsize(900,700)
         win.configure(background='#eef2f6')
         families={name.lower():name for name in tkfont.families(win)}
@@ -89,21 +90,24 @@ class DetectionPanel:
         ttk.Label(advanced,text='Changes apply to new collections. Resume uses the saved scene settings.',style='Muted.TLabel',wraplength=400).grid(row=9,column=0,columnspan=2,sticky='w',pady=12)
         right=ttk.Frame(body,style='Card.TFrame',padding=22); right.grid(row=0,column=1,sticky='nsew')
         ttk.Label(right,text='Collection progress',style='Heading.TLabel').pack(anchor='w')
+        self.collection_name=tk.StringVar(value='No collection selected')
+        ttk.Label(right,textvariable=self.collection_name,style='Muted.TLabel',wraplength=300).pack(anchor='w',pady=(6,0))
         self.state=tk.StringVar(value='Ready to record')
-        ttk.Label(right,textvariable=self.state,font=(sans,15,'bold')).pack(anchor='w',pady=(16,8))
+        ttk.Label(right,textvariable=self.state,font=(sans,15,'bold')).pack(anchor='w',pady=(10,6))
         self.status=tk.StringVar(value='Choose your settings, then start a new collection.')
         ttk.Label(right,textvariable=self.status,style='Muted.TLabel',wraplength=300).pack(anchor='w')
-        self.progress=ttk.Progressbar(right,mode='determinate'); self.progress.pack(fill='x',pady=(14,14))
+        self.progress=ttk.Progressbar(right,mode='determinate'); self.progress.pack(fill='x',pady=(10,10))
         self.metrics={}
         for key,label in [('scenes','Scenes saved'),('images','Images'),('annotations','Bounding boxes')]:
-            row=ttk.Frame(right,style='Card.TFrame'); row.pack(fill='x',pady=5)
+            row=ttk.Frame(right,style='Card.TFrame'); row.pack(fill='x',pady=3)
             ttk.Label(row,text=label).pack(side='left')
             self.metrics[key]=tk.StringVar(value='0')
             ttk.Label(row,textvariable=self.metrics[key],style='Metric.TLabel').pack(side='right')
-        ttk.Separator(right).pack(fill='x',pady=12)
+        ttk.Separator(right).pack(fill='x',pady=8)
         ttk.Label(right,text='PNG images & COCO labels',style='Muted.TLabel').pack(anchor='w')
         ttk.Button(right,text='Open collection folder',command=self.open_collection).pack(anchor='w',pady=(12,0))
-        ttk.Button(right,text='Technical log',command=self.show_log).pack(anchor='w',pady=(8,0))
+        ttk.Button(right,text='Technical log',command=self.show_log).pack(side='left',pady=(8,0))
+        ttk.Button(right,text='Load collection',command=self.load_dialog).pack(side='left',padx=(6,0),pady=(8,0))
         self.log_window=tk.Toplevel(win); self.log_window.title('Recorder technical log'); self.log_window.geometry('900x500'); self.log_window.withdraw()
         self.log_window.protocol('WM_DELETE_WINDOW',self.log_window.withdraw)
         self.logtext=tk.Text(self.log_window,wrap='word',state='disabled',background='#f5f7fa',foreground='#192b40',font=('Courier',10),padx=16,pady=16,relief='flat')
@@ -111,10 +115,11 @@ class DetectionPanel:
         self.logtext.configure(yscrollcommand=scroll.set); self.logtext.pack(fill='both',expand=True)
         actions=ttk.Frame(main); actions.pack(side='bottom',fill='x',pady=(14,0),before=body)
         self.start_button=ttk.Button(actions,text='Start new collection',style='Primary.TButton',command=self.start); self.start_button.pack(side='left')
-        self.resume_button=ttk.Button(actions,text='Resume collection',command=self.resume); self.resume_button.pack(side='left',padx=10)
+        self.resume_button=ttk.Button(actions,text='Resume selected',command=self.resume); self.resume_button.pack(side='left',padx=10)
         self.stop_button=ttk.Button(actions,text='Stop after current scene',style='Stop.TButton',command=self.stop,state='disabled'); self.stop_button.pack(side='right')
         for key in ('scenes','ring_cameras','randomization'): self.values[key].trace_add('write',self.update_summary)
-        self.update_summary(); win.protocol('WM_DELETE_WINDOW',self.close); self.poll()
+        self.update_summary(); self.restore_selection()
+        win.protocol('WM_DELETE_WINDOW',self.close); self.poll()
 
     def update_summary(self,*_):
         try:
@@ -159,13 +164,67 @@ class DetectionPanel:
             self.launch(folder,n,lo,hi,views,seed,probability,v['tray'],False,v['randomization'],v['profile'])
         except Exception as e: messagebox.showerror('Cannot start',str(e))
 
+    def remember_selection(self):
+        self.selection_file.parent.mkdir(parents=True,exist_ok=True)
+        from detection.dataset import write_json
+        write_json(self.selection_file,dict(folder=str(self.run),headless=self.headless.get()))
+
+    def load_collection(self,folder):
+        from detection.progress import read_collection
+        config,stats=read_collection(folder)
+        self.run=Path(folder).resolve()
+        self.collection_name.set(self.run.name)
+        for key in ('min_objects','max_objects','ring_cameras','seed','tray'):
+            self.values[key].set(str(config[key]))
+        self.values['robot'].set(str(config['robot_visible_probability']*100))
+        self.values['randomization'].set(config.get('randomization','original'))
+        self.values['profile'].set('')
+        self.values['output'].set(str(self.run.parent))
+        self.values['scenes'].set(str(stats['goal']))
+        for key,value in self.metrics.items(): value.set(f"{stats[key]:,}")
+        self.progress.configure(maximum=max(1,stats['goal']),value=stats['scenes'])
+        self.state.set('Saved collection loaded')
+        self.status.set(f"{stats['scenes']} of {stats['goal']} scenes saved. Click Resume selected to continue.")
+        self.remember_selection()
+        return config,stats
+
+    def restore_selection(self):
+        try:
+            if self.selection_file.exists():
+                saved=json.loads(self.selection_file.read_text())
+                self.headless.set(saved.get('headless',True))
+                if Path(saved['folder']).is_dir():
+                    self.load_collection(saved['folder']); return
+            # First launch after upgrading: prefer an existing saved dataset
+            # over a newly created folder whose simulator never started.
+            parent=Path(self.values['output'].get())
+            candidates=sorted(parent.glob('*/status.json'),key=lambda p:p.stat().st_mtime,reverse=True)
+            for status in candidates:
+                if json.loads(status.read_text()).get('scenes',0)>0:
+                    self.load_collection(status.parent); return
+        except (OSError,ValueError,KeyError) as error:
+            self.status.set('Could not restore the last collection. Use Load collection.')
+
+    def load_dialog(self):
+        if self.process and self.process.poll() is None:return
+        folder=filedialog.askdirectory(title='Load collection containing config.json',initialdir=self.values['output'].get())
+        if folder:
+            try:self.load_collection(folder)
+            except Exception as error:messagebox.showerror('Cannot load collection',str(error))
+
     def resume(self):
         if self.process and self.process.poll() is None:return
-        folder=filedialog.askdirectory(title='Select collection with config.json')
-        if not folder:return
+        if self.run is None:
+            self.load_dialog()
+            if self.run is None:return
         try:
-            c=json.loads((Path(folder)/'config.json').read_text())
-            self.launch(Path(folder),int(self.values['scenes'].get()),c['min_objects'],c['max_objects'],c['ring_cameras'],c['seed'],c['robot_visible_probability'],c['tray'],True,c.get('randomization','original'),wide=c.get('wide_profile'))
+            from detection.progress import read_collection
+            c,stats=read_collection(self.run)
+            goal=int(self.values['scenes'].get())
+            if goal<=stats['scenes']:
+                messagebox.showinfo('Target already reached',f"{stats['scenes']} scenes are saved. Increase Scenes to collect above this count to continue.")
+                return
+            self.launch(self.run,goal,c['min_objects'],c['max_objects'],c['ring_cameras'],c['seed'],c['robot_visible_probability'],c['tray'],True,c.get('randomization','original'),wide=c.get('wide_profile'))
         except Exception as e:messagebox.showerror('Cannot resume',str(e))
 
     def launch(self,folder,n,lo,hi,views,seed,robot,tray,resume,randomization='original',profile='',wide=None):
@@ -211,8 +270,17 @@ class DetectionPanel:
         self.set_running(True)
         self.state.set('Starting simulator')
         self.status.set('Loading the scene. The first capture may take a moment.')
-        self.progress.configure(value=0,maximum=n)
-        for value in self.metrics.values(): value.set('0')
+        self.collection_name.set(folder.name)
+        self.remember_selection()
+        if resume:
+            from detection.progress import read_collection
+            _,stats=read_collection(folder)
+            self.progress.configure(value=stats['scenes'],maximum=n)
+            for key,value in self.metrics.items(): value.set(f"{stats[key]:,}")
+            self.status.set(f"Resuming from {stats['scenes']} saved scenes. Loading simulator.")
+        else:
+            self.progress.configure(value=0,maximum=n)
+            for value in self.metrics.values(): value.set('0')
 
     def stop(self):
         if self.process and self.process.poll() is None:
@@ -234,7 +302,7 @@ class DetectionPanel:
                     s=json.loads(status.read_text())
                     for key,value in self.metrics.items(): value.set(f"{s[key]:,}")
                     self.progress.configure(maximum=max(1,s['goal']),value=s['scenes'])
-                    if not self.stopfile.exists():
+                    if not self.stopfile.exists() and (s['state']=='recording' or self.process.poll() is not None):
                         self.state.set({'complete':'Collection complete','stopped':'Collection paused'}.get(s['state'],'Recording'))
                         self.status.set(f"{s['scenes']} of {s['goal']} scenes saved.")
                 except (OSError,ValueError):pass
