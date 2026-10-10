@@ -79,14 +79,22 @@ def validate_dataset(dataset: Path, require_size: int = 448) -> dict[str, Any]:
     _require(manifest.get('export_complete') is True, 'Detection export is incomplete')
     _require(manifest.get('split_rule') in ('independent_run_no_frame_split',
              'committed_episode_or_legacy_session_no_frame_split',
-             'static_train_heldout_pick_place'), 'Unsafe split contract')
+             'static_train_heldout_pick_place',
+             'static_scene_grouped_no_view_split'), 'Unsafe split contract')
     _require(manifest.get('rfdetr_dataset_file') == 'roboflow', 'Export predates RF-DETR contract; export again')
     report: dict[str, Any] = {'dataset': str(dataset), 'native_size': require_size, 'splits': {}}
+    seen_scenes: dict[int,str] = {}
     for split in SPLITS:
         split_root = dataset / split
         annotation_path = split_root / '_annotations.coco.json'
         _require(annotation_path.is_file(), f'{split}: missing _annotations.coco.json')
-        report['splits'][split] = validate_coco(json.loads(annotation_path.read_text()), split_root, require_size)
+        coco=json.loads(annotation_path.read_text())
+        report['splits'][split] = validate_coco(coco, split_root, require_size)
+        if manifest['split_rule']=='static_scene_grouped_no_view_split':
+            for image in coco['images']:
+                scene=image.get('scene_id')
+                _require(isinstance(scene,int), 'Static image missing scene ID')
+                _require(seen_scenes.setdefault(scene,split)==split, 'Scene camera views leak across splits')
     return report
 
 
@@ -111,17 +119,24 @@ def train(args: argparse.Namespace, audit: dict[str, Any]) -> dict[str, Any]:
     _require(not output.exists() or not any(output.iterdir()),
              f'Output must be new or empty: {output}')
     output.mkdir(parents=True, exist_ok=True)
-    model = classes[args.model]()
+    model = classes[args.model](resolution=args.resolution)
     model.train(dataset_dir=str(args.dataset.resolve()), dataset_file='roboflow',
                 epochs=args.epochs, batch_size=args.batch_size,
-                grad_accum_steps=args.grad_accum_steps, output_dir=str(output))
+                grad_accum_steps=args.grad_accum_steps, output_dir=str(output),
+                resolution=args.resolution, multi_scale=False, expanded_scales=False,
+                num_workers=args.num_workers, checkpoint_interval=5,
+                early_stopping=True, early_stopping_patience=10, early_stopping_use_ema=True,
+                log_per_class_metrics=True, tensorboard=True, wandb=False, run_test=False)
     checkpoint = output / 'checkpoint_best_total.pth'
     _require(checkpoint.is_file(), f'Training ended without expected checkpoint: {checkpoint}')
     # Score the validation-selected checkpoint, not merely the final in-memory
-    # epoch. Using the same variant also preserves its native model resolution.
-    best_model = classes[args.model](pretrain_weights=str(checkpoint))
+    # epoch. Restore the checkpoint's trained head and model configuration.
+    best_model = classes[args.model].from_checkpoint(str(checkpoint))
     metrics = best_model.evaluate(dataset_dir=str(args.dataset.resolve()),
-                                  dataset_file='roboflow', split='test')
+                                  dataset_file='roboflow', split='test',
+                                  resolution=args.resolution,batch_size=args.batch_size,
+                                  num_workers=args.num_workers,log_per_class_metrics=True,
+                                  output_dir=str(output/'test_evaluation'))
     result = {'contract': 'p4_rfdetr_result_v1', 'training_complete': True,
               'deployment_ready': False, 'model': args.model,
               'dataset_audit': audit, 'checkpoint': str(checkpoint),
@@ -139,8 +154,12 @@ def main() -> None:
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=4)
     parser.add_argument('--grad-accum-steps', type=int, default=4)
+    parser.add_argument('--resolution',type=int,default=448)
+    parser.add_argument('--num-workers',type=int,default=4)
     parser.add_argument('--check-only', action='store_true')
     args = parser.parse_args()
+    if args.resolution<32 or args.resolution%32 or args.num_workers<0:
+        parser.error('resolution must be a positive multiple of 32; workers must be nonnegative')
     if args.epochs < 1 or args.batch_size < 1 or args.grad_accum_steps < 1:
         parser.error('epochs, batch size, and gradient accumulation must be positive')
     audit = validate_dataset(args.dataset)

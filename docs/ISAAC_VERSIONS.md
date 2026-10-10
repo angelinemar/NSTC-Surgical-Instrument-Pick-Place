@@ -223,3 +223,39 @@ valid arrangements; it is not an unconditional uniform distribution of poses.
 No failed arrangement counts toward the target. Camera, rendering, and label
 errors are not retried by this mechanism. Exhausting all five attempts still
 stops with an error; previously committed scenes remain resumable.
+
+
+## Train directly from a completed static collection
+
+The separate scene-split workflow audits every RGB/semantic/instance PNG,
+reconstructs COCO boxes from masks, verifies class mappings, and rejects image
+leakage before creating an 80/10/10 split. It copies full scene folders (including
+masks and metadata); raw capture is untouched. Views from a scene never cross
+splits. This measures synthetic held-out scene performance, not real-world or
+pick/place generalization. The original held-out pick/place assembler remains
+available for that different evaluation task.
+
+```bash
+./scripts/launchers/run_detection6.sh python -m detection.prepare_training \
+  --source datasets/detection_runs/20261011_001222_858461 \
+  --output datasets/rfdetr_static_500_scene_split
+./scripts/launchers/run_linux6.sh rfdetr \
+  --dataset datasets/rfdetr_static_500_scene_split \
+  --output training/runs/rfdetr_small_static500_v1 \
+  --model small --epochs 50 --batch-size 4 --grad-accum-steps 4 \
+  --resolution 448 --num-workers 4
+```
+
+Use a new output path for each export or training run. Training uses RGB and COCO
+boxes for all five classes; it does not train a semantic segmentation head.
+The native 448 masks remain available separately. The runner uses fixed 448
+resolution, EMA, validation-based early stopping (patience 10), and local
+TensorBoard metrics. It loads the best checkpoint with its trained class head,
+then evaluates the test split once and writes `p4_rfdetr_result.json` on success.
+A running process or partial checkpoint is not a completed training result.
+
+The 500-scene collection passed the complete label audit: 16,500 PNGs, 93,748
+boxes, and no duplicate RGB images. Splits contain 4,400 / 550 / 550 images
+from 400 / 50 / 50 scenes. See `label_audit.json` and `manifest.json` in the
+prepared dataset for detailed counts. Preview sheets are local under
+`debug/training_preview/`.
