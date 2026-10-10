@@ -10,6 +10,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/'compat')]
 from detection.dataset import CLASSES, camera_views, write_json, export_index
+from detection.placement import ScenePlacementError, retry_placement
 
 
 def arguments():
@@ -170,75 +171,84 @@ def collect(env,stage,ns,args):
             import time
             pending.rename(args.output/f'.interrupted_{index:06d}_{time.time_ns()}')
         pending.mkdir()
-        seed=args.seed+index*1009; rng=random.Random(seed)
-        for j,(key,_) in enumerate(bodies): pose(key,[3.+j*.2,3.,-2.,1.,0.,0.,0.])
-        ns['_p4_attempt_number']=index+1
-        apply_episode_lighting(env,ns)
-        tray=list(CLASSES) if args.tray=='full' else [c for c in CLASSES if args.tray=='random' and rng.random()<.4]
-        count=rng.randint(args.min_objects,args.max_objects)
-        requested_count=count
-        types=(list(CLASSES)+rng.choices(CLASSES,k=count-5)) if count>=5 else rng.sample(CLASSES,count)
-        if args.wide is not None and count>=5:
-            required=types[:5]; extra=types[5:]
-            rng.shuffle(required); rng.shuffle(extra); types=required+extra
-        else:
-            rng.shuffle(types)
-        used={c:0 for c in CLASSES}; rows=[]; occupied=[]
-        # Place named base bodies into their orderly tray slots when selected.
-        down,_=axes(LAYOUT)
-        for c in tray:
-            key=ns['phase3_scene_key_for_object'](c); t=templates[c]
-            pts=rotate(t['quat'],t['points'])
-            # Dominant planar extent gives the imported flat tool's long axis.
-            centered=pts[:,:2]-pts[:,:2].mean(0); _,_,v=np.linalg.svd(centered)
-            angle=np.degrees(np.arctan2(down[1],down[0])-np.arctan2(v[0,1],v[0,0]))+t['yaw']
-            xy=slot_spec(c,LAYOUT)['center_xy']; value=table_pose(t,*xy,angle)
-            from phase4_tray_slots import floor_heights
-            value[2]+=floor_heights(ns)[c]
-            pose(key,value.tolist()); rows.append(dict(key=key,object=c,region='tray'))
-        for c in types:
-            key=f'detect_{c}_{used[c]:02d}'; used[c]+=1; t=templates[c]
-            for trial in range(5000):
-                value=table_pose(t,rng.uniform(*LAYOUT['grid_x']),rng.uniform(*LAYOUT['grid_y']),rng.uniform(-180,180))
-                pts=rotate(value[3:],t['points'])+value[:3]; bounds=(pts[:,:2].min(0),pts[:,:2].max(0))
-                if table_footprint_allowed(pts,LAYOUT) and all(disjoint(bounds,b,.002) for b in occupied): break
+        def prepare_scene(retry):
+            seed=args.seed+index*1009; rng=random.Random(seed)
+            for j,(key,_) in enumerate(bodies): pose(key,[3.+j*.2,3.,-2.,1.,0.,0.,0.])
+            ns['_p4_attempt_number']=index+1
+            apply_episode_lighting(env,ns)
+            tray=list(CLASSES) if args.tray=='full' else [c for c in CLASSES if args.tray=='random' and rng.random()<.4]
+            count=rng.randint(args.min_objects,args.max_objects)
+            requested_count=count
+            types=(list(CLASSES)+rng.choices(CLASSES,k=count-5)) if count>=5 else rng.sample(CLASSES,count)
+            if args.wide is not None and count>=5:
+                required=types[:5]; extra=types[5:]
+                rng.shuffle(required); rng.shuffle(extra); types=required+extra
             else:
-                if args.wide is not None and len(occupied)>=args.min_objects:
-                    print(f'[DETECTION CAPACITY] Requested {requested_count}; fitted {len(occupied)}',flush=True)
-                    break
-                raise RuntimeError('Scatter cannot fit minimum/requested count. Reduce object bounds and start a new collection.')
-            occupied.append(bounds); pose(key,value.tolist()); rows.append(dict(key=key,object=c,region='table'))
-        count=len(occupied)
-        show=rng.random()<args.robot_visible_probability
-        robot.MakeVisible() if show else robot.MakeInvisible()
-        # Keep the original velocity limit, but allow slow contacts to settle.
-        # Require three consecutive checks rather than one lucky instant.
-        from detection.settling import settle
-        def physics_step():
-            env.scene.write_data_to_sim(); env.sim.step(render=False); env.scene.update(env.physics_dt)
-        def speeds():
-            return {row['key']:float(env.scene[row['key']].data.root_lin_vel_w[0].norm()) for row in rows}
-        try:
-            settling=settle(physics_step,speeds)
-        except RuntimeError as error:
-            write_json(pending/'settling_error.json',dict(scene_id=index,seed=seed,error=str(error),speeds=speeds()))
-            raise
-        print('[DETECTION SETTLED] '+json.dumps(dict(scene_id=index,steps=settling['steps'])),flush=True)
-        roots={}; classes={}
-        for j,row in enumerate(rows,1):
-            obj=env.scene[row['key']]; points=rigid_world_points(obj)
-            if float(obj.data.root_lin_vel_w[0].norm())>.015 or not np.isfinite(points).all():
-                raise RuntimeError('Unsettled instrument: '+row['key'])
-            if row['region']=='table' and (not table_footprint_allowed(points,LAYOUT,0) or abs(float(points[:,2].min()))>.01):
-                raise RuntimeError('Unsupported/out-of-workspace instrument: '+row['key'])
-            row['pose']=obj.data.root_link_state_w[0,:7].cpu().tolist()
-            prim=obj.cfg.prim_path.replace('{ENV_REGEX_NS}','/World/envs/env_0').replace('env_.*','env_0')
-            roots[prim]=j; classes[str(j)]=dict(name=row['object'],semantic_id=CLASSES.index(row['object'])+3,prim_path=prim)
-        metadata=dict(scene_id=index,seed=seed,table_count=count,tray_objects=tray,robot_visible=show,
-                      resolution=448,antialiasing='DLAA',materials='recorder',
-                      render_settings=render_contract,settling=settling,requested_table_count=requested_count,
-                      randomization=args.randomization,wide_profile=args.wide,
-                      objects=rows,instance_classes=classes,lighting=ns['_p4_domain_randomization'],views=[])
+                rng.shuffle(types)
+            used={c:0 for c in CLASSES}; rows=[]; occupied=[]
+            placement_seed=seed+retry*10000019
+            if retry: rng=random.Random(placement_seed)
+            # Place named base bodies into their orderly tray slots when selected.
+            down,_=axes(LAYOUT)
+            for c in tray:
+                key=ns['phase3_scene_key_for_object'](c); t=templates[c]
+                pts=rotate(t['quat'],t['points'])
+                # Dominant planar extent gives the imported flat tool's long axis.
+                centered=pts[:,:2]-pts[:,:2].mean(0); _,_,v=np.linalg.svd(centered)
+                angle=np.degrees(np.arctan2(down[1],down[0])-np.arctan2(v[0,1],v[0,0]))+t['yaw']
+                xy=slot_spec(c,LAYOUT)['center_xy']; value=table_pose(t,*xy,angle)
+                from phase4_tray_slots import floor_heights
+                value[2]+=floor_heights(ns)[c]
+                pose(key,value.tolist()); rows.append(dict(key=key,object=c,region='tray'))
+            for c in types:
+                key=f'detect_{c}_{used[c]:02d}'; used[c]+=1; t=templates[c]
+                for trial in range(5000):
+                    value=table_pose(t,rng.uniform(*LAYOUT['grid_x']),rng.uniform(*LAYOUT['grid_y']),rng.uniform(-180,180))
+                    pts=rotate(value[3:],t['points'])+value[:3]; bounds=(pts[:,:2].min(0),pts[:,:2].max(0))
+                    if table_footprint_allowed(pts,LAYOUT) and all(disjoint(bounds,b,.002) for b in occupied): break
+                else:
+                    if args.wide is not None and len(occupied)>=args.min_objects:
+                        print(f'[DETECTION CAPACITY] Requested {requested_count}; fitted {len(occupied)}',flush=True)
+                        break
+                    raise ScenePlacementError('Scatter cannot fit minimum/requested count. Reduce object bounds and start a new collection.')
+                occupied.append(bounds); pose(key,value.tolist()); rows.append(dict(key=key,object=c,region='table'))
+            count=len(occupied)
+            show=rng.random()<args.robot_visible_probability
+            robot.MakeVisible() if show else robot.MakeInvisible()
+            # Keep the original velocity limit, but allow slow contacts to settle.
+            # Require three consecutive checks rather than one lucky instant.
+            from detection.settling import settle
+            def physics_step():
+                env.scene.write_data_to_sim(); env.sim.step(render=False); env.scene.update(env.physics_dt)
+            def speeds():
+                return {row['key']:float(env.scene[row['key']].data.root_lin_vel_w[0].norm()) for row in rows}
+            try:
+                settling=settle(physics_step,speeds)
+            except RuntimeError as error:
+                write_json(pending/f'settling_error_{retry:02d}.json',dict(scene_id=index,seed=seed,error=str(error),speeds=speeds()))
+                raise ScenePlacementError(str(error)) from error
+            print('[DETECTION SETTLED] '+json.dumps(dict(scene_id=index,steps=settling['steps'])),flush=True)
+            roots={}; classes={}
+            for j,row in enumerate(rows,1):
+                obj=env.scene[row['key']]; points=rigid_world_points(obj)
+                if float(obj.data.root_lin_vel_w[0].norm())>.015 or not np.isfinite(points).all():
+                    raise ScenePlacementError('Unsettled instrument: '+row['key'])
+                if row['region']=='table' and (not table_footprint_allowed(points,LAYOUT,0) or abs(float(points[:,2].min()))>.01):
+                    raise ScenePlacementError(f"Unsupported/out-of-workspace instrument: {row['key']}; min_xyz={points.min(0).tolist()}; max_xyz={points.max(0).tolist()}")
+                row['pose']=obj.data.root_link_state_w[0,:7].cpu().tolist()
+                prim=obj.cfg.prim_path.replace('{ENV_REGEX_NS}','/World/envs/env_0').replace('env_.*','env_0')
+                roots[prim]=j; classes[str(j)]=dict(name=row['object'],semantic_id=CLASSES.index(row['object'])+3,prim_path=prim)
+            metadata=dict(scene_id=index,seed=seed,placement_attempt=retry+1,placement_seed=placement_seed,table_count=count,tray_objects=tray,robot_visible=show,
+                          resolution=448,antialiasing='DLAA',materials='recorder',
+                          render_settings=render_contract,settling=settling,requested_table_count=requested_count,
+                          randomization=args.randomization,wide_profile=args.wide,
+                          objects=rows,instance_classes=classes,lighting=ns['_p4_domain_randomization'],views=[])
+            return metadata,rng,roots,classes
+        def report_rejection(retry,error):
+            diagnostic=dict(scene_id=index,attempt=retry+1,placement_seed=args.seed+index*1009+retry*10000019,error=str(error))
+            write_json(pending/f'placement_error_{retry:02d}.json',diagnostic)
+            print('[DETECTION RETRY] '+json.dumps(diagnostic),flush=True)
+        metadata,rng,roots,classes=retry_placement(prepare_scene,report_rejection)
         camera=env.scene['camera']
         for view in camera_views(rng,LAYOUT,args.ring_cameras,args.wide):
             camera.set_world_poses_from_view(torch.tensor([view['eye']],device=env.device),torch.tensor([view['target']],device=env.device))

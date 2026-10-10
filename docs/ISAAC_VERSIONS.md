@@ -210,4 +210,16 @@ Capture waits at least 120 physics steps and permits up to 1200 steps
 velocity checks must pass the original 0.015 m/s threshold. Geometry/support
 checks remain mandatory. Scene metadata records settling steps and speeds.
 Persistent motion still fails with measured speeds saved in the pending scene’s
-`settling_error.json`; resume preserves all previously committed scenes.
+`settling_error_<attempt>.json`; resume preserves all previously committed scenes.
+
+
+If a physical arrangement fails the placement, settling, or table-support checks,
+the detector retries up to five deterministic arrangements for that scene. The
+requested count, class list, and tray occupants are retained; positions/yaws are
+resampled. Wide mode's existing table-capacity rule still applies. Failed
+attempts are logged as `placement_error_<attempt>.json`, and accepted metadata
+records the placement seed and attempt. This rejection sampling favors physically
+valid arrangements; it is not an unconditional uniform distribution of poses.
+No failed arrangement counts toward the target. Camera, rendering, and label
+errors are not retried by this mechanism. Exhausting all five attempts still
+stops with an error; previously committed scenes remain resumable.
