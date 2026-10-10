@@ -23,6 +23,7 @@ flowchart TD
 | --- | --- | --- |
 | `angel/main` | Stable integration; GitHub default | [Overview](../README.md) |
 | `angel/recorder` | Recorder, panel, cameras, raw H5 | [Recorder](RECORDER.md) |
+| `angel/detection-recorder` | Separate static-scene detection GUI, PNG + COCO, ring/top capture | [Detection recorder](../detection/README.md) |
 | `angel/training` | Export, detector, DP, evaluation | [Training](../training/README.md) |
 | `angel/debug` | Diagnostics and experiments | Branch-local documentation |
 | `angel/inference` | Runtime and controller integration | [Inference](INFERENCE.md) |

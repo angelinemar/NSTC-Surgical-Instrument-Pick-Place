@@ -6,6 +6,13 @@ An IsaacLab recorder for five surgical instruments, standalone detector datasets
 
 ## Pipeline
 
+### Separate static detector collection
+
+On `angel/detection-recorder`, run `.\RUN_DETECTION.ps1` for the independent
+object-detection GUI: scattered instruments, ring + top views, native 448 DLAA,
+PNG and COCO. [Setup, outputs, and held-out evaluation](detection/README.md).
+The DP recorder below remains available unchanged.
+
 ![Six-camera recording feeds independent DP and RF-DETR training and inference.](docs/media/pipeline.png)
 
 One recording feeds Pick DP, Place DP, and a standalone RF-DETR detector.
