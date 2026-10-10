@@ -13,6 +13,11 @@ if [[ ! -x "${P4_ISAAC_PYTHON:-}" ]]; then
     exit 1
 fi
 RUNTIME="$(cd -- "$(dirname -- "$P4_ISAAC_PYTHON")/../.." && pwd)"
+# Persist consent locally, never in the repository or for another workstation.
+export P4_EULA_ACCEPTANCE_FILE="${P4_EULA_ACCEPTANCE_FILE:-$RUNTIME/setup/omniverse-eula-accepted}"
+if [[ -f "$P4_EULA_ACCEPTANCE_FILE" ]] && [[ "$(cat -- "$P4_EULA_ACCEPTANCE_FILE")" == "yes" ]]; then
+    export OMNI_KIT_ACCEPT_EULA=YES
+fi
 COMPAT="$RUNTIME/.tools/compat/usr/lib/x86_64-linux-gnu"
 if [[ -d "$COMPAT" ]]; then
     export LD_LIBRARY_PATH="$COMPAT${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"

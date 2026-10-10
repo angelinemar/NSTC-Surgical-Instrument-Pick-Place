@@ -29,6 +29,11 @@ Or from the Sim 6 checkout:
   --scenes 2 --min-objects 8 --max-objects 18 --ring-cameras 8 --headless
 ```
 
+The GUI asks for the NVIDIA Omniverse EULA before first launch. Consent is
+stored locally under the runtime workspace, never in Git. Recorder subprocesses
+use closed stdin so terminal prompts cannot silently block the GUI. In Advanced,
+uncheck **Render without an Isaac viewport** to display the simulator window.
+
 Use a new output directory. To continue the same collection, retain its seed and
 capture parameters, add `--resume`, and increase `--scenes` to the desired total.
 The GUI's **Stop after scene** finishes the current scene before stopping.

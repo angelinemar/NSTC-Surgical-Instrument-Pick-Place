@@ -175,6 +175,17 @@ class DetectionPanel:
             wide=wide if wide is not None else load_profile(Path(profile) if profile else None)
         python=Path(isaac_python())
         if not python.is_file():raise FileNotFoundError('Isaac Python not found: '+str(python))
+        if os.environ.get('OMNI_KIT_ACCEPT_EULA','').upper() not in ('YES','Y','1','TRUE'):
+            accepted=messagebox.askyesno('NVIDIA license agreement',
+                'Isaac Sim requires acceptance of the NVIDIA Omniverse EULA.\n\n'
+                'https://docs.omniverse.nvidia.com/platform/latest/common/NVIDIA_Omniverse_License_Agreement.html\n\n'
+                'Do you accept the agreement and want to continue?')
+            if not accepted: return
+            os.environ['OMNI_KIT_ACCEPT_EULA']='YES'
+            consent=os.environ.get('P4_EULA_ACCEPTANCE_FILE')
+            if consent:
+                consent=Path(consent); consent.parent.mkdir(parents=True,exist_ok=True)
+                consent.write_text('yes\n',encoding='utf-8')
         logdir=ROOT/'debug'/'logs'/'detection'; logdir.mkdir(parents=True,exist_ok=True)
         stamp=datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')
         self.stopfile=logdir/(stamp+'.stop'); self.logpath=logdir/(stamp+'.log')
@@ -189,8 +200,14 @@ class DetectionPanel:
         if resume:argv.append('--resume')
         if self.headless.get():argv.append('--headless')
         self.log=self.logpath.open('w',encoding='utf-8'); self.run=folder; self.offset=0
-        self.process=subprocess.Popen(argv,cwd=ROOT,stdout=self.log,stderr=subprocess.STDOUT,
-                                      creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+        try:
+            self.process=subprocess.Popen(argv,cwd=ROOT,stdin=subprocess.DEVNULL,
+                stdout=self.log,stderr=subprocess.STDOUT,
+                env=dict(os.environ,PYTHONUNBUFFERED='1'),
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
+        except Exception:
+            self.log.close()
+            raise
         self.set_running(True)
         self.state.set('Starting simulator')
         self.status.set('Loading the scene. The first capture may take a moment.')

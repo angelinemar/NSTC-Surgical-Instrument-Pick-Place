@@ -15,21 +15,30 @@ index 03a6bf1..a35e400 100644
  # app.hydra.aperture.conform = 4 # in 105.1 pixels are square by default
  omni.replicator.asyncRendering = false
 +rtx.hydra.supportMultiTickRate = true
- 
+
  ### FSD
  # this .kit file is used for headless, no-rendering cases. There won't be a scene delegate
 diff --git a/apps/isaaclab.python.kit b/apps/isaaclab.python.kit
-index 2435019..a6e2b04 100644
+index 2435019..ebdd977 100644
 --- a/apps/isaaclab.python.kit
 +++ b/apps/isaaclab.python.kit
 @@ -11,6 +11,7 @@ version = "2.3.2"
  keywords = ["experience", "app", "usd"]
- 
+
  [dependencies]
 +"isaacsim.core.rendering_manager" = {}
  # Isaac Sim extensions
  "isaacsim.app.about" = {}
  "isaacsim.asset.browser" = {}
+@@ -38,7 +39,7 @@ keywords = ["experience", "app", "usd"]
+
+ # Isaac Sim Extra
+ "isaacsim.asset.importer.mjcf" = {}
+-"isaacsim.asset.importer.urdf" = {version = "2.4.31", exact = true}
++"isaacsim.asset.importer.urdf" = {}
+ "omni.physx.bundle" = {}
+ "omni.physx.tensors" = {}
+ "omni.replicator.core" = {}
 @@ -124,6 +125,7 @@ rendergraph.mgpu.backend = "copyQueue" # In MGPU configurations, This setting ca
  rtx-transient.dlssg.enabled = false # DLSSG frame generation is not compatible with synthetic data generation
  rtx.hydra.mdlMaterialWarmup = true # start loading the MDL shaders needed before any delegate is actually created.
@@ -37,7 +46,29 @@ index 2435019..a6e2b04 100644
 +rtx.hydra.supportMultiTickRate = true
  exts."omni.kit.test".includeTests = ["*isaac*"] # Add isaac tests to test runner
  foundation.verifyOsVersion.enabled = false
- 
+
+diff --git a/apps/isaaclab.python.rendering.kit b/apps/isaaclab.python.rendering.kit
+index d27498b..46d8014 100644
+--- a/apps/isaaclab.python.rendering.kit
++++ b/apps/isaaclab.python.rendering.kit
+@@ -19,7 +19,7 @@ keywords = ["experience", "app", "isaaclab", "python", "camera", "minimal"]
+ "isaaclab.python" = {}
+
+ # PhysX
+-"omni.kit.property.physx" = {}
++"omni.kit.property.physics" = {}
+
+ # Rendering
+ "omni.kit.material.library" = {}
+@@ -33,7 +33,7 @@ cameras_enabled = true
+ app.versionFile = "${exe-path}/VERSION"
+ app.folder = "${exe-path}/"
+ app.name = "Isaac-Sim"
+-app.version = "5.1.0"
++app.version = "6.0.1"
+
+ ### FSD
+ app.useFabricSceneDelegate = true
 diff --git a/source/isaaclab/isaaclab/assets/articulation/articulation.py b/source/isaaclab/isaaclab/assets/articulation/articulation.py
 index b67ded1..755b3cc 100644
 --- a/source/isaaclab/isaaclab/assets/articulation/articulation.py
@@ -45,12 +76,12 @@ index b67ded1..755b3cc 100644
 @@ -16,7 +16,7 @@ import torch
  import warp as wp
  from prettytable import PrettyTable
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
  from isaacsim.core.simulation_manager import SimulationManager
  from pxr import PhysxSchema, UsdPhysics
- 
+
 diff --git a/source/isaaclab/isaaclab/assets/articulation/articulation_data.py b/source/isaaclab/isaaclab/assets/articulation/articulation_data.py
 index 47902ed..3e7d657 100644
 --- a/source/isaaclab/isaaclab/assets/articulation/articulation_data.py
@@ -58,32 +89,32 @@ index 47902ed..3e7d657 100644
 @@ -3,12 +3,14 @@
  #
  # SPDX-License-Identifier: BSD-3-Clause
- 
+
 +from __future__ import annotations
 +
  import logging
  import weakref
- 
+
  import torch
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
  from isaacsim.core.simulation_manager import SimulationManager
- 
+
  import isaaclab.utils.math as math_utils
 diff --git a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py b/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py
 index 12ae6c5..096faf2 100644
 --- a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py
 +++ b/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py
 @@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
- 
+
  import torch
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
  from isaacsim.core.simulation_manager import SimulationManager
  from pxr import PhysxSchema, UsdShade
- 
+
 diff --git a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object_data.py b/source/isaaclab/isaaclab/assets/deformable_object/deformable_object_data.py
 index bb77143..6b82fd7 100644
 --- a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object_data.py
@@ -91,16 +122,16 @@ index bb77143..6b82fd7 100644
 @@ -3,11 +3,13 @@
  #
  # SPDX-License-Identifier: BSD-3-Clause
- 
+
 +from __future__ import annotations
 +
  import weakref
- 
+
  import torch
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
- 
+
  import isaaclab.utils.math as math_utils
  from isaaclab.utils.buffers import TimestampedBuffer
 diff --git a/source/isaaclab/isaaclab/assets/rigid_object/rigid_object.py b/source/isaaclab/isaaclab/assets/rigid_object/rigid_object.py
@@ -110,12 +141,12 @@ index 6d0ec98..5565591 100644
 @@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
  import torch
  import warp as wp
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
  from isaacsim.core.simulation_manager import SimulationManager
  from pxr import UsdPhysics
- 
+
 diff --git a/source/isaaclab/isaaclab/assets/rigid_object/rigid_object_data.py b/source/isaaclab/isaaclab/assets/rigid_object/rigid_object_data.py
 index d1a94f1..5daf126 100644
 --- a/source/isaaclab/isaaclab/assets/rigid_object/rigid_object_data.py
@@ -123,16 +154,16 @@ index d1a94f1..5daf126 100644
 @@ -3,11 +3,13 @@
  #
  # SPDX-License-Identifier: BSD-3-Clause
- 
+
 +from __future__ import annotations
 +
  import weakref
- 
+
  import torch
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
- 
+
  import isaaclab.utils.math as math_utils
  from isaaclab.sim.utils.stage import get_current_stage_id
 diff --git a/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection.py b/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection.py
@@ -142,12 +173,12 @@ index b458b15..8c62801 100644
 @@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
  import torch
  import warp as wp
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
  from isaacsim.core.simulation_manager import SimulationManager
  from pxr import UsdPhysics
- 
+
 diff --git a/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection_data.py b/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection_data.py
 index 5156ef7..7c9d1f5 100644
 --- a/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection_data.py
@@ -155,16 +186,16 @@ index 5156ef7..7c9d1f5 100644
 @@ -3,11 +3,13 @@
  #
  # SPDX-License-Identifier: BSD-3-Clause
- 
+
 +from __future__ import annotations
 +
  import weakref
- 
+
  import torch
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
- 
+
  import isaaclab.utils.math as math_utils
  from isaaclab.sim.utils.stage import get_current_stage_id
 diff --git a/source/isaaclab/isaaclab/envs/mdp/events.py b/source/isaaclab/isaaclab/envs/mdp/events.py
@@ -173,13 +204,13 @@ index 484121f..96f1e63 100644
 +++ b/source/isaaclab/isaaclab/envs/mdp/events.py
 @@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Literal
  import torch
- 
+
  import carb
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
  from isaacsim.core.utils.extensions import enable_extension
  from pxr import Gf, Sdf, UsdGeom, Vt
- 
+
 diff --git a/source/isaaclab/isaaclab/sensors/camera/camera.py b/source/isaaclab/isaaclab/sensors/camera/camera.py
 index 26fd071..90c60ac 100644
 --- a/source/isaaclab/isaaclab/sensors/camera/camera.py
@@ -196,7 +227,7 @@ index 26fd071..90c60ac 100644
              raise RuntimeError(
 @@ -618,7 +621,24 @@ class Camera(SensorBase):
              raise RuntimeError("Camera prim is None. Please call 'sim.play()' first.")
- 
+
          # get the poses from the view
 -        poses, quat = self._view.get_world_poses(env_ids)
 +        if carb.settings.get_settings().get("/physics/fabricEnabled"):
@@ -226,13 +257,13 @@ index 2a85a26..0c1c0bb 100644
 +++ b/source/isaaclab/isaaclab/sensors/contact_sensor/contact_sensor.py
 @@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
  import torch
- 
+
  import carb
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
  from isaacsim.core.simulation_manager import SimulationManager
  from pxr import PhysxSchema
- 
+
 diff --git a/source/isaaclab/isaaclab/sensors/ray_caster/multi_mesh_ray_caster.py b/source/isaaclab/isaaclab/sensors/ray_caster/multi_mesh_ray_caster.py
 index 39be0d7..a312f8c 100644
 --- a/source/isaaclab/isaaclab/sensors/ray_caster/multi_mesh_ray_caster.py
@@ -240,10 +271,10 @@ index 39be0d7..a312f8c 100644
 @@ -15,7 +15,7 @@ import torch
  import trimesh
  import warp as wp
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
- 
+
  import isaaclab.sim as sim_utils
  from isaaclab.sim.views import XformPrimView
 diff --git a/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py b/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py
@@ -251,12 +282,12 @@ index 543276e..bd3656f 100644
 --- a/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py
 +++ b/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py
 @@ -9,7 +9,7 @@ from __future__ import annotations
- 
+
  import torch
- 
+
 -import omni.physics.tensors.impl.api as physx
 +import omni.physics.tensors.api as physx
- 
+
  from isaaclab.sim.views import XformPrimView
  from isaaclab.utils.math import convert_quat
 diff --git a/source/isaaclab/isaaclab/sim/simulation_context.py b/source/isaaclab/isaaclab/sim/simulation_context.py
@@ -266,12 +297,12 @@ index d022c2d..5223f43 100644
 @@ -222,7 +222,9 @@ class SimulationContext(_SimulationContext):
              # disable the viewport if offscreen_render is enabled
              from omni.kit.viewport.utility import get_active_viewport
- 
+
 -            get_active_viewport().updates_enabled = False
 +            viewport = get_active_viewport()
 +            if viewport is not None:
 +                viewport.updates_enabled = False
- 
+
          # override enable scene querying if rendering is enabled
          # this is needed for some GUI features
 @@ -619,6 +621,8 @@ class SimulationContext(_SimulationContext):
@@ -356,7 +387,7 @@ index 939ee29..8fa4468 100644
 -    f"dex-retargeting==0.4.6 ; platform_system == 'Linux' and ({SUPPORTED_ARCHS})",
 +    f"dex-retargeting==0.5.0 ; platform_system == 'Linux' and ({SUPPORTED_ARCHS})",
  ]
- 
+
  PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
 diff --git a/source/isaaclab_rl/setup.py b/source/isaaclab_rl/setup.py
 index 998fba1..72a9cd5 100644
@@ -380,7 +411,7 @@ index 998fba1..72a9cd5 100644
 +    "pillow==12.2.0",
 +    "packaging==26.0",
  ]
- 
+
  PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
 diff --git a/source/isaaclab_tasks/setup.py b/source/isaaclab_tasks/setup.py
 index 455c566..b69d30d 100644
