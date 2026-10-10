@@ -211,9 +211,19 @@ def collect(env,stage,ns,args):
         count=len(occupied)
         show=rng.random()<args.robot_visible_probability
         robot.MakeVisible() if show else robot.MakeInvisible()
-        # Physics settling only: no policy action or pick/place execution.
-        for _ in range(120):
+        # Keep the original velocity limit, but allow slow contacts to settle.
+        # Require three consecutive checks rather than one lucky instant.
+        from detection.settling import settle
+        def physics_step():
             env.scene.write_data_to_sim(); env.sim.step(render=False); env.scene.update(env.physics_dt)
+        def speeds():
+            return {row['key']:float(env.scene[row['key']].data.root_lin_vel_w[0].norm()) for row in rows}
+        try:
+            settling=settle(physics_step,speeds)
+        except RuntimeError as error:
+            write_json(pending/'settling_error.json',dict(scene_id=index,seed=seed,error=str(error),speeds=speeds()))
+            raise
+        print('[DETECTION SETTLED] '+json.dumps(dict(scene_id=index,steps=settling['steps'])),flush=True)
         roots={}; classes={}
         for j,row in enumerate(rows,1):
             obj=env.scene[row['key']]; points=rigid_world_points(obj)
@@ -226,7 +236,7 @@ def collect(env,stage,ns,args):
             roots[prim]=j; classes[str(j)]=dict(name=row['object'],semantic_id=CLASSES.index(row['object'])+3,prim_path=prim)
         metadata=dict(scene_id=index,seed=seed,table_count=count,tray_objects=tray,robot_visible=show,
                       resolution=448,antialiasing='DLAA',materials='recorder',
-                      render_settings=render_contract,requested_table_count=requested_count,
+                      render_settings=render_contract,settling=settling,requested_table_count=requested_count,
                       randomization=args.randomization,wide_profile=args.wide,
                       objects=rows,instance_classes=classes,lighting=ns['_p4_domain_randomization'],views=[])
         camera=env.scene['camera']

@@ -197,3 +197,13 @@ validation/test exports before training (see `detection/README.md`):
   --dataset /path/to/new_combined_dataset \
   --output training/runs/rfdetr_wide --model small --epochs 50
 ```
+
+
+## Instrument settling
+
+Capture waits at least 120 physics steps and permits up to 1200 steps
+(1.2–12 seconds at the current 0.01-second physics step). Three consecutive
+velocity checks must pass the original 0.015 m/s threshold. Geometry/support
+checks remain mandatory. Scene metadata records settling steps and speeds.
+Persistent motion still fails with measured speeds saved in the pending scene’s
+`settling_error.json`; resume preserves all previously committed scenes.
