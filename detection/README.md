@@ -1,7 +1,7 @@
 # Static Object Detection Recorder
 
 Separate GUI and capture process for RF-DETR training. The existing DP panel,
-recording stages, cameras, and datasets are not modified.
+recording workflow and datasets remain separate.
 
 ```mermaid
 flowchart LR
@@ -18,7 +18,15 @@ flowchart LR
     J --> K[Detector evaluation]
 ```
 
-## Start the separate GUI
+## Linux / Isaac Sim 6.0.1
+
+Run `./scripts/launchers/run_detection6.sh panel` from the repository root.
+Select **wide** for configurable stronger lighting, wider camera elevations,
+and 1–64 requested objects (subject to table capacity). The optional JSON field
+accepts the settings described in [Isaac versions and randomization](../docs/ISAAC_VERSIONS.md).
+Default **original** retains the upstream capture distribution.
+
+## Start the separate GUI (original Windows / 5.1)
 
 ```powershell
 cd C:\IsaacLab\scripts\custom\i4h_project\p4
@@ -98,7 +106,9 @@ Validation may guide model selection; keep test untouched until final evaluation
 This is an explicit static-to-manipulation generalization experiment, not a promise
 of deployment accuracy. Compare per-class AP and inspect occlusion failures.
 
-## Verified smoke checks
+## Original upstream 5.1 smoke checks
+
+For this branch’s Sim 6 tests, see [verification](../docs/ISAAC_VERSIONS.md#verification-on-this-pc).
 
 On 2026-10-10: two scenes with 18 table instruments and five orderly tray tools,
 nine views each, produced 18 RGB images and 371 visible-instance boxes. All 54

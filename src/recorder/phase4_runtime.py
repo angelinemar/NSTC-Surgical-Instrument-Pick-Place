@@ -218,7 +218,20 @@ def install_runtime_hooks(namespace):
                                'visibility': str(UsdGeom.Imageable(prim).ComputeVisibility()),
                                'position': list(UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(Usd.TimeCode.Default()).ExtractTranslation())})
         out = Path(namespace['args_cli'].out_dir)
-        (out/'rgb_failure_diagnostics.json').write_text(json.dumps({'lights':lights,'rtx':settings.get('/rtx')}, default=str,indent=2))
+        cameras = {}
+        from PIL import Image
+        for name in names:
+            camera = env.scene[name]
+            outputs = camera.data.output
+            Image.fromarray(outputs['rgb'][0, ..., :3].detach().cpu().numpy()).save(out/f'rgb_failure_{name}.png')
+            cameras[name] = {
+                'position': camera.data.pos_w.detach().cpu().tolist(),
+                'outputs': {key: {'shape': list(value.shape),
+                                  'min': float(value.float().min().item()),
+                                  'max': float(value.float().max().item())}
+                            for key, value in outputs.items()},
+            }
+        (out/'rgb_failure_diagnostics.json').write_text(json.dumps({'lights':lights,'cameras':cameras,'rtx':settings.get('/rtx')}, default=str,indent=2))
         raise RuntimeError(f'P4 RGB not ready after 60 render frames; recording stopped to avoid black dataset: {stats}')
 
     namespace['wait_for_settle'] = settle_then_warm_cameras

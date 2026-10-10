@@ -4,6 +4,13 @@ An IsaacLab recorder for five surgical instruments, standalone detector datasets
 
 [Recorder](docs/RECORDER.md) · [Training](training/README.md) · [Inference](docs/INFERENCE.md) · [Branch workflow](docs/BRANCHES.md)
 
+## Isaac Sim versions
+
+This branch runs on the local Isaac Sim 6.0.1 environment. Start the separate
+detector GUI with `./scripts/launchers/run_detection6.sh panel`. The original
+5.1 source is preserved on `angel/detection-recorder-sim5.1`.
+[Version setup, wide randomization, and tested commands](docs/ISAAC_VERSIONS.md).
+
 ## Pipeline
 
 ### Separate static detector collection
@@ -11,7 +18,7 @@ An IsaacLab recorder for five surgical instruments, standalone detector datasets
 On `angel/detection-recorder`, run `.\RUN_DETECTION.ps1` for the independent
 object-detection GUI: scattered instruments, ring + top views, native 448 DLAA,
 PNG and COCO. [Setup, outputs, and held-out evaluation](detection/README.md).
-The DP recorder below remains available unchanged.
+The DP recorder below remains available through its separate entry point.
 
 ![Six-camera recording feeds independent DP and RF-DETR training and inference.](docs/media/pipeline.png)
 

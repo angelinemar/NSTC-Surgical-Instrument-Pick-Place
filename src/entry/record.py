@@ -24,7 +24,7 @@ def main() -> None:
     parser.add_argument('--dataset-purpose', choices=('detection','dp','both'), default='detection')
     parser.add_argument('--dataset-split', choices=('auto','train','valid','test','unassigned'), default='auto')
     parser.add_argument('--shutdown-mode', choices=('native','verified-exit'),
-                        default='verified-exit' if os.name=='nt' else 'native')
+                        default=os.environ.get('P4_SHUTDOWN_MODE', 'verified-exit' if os.name=='nt' else 'native'))
     parser.add_argument('--session-config',help='Control-panel session JSON')
     parser.add_argument('--tray-occupancy',choices=['random','empty','full','manual'],default='random',
                         help='Initial tray occupancy. Random holds 0-3 other classes so at least one non-target remains on the table; full holds all four. Target slot is always empty.')

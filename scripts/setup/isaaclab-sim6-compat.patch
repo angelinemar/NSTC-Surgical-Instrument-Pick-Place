@@ -1,0 +1,397 @@
+diff --git a/apps/isaaclab.python.headless.kit b/apps/isaaclab.python.headless.kit
+index 03a6bf1..a35e400 100644
+--- a/apps/isaaclab.python.headless.kit
++++ b/apps/isaaclab.python.headless.kit
+@@ -21,6 +21,7 @@ app.version = "5.1.0"
+ # Omniverse related dependencies #
+ ##################################
+ [dependencies]
++"isaacsim.core.rendering_manager" = {}
+ "omni.physx" = {}
+ "omni.physx.tensors" = {}
+ "omni.physx.fabric" = {}
+@@ -72,6 +73,7 @@ app.asyncRenderingLowLatency = false
+ app.hydraEngine.waitIdle = false
+ # app.hydra.aperture.conform = 4 # in 105.1 pixels are square by default
+ omni.replicator.asyncRendering = false
++rtx.hydra.supportMultiTickRate = true
+ 
+ ### FSD
+ # this .kit file is used for headless, no-rendering cases. There won't be a scene delegate
+diff --git a/apps/isaaclab.python.kit b/apps/isaaclab.python.kit
+index 2435019..a6e2b04 100644
+--- a/apps/isaaclab.python.kit
++++ b/apps/isaaclab.python.kit
+@@ -11,6 +11,7 @@ version = "2.3.2"
+ keywords = ["experience", "app", "usd"]
+ 
+ [dependencies]
++"isaacsim.core.rendering_manager" = {}
+ # Isaac Sim extensions
+ "isaacsim.app.about" = {}
+ "isaacsim.asset.browser" = {}
+@@ -124,6 +125,7 @@ rendergraph.mgpu.backend = "copyQueue" # In MGPU configurations, This setting ca
+ rtx-transient.dlssg.enabled = false # DLSSG frame generation is not compatible with synthetic data generation
+ rtx.hydra.mdlMaterialWarmup = true # start loading the MDL shaders needed before any delegate is actually created.
+ omni.replicator.asyncRendering = false # Async rendering must be disabled for SDG
++rtx.hydra.supportMultiTickRate = true
+ exts."omni.kit.test".includeTests = ["*isaac*"] # Add isaac tests to test runner
+ foundation.verifyOsVersion.enabled = false
+ 
+diff --git a/source/isaaclab/isaaclab/assets/articulation/articulation.py b/source/isaaclab/isaaclab/assets/articulation/articulation.py
+index b67ded1..755b3cc 100644
+--- a/source/isaaclab/isaaclab/assets/articulation/articulation.py
++++ b/source/isaaclab/isaaclab/assets/articulation/articulation.py
+@@ -16,7 +16,7 @@ import torch
+ import warp as wp
+ from prettytable import PrettyTable
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ from isaacsim.core.simulation_manager import SimulationManager
+ from pxr import PhysxSchema, UsdPhysics
+ 
+diff --git a/source/isaaclab/isaaclab/assets/articulation/articulation_data.py b/source/isaaclab/isaaclab/assets/articulation/articulation_data.py
+index 47902ed..3e7d657 100644
+--- a/source/isaaclab/isaaclab/assets/articulation/articulation_data.py
++++ b/source/isaaclab/isaaclab/assets/articulation/articulation_data.py
+@@ -3,12 +3,14 @@
+ #
+ # SPDX-License-Identifier: BSD-3-Clause
+ 
++from __future__ import annotations
++
+ import logging
+ import weakref
+ 
+ import torch
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ from isaacsim.core.simulation_manager import SimulationManager
+ 
+ import isaaclab.utils.math as math_utils
+diff --git a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py b/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py
+index 12ae6c5..096faf2 100644
+--- a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py
++++ b/source/isaaclab/isaaclab/assets/deformable_object/deformable_object.py
+@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
+ 
+ import torch
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ from isaacsim.core.simulation_manager import SimulationManager
+ from pxr import PhysxSchema, UsdShade
+ 
+diff --git a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object_data.py b/source/isaaclab/isaaclab/assets/deformable_object/deformable_object_data.py
+index bb77143..6b82fd7 100644
+--- a/source/isaaclab/isaaclab/assets/deformable_object/deformable_object_data.py
++++ b/source/isaaclab/isaaclab/assets/deformable_object/deformable_object_data.py
+@@ -3,11 +3,13 @@
+ #
+ # SPDX-License-Identifier: BSD-3-Clause
+ 
++from __future__ import annotations
++
+ import weakref
+ 
+ import torch
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ 
+ import isaaclab.utils.math as math_utils
+ from isaaclab.utils.buffers import TimestampedBuffer
+diff --git a/source/isaaclab/isaaclab/assets/rigid_object/rigid_object.py b/source/isaaclab/isaaclab/assets/rigid_object/rigid_object.py
+index 6d0ec98..5565591 100644
+--- a/source/isaaclab/isaaclab/assets/rigid_object/rigid_object.py
++++ b/source/isaaclab/isaaclab/assets/rigid_object/rigid_object.py
+@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
+ import torch
+ import warp as wp
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ from isaacsim.core.simulation_manager import SimulationManager
+ from pxr import UsdPhysics
+ 
+diff --git a/source/isaaclab/isaaclab/assets/rigid_object/rigid_object_data.py b/source/isaaclab/isaaclab/assets/rigid_object/rigid_object_data.py
+index d1a94f1..5daf126 100644
+--- a/source/isaaclab/isaaclab/assets/rigid_object/rigid_object_data.py
++++ b/source/isaaclab/isaaclab/assets/rigid_object/rigid_object_data.py
+@@ -3,11 +3,13 @@
+ #
+ # SPDX-License-Identifier: BSD-3-Clause
+ 
++from __future__ import annotations
++
+ import weakref
+ 
+ import torch
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ 
+ import isaaclab.utils.math as math_utils
+ from isaaclab.sim.utils.stage import get_current_stage_id
+diff --git a/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection.py b/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection.py
+index b458b15..8c62801 100644
+--- a/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection.py
++++ b/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection.py
+@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
+ import torch
+ import warp as wp
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ from isaacsim.core.simulation_manager import SimulationManager
+ from pxr import UsdPhysics
+ 
+diff --git a/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection_data.py b/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection_data.py
+index 5156ef7..7c9d1f5 100644
+--- a/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection_data.py
++++ b/source/isaaclab/isaaclab/assets/rigid_object_collection/rigid_object_collection_data.py
+@@ -3,11 +3,13 @@
+ #
+ # SPDX-License-Identifier: BSD-3-Clause
+ 
++from __future__ import annotations
++
+ import weakref
+ 
+ import torch
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ 
+ import isaaclab.utils.math as math_utils
+ from isaaclab.sim.utils.stage import get_current_stage_id
+diff --git a/source/isaaclab/isaaclab/envs/mdp/events.py b/source/isaaclab/isaaclab/envs/mdp/events.py
+index 484121f..96f1e63 100644
+--- a/source/isaaclab/isaaclab/envs/mdp/events.py
++++ b/source/isaaclab/isaaclab/envs/mdp/events.py
+@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Literal
+ import torch
+ 
+ import carb
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ from isaacsim.core.utils.extensions import enable_extension
+ from pxr import Gf, Sdf, UsdGeom, Vt
+ 
+diff --git a/source/isaaclab/isaaclab/sensors/camera/camera.py b/source/isaaclab/isaaclab/sensors/camera/camera.py
+index 26fd071..90c60ac 100644
+--- a/source/isaaclab/isaaclab/sensors/camera/camera.py
++++ b/source/isaaclab/isaaclab/sensors/camera/camera.py
+@@ -407,6 +407,9 @@ class Camera(SensorBase):
+         self._view = XformPrimView(
+             self.cfg.prim_path, device=self._device, stage=self.stage, sync_usd_on_fabric_write=True
+         )
++        # Kit 110 owns camera Fabric transforms. Do not let the legacy view
++        # initialize/rewrite those transforms while querying camera poses.
++        self._view._use_fabric = False
+         # Check that sizes are correct
+         if self._view.count != self._num_envs:
+             raise RuntimeError(
+@@ -618,7 +621,24 @@ class Camera(SensorBase):
+             raise RuntimeError("Camera prim is None. Please call 'sim.play()' first.")
+ 
+         # get the poses from the view
+-        poses, quat = self._view.get_world_poses(env_ids)
++        if carb.settings.get_settings().get("/physics/fabricEnabled"):
++            import usdrt
++            from isaaclab.sim import get_current_stage_id
++            stage = usdrt.Usd.Stage.Attach(get_current_stage_id())
++            hierarchy = usdrt.hierarchy.IFabricHierarchy().get_fabric_hierarchy(
++                stage.GetFabricId(), stage.GetStageIdAsStageId()
++            )
++            positions, orientations = [], []
++            for index in env_ids:
++                path = str(self._view.prims[int(index)].GetPath())
++                matrix = hierarchy.get_world_xform(usdrt.Sdf.Path(path))
++                rotation = matrix.RemoveScaleShear().ExtractRotationQuat()
++                positions.append(tuple(matrix.ExtractTranslation()))
++                orientations.append((rotation.GetReal(), *rotation.GetImaginary()))
++            poses = torch.tensor(positions, device=self.device, dtype=torch.float32)
++            quat = torch.tensor(orientations, device=self.device, dtype=torch.float32)
++        else:
++            poses, quat = self._view.get_world_poses(env_ids)
+         self._data.pos_w[env_ids] = poses
+         self._data.quat_w_world[env_ids] = convert_camera_frame_orientation_convention(
+             quat, origin="opengl", target="world"
+diff --git a/source/isaaclab/isaaclab/sensors/contact_sensor/contact_sensor.py b/source/isaaclab/isaaclab/sensors/contact_sensor/contact_sensor.py
+index 2a85a26..0c1c0bb 100644
+--- a/source/isaaclab/isaaclab/sensors/contact_sensor/contact_sensor.py
++++ b/source/isaaclab/isaaclab/sensors/contact_sensor/contact_sensor.py
+@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
+ import torch
+ 
+ import carb
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ from isaacsim.core.simulation_manager import SimulationManager
+ from pxr import PhysxSchema
+ 
+diff --git a/source/isaaclab/isaaclab/sensors/ray_caster/multi_mesh_ray_caster.py b/source/isaaclab/isaaclab/sensors/ray_caster/multi_mesh_ray_caster.py
+index 39be0d7..a312f8c 100644
+--- a/source/isaaclab/isaaclab/sensors/ray_caster/multi_mesh_ray_caster.py
++++ b/source/isaaclab/isaaclab/sensors/ray_caster/multi_mesh_ray_caster.py
+@@ -15,7 +15,7 @@ import torch
+ import trimesh
+ import warp as wp
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ 
+ import isaaclab.sim as sim_utils
+ from isaaclab.sim.views import XformPrimView
+diff --git a/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py b/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py
+index 543276e..bd3656f 100644
+--- a/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py
++++ b/source/isaaclab/isaaclab/sensors/ray_caster/ray_cast_utils.py
+@@ -9,7 +9,7 @@ from __future__ import annotations
+ 
+ import torch
+ 
+-import omni.physics.tensors.impl.api as physx
++import omni.physics.tensors.api as physx
+ 
+ from isaaclab.sim.views import XformPrimView
+ from isaaclab.utils.math import convert_quat
+diff --git a/source/isaaclab/isaaclab/sim/simulation_context.py b/source/isaaclab/isaaclab/sim/simulation_context.py
+index d022c2d..5223f43 100644
+--- a/source/isaaclab/isaaclab/sim/simulation_context.py
++++ b/source/isaaclab/isaaclab/sim/simulation_context.py
+@@ -222,7 +222,9 @@ class SimulationContext(_SimulationContext):
+             # disable the viewport if offscreen_render is enabled
+             from omni.kit.viewport.utility import get_active_viewport
+ 
+-            get_active_viewport().updates_enabled = False
++            viewport = get_active_viewport()
++            if viewport is not None:
++                viewport.updates_enabled = False
+ 
+         # override enable scene querying if rendering is enabled
+         # this is needed for some GUI features
+@@ -619,6 +621,8 @@ class SimulationContext(_SimulationContext):
+         else:
+             # manually flush the fabric data to update Hydra textures
+             self.forward()
++            from isaacsim.core.rendering_manager import RenderingManager
++            RenderingManager._ensure_fabric_simulation_time()
+             # render the simulation
+             # note: we don't call super().render() anymore because they do above operation inside
+             #  and we don't want to do it twice. We may remove it once we drop support for Isaac Sim 2022.2.
+diff --git a/source/isaaclab/isaaclab/sim/spawners/materials/visual_materials.py b/source/isaaclab/isaaclab/sim/spawners/materials/visual_materials.py
+index 074d6ac..21edc3c 100644
+--- a/source/isaaclab/isaaclab/sim/spawners/materials/visual_materials.py
++++ b/source/isaaclab/isaaclab/sim/spawners/materials/visual_materials.py
+@@ -65,7 +65,7 @@ def spawn_preview_surface(prim_path: str, cfg: visual_materials_cfg.PreviewSurfa
+                 parent_path=prim_path,
+                 identifier="UsdPreviewSurface",
+                 stage_or_context=stage,
+-                name="Shader",
++                prim_name="Shader",
+             ).do()
+             # bind the shader graph to the material
+             if shader_prim:
+diff --git a/source/isaaclab/isaaclab/sim/spawners/sensors/sensors.py b/source/isaaclab/isaaclab/sim/spawners/sensors/sensors.py
+index 6270447..cafb628 100644
+--- a/source/isaaclab/isaaclab/sim/spawners/sensors/sensors.py
++++ b/source/isaaclab/isaaclab/sim/spawners/sensors/sensors.py
+@@ -121,6 +121,9 @@ def spawn_camera(
+     ]
+     # get camera prim
+     prim = stage.GetPrimAtPath(prim_path)
++    # Isaac Sim 6 schedules camera rendering through the sensor schema.
++    prim.ApplyAPI("OmniSensorAPI")
++    prim.CreateAttribute("omni:sensor:tickRate", Sdf.ValueTypeNames.Float).Set(0.0)
+     # create attributes for the fisheye camera model
+     # note: for pinhole those are already part of the USD camera prim
+     for attr_name, attr_type in attribute_types.values():
+diff --git a/source/isaaclab/isaaclab/sim/utils/prims.py b/source/isaaclab/isaaclab/sim/utils/prims.py
+index 6fb7850..8d1d135 100644
+--- a/source/isaaclab/isaaclab/sim/utils/prims.py
++++ b/source/isaaclab/isaaclab/sim/utils/prims.py
+@@ -868,7 +868,8 @@ def bind_physics_material(
+     # check if prim has collision applied on it
+     has_physics_scene_api = prim.HasAPI(PhysxSchema.PhysxSceneAPI)
+     has_collider = prim.HasAPI(UsdPhysics.CollisionAPI)
+-    has_deformable_body = prim.HasAPI(PhysxSchema.PhysxDeformableBodyAPI)
++    legacy_deformable_api = getattr(PhysxSchema, "PhysxDeformableBodyAPI", None)
++    has_deformable_body = legacy_deformable_api is not None and prim.HasAPI(legacy_deformable_api)
+     has_particle_system = prim.IsA(PhysxSchema.PhysxParticleSystem)
+     if not (has_physics_scene_api or has_collider or has_deformable_body or has_particle_system):
+         logger.debug(
+diff --git a/source/isaaclab/setup.py b/source/isaaclab/setup.py
+index 939ee29..8fa4468 100644
+--- a/source/isaaclab/setup.py
++++ b/source/isaaclab/setup.py
+@@ -18,7 +18,7 @@ EXTENSION_TOML_DATA = toml.load(os.path.join(EXTENSION_PATH, "config", "extensio
+ # Minimum dependencies required prior to installation
+ INSTALL_REQUIRES = [
+     # generic
+-    "numpy<2",
++    "numpy==2.3.1",
+     "torch>=2.7",
+     "onnx>=1.18.0",  # 1.16.2 throws access violation on Windows
+     "prettytable==3.3.0",
+@@ -35,9 +35,9 @@ INSTALL_REQUIRES = [
+     "einops",  # needed for transformers, doesn't always auto-install
+     "warp-lang",
+     # make sure this is consistent with isaac sim version
+-    "pillow==11.3.0",
++    "pillow==12.2.0",
+     # livestream
+-    "starlette==0.49.1",
++    "starlette>=0.46.0,<0.50",
+     # testing
+     "pytest",
+     "pytest-mock",
+@@ -55,7 +55,7 @@ INSTALL_REQUIRES += [
+     f"pin-pink==3.1.0 ; platform_system == 'Linux' and ({SUPPORTED_ARCHS_ARM})",
+     f"daqp==0.7.2 ; platform_system == 'Linux' and ({SUPPORTED_ARCHS_ARM})",
+     # required by isaaclab.devices.openxr.retargeters.humanoid.fourier.gr1_t2_dex_retargeting_utils
+-    f"dex-retargeting==0.4.6 ; platform_system == 'Linux' and ({SUPPORTED_ARCHS})",
++    f"dex-retargeting==0.5.0 ; platform_system == 'Linux' and ({SUPPORTED_ARCHS})",
+ ]
+ 
+ PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
+diff --git a/source/isaaclab_rl/setup.py b/source/isaaclab_rl/setup.py
+index 998fba1..72a9cd5 100644
+--- a/source/isaaclab_rl/setup.py
++++ b/source/isaaclab_rl/setup.py
+@@ -19,7 +19,7 @@ EXTENSION_TOML_DATA = toml.load(os.path.join(EXTENSION_PATH, "config", "extensio
+ # Minimum dependencies required prior to installation
+ INSTALL_REQUIRES = [
+     # generic
+-    "numpy<2",
++    "numpy==2.3.1",
+     "torch>=2.7",
+     "torchvision>=0.14.1",  # ensure compatibility with torch 1.13.1
+     "protobuf>=4.25.8,!=5.26.0",
+@@ -32,8 +32,8 @@ INSTALL_REQUIRES = [
+     # video recording
+     "moviepy",
+     # make sure this is consistent with isaac sim version
+-    "pillow==11.3.0",
+-    "packaging<24",
++    "pillow==12.2.0",
++    "packaging==26.0",
+ ]
+ 
+ PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
+diff --git a/source/isaaclab_tasks/setup.py b/source/isaaclab_tasks/setup.py
+index 455c566..b69d30d 100644
+--- a/source/isaaclab_tasks/setup.py
++++ b/source/isaaclab_tasks/setup.py
+@@ -18,7 +18,7 @@ EXTENSION_TOML_DATA = toml.load(os.path.join(EXTENSION_PATH, "config", "extensio
+ # Minimum dependencies required prior to installation
+ INSTALL_REQUIRES = [
+     # generic
+-    "numpy<2",
++    "numpy==2.3.1",
+     "torch>=2.7",
+     "torchvision>=0.14.1",  # ensure compatibility with torch 1.13.1
+     "protobuf>=4.25.8,!=5.26.0",

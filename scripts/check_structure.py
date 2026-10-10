@@ -27,7 +27,7 @@ from object_handlers import HANDLERS
 from runner import _validate_files
 for handler in HANDLERS.values():
     _validate_files(handler)
-allowed = {'.gitignore', 'README.md', 'RUNME.ps1', 'record.py'}
+allowed = {'.git', '.gitignore', 'README.md', 'RUNME.ps1', 'RUN_DETECTION.ps1', 'record.py'}
 unexpected = sorted(p.name for p in ROOT.iterdir() if p.is_file() and p.name not in allowed)
 if unexpected:
     raise RuntimeError('Unexpected root files: ' + ', '.join(unexpected))

@@ -22,12 +22,18 @@ def arguments():
     p.add_argument('--seed',type=int,default=42)
     p.add_argument('--robot-visible-probability',type=float,default=.25)
     p.add_argument('--tray',choices=('random','empty','full'),default='random')
+    p.add_argument('--randomization',choices=('original','wide'),default='original')
+    p.add_argument('--randomization-config',type=Path,help='JSON overrides for wide mode')
     p.add_argument('--headless',action='store_true')
     p.add_argument('--resume',action='store_true')
     p.add_argument('--stop-file',type=Path)
     a=p.parse_args()
-    if not (1<=a.scenes and 5<=a.min_objects<=a.max_objects<=30 and 3<=a.ring_cameras<=16 and 0<=a.robot_visible_probability<=1):
-        p.error('Use scenes >=1, 5<=min<=max<=30, 3..16 ring cameras, robot probability 0..1')
+    lo,cap,views=(1,64,32) if a.randomization=='wide' else (5,30,16)
+    if not (1<=a.scenes and lo<=a.min_objects<=a.max_objects<=cap and 3<=a.ring_cameras<=views and 0<=a.robot_visible_probability<=1):
+        p.error(f'Use scenes >=1, {lo}<=min<=max<={cap}, 3..{views} ring cameras, robot probability 0..1')
+    if a.randomization_config and a.randomization!='wide': p.error('JSON overrides require --randomization wide')
+    from detection.randomization import load_profile
+    a.wide=load_profile(a.randomization_config) if a.randomization=='wide' else None
     a.output=a.output.resolve()
     return a
 
@@ -38,6 +44,10 @@ def main():
                   seed=args.seed,min_objects=args.min_objects,max_objects=args.max_objects,
                   ring_cameras=args.ring_cameras,robot_visible_probability=args.robot_visible_probability,tray=args.tray,
                   split='train',robot_pose='home_static',labels='visible_rigid_instance_boxes')
+    if args.wide is not None:
+        contract.update(randomization='wide',wide_profile=args.wide,capacity_policy='stop_at_fit_after_minimum')
+        from detection.randomization import install_wide_lighting
+        install_wide_lighting(args.wide)
     config=args.output/'config.json'
     if args.resume:
         if not config.is_file() or json.loads(config.read_text())!=contract:
@@ -74,8 +84,13 @@ def main():
         for name in ('grip_cam_b','cam_top','cam_left','cam_right','cam_tray'):
             setattr(cfg.scene,name,None)
         cfg.scene.camera=CameraCfg(prim_path='{ENV_REGEX_NS}/detection_camera',width=448,height=448,
+            update_latest_camera_pose=True,
             data_types=['rgb','semantic_segmentation','instance_id_segmentation_fast'],
-            colorize_semantic_segmentation=False,colorize_instance_id_segmentation=False,
+            # Kit 110 returns the semantic palette as packed RGBA. Request
+            # RGBA explicitly so Lab does not reinterpret it as integer IDs;
+            # the canonical decoder still writes class-ID PNGs to disk.
+            colorize_semantic_segmentation=os.environ.get('P4_SIM_VERSION') == '6.0',
+            colorize_instance_id_segmentation=False,
             spawn=sim.PinholeCameraCfg(focal_length=16.,horizontal_aperture=20.955,clipping_range=(.01,10.)),
             update_period=0)
     ns['phase3_apply_final_cameras_to_env_cfg']=setup_camera
@@ -84,13 +99,23 @@ def main():
         # Isaac 5.1 on Windows can access-violate during USD teardown. All
         # PNG writers and atomic indexes are closed before this success exit.
         # Never take this path on a capture/validation exception.
-        if os.name == 'nt':
-            print('[DETECTION EXIT] Files committed; bypassing unsafe Windows USD teardown.',flush=True)
+        if os.name == 'nt' or os.environ.get('P4_SIM_VERSION') == '6.0':
+            print('[DETECTION EXIT] Files committed; exiting isolated capture process.',flush=True)
             sys.stderr.flush()
             os._exit(0)
     ns['run_shared_layout_tuner']=capture_and_exit
     try:
         ns['main']()
+    except BaseException as error:
+        import traceback
+        traceback.print_exc()
+        print('[DETECTION ERROR] '+str(error),flush=True)
+        sys.stderr.flush()
+        if os.environ.get('P4_SIM_VERSION') == '6.0':
+            # Preserve the failed pending scene, report failure, and avoid a
+            # native Kit cleanup hang. This never marks a capture successful.
+            os._exit(1)
+        raise
     finally:
         if ns['simulation_app'].is_running(): ns['simulation_app'].close()
 
@@ -109,6 +134,13 @@ def collect(env,stage,ns,args):
     from src.recorder.instance_labels import body_mask
     from training.export_detection import visible_boxes
     env.reset()
+    import carb.settings
+    render_settings=carb.settings.get_settings()
+    render_contract=dict(aa_op=render_settings.get('/rtx/post/aa/op'),
+                         render_mode=render_settings.get('/rtx/rendermode'))
+    if render_contract['aa_op'] != 4:
+        raise RuntimeError('DLAA is required; active renderer settings: '+str(render_contract))
+    print('[DETECTION RENDER] '+json.dumps(render_contract),flush=True)
     # Initialize flat orientation through existing mesh-specific spawn functions.
     rng0=np.random.default_rng(args.seed)
     spawn=ns['sample_episode_spawn_grid'](rng0,2,'scalpel')
@@ -144,8 +176,14 @@ def collect(env,stage,ns,args):
         apply_episode_lighting(env,ns)
         tray=list(CLASSES) if args.tray=='full' else [c for c in CLASSES if args.tray=='random' and rng.random()<.4]
         count=rng.randint(args.min_objects,args.max_objects)
-        types=list(CLASSES)+rng.choices(CLASSES,k=count-5)
-        rng.shuffle(types); used={c:0 for c in CLASSES}; rows=[]; occupied=[]
+        requested_count=count
+        types=(list(CLASSES)+rng.choices(CLASSES,k=count-5)) if count>=5 else rng.sample(CLASSES,count)
+        if args.wide is not None and count>=5:
+            required=types[:5]; extra=types[5:]
+            rng.shuffle(required); rng.shuffle(extra); types=required+extra
+        else:
+            rng.shuffle(types)
+        used={c:0 for c in CLASSES}; rows=[]; occupied=[]
         # Place named base bodies into their orderly tray slots when selected.
         down,_=axes(LAYOUT)
         for c in tray:
@@ -164,8 +202,13 @@ def collect(env,stage,ns,args):
                 value=table_pose(t,rng.uniform(*LAYOUT['grid_x']),rng.uniform(*LAYOUT['grid_y']),rng.uniform(-180,180))
                 pts=rotate(value[3:],t['points'])+value[:3]; bounds=(pts[:,:2].min(0),pts[:,:2].max(0))
                 if table_footprint_allowed(pts,LAYOUT) and all(disjoint(bounds,b,.002) for b in occupied): break
-            else: raise RuntimeError('Scatter cannot fit requested count. Reduce maximum objects and start a new collection.')
+            else:
+                if args.wide is not None and len(occupied)>=args.min_objects:
+                    print(f'[DETECTION CAPACITY] Requested {requested_count}; fitted {len(occupied)}',flush=True)
+                    break
+                raise RuntimeError('Scatter cannot fit minimum/requested count. Reduce object bounds and start a new collection.')
             occupied.append(bounds); pose(key,value.tolist()); rows.append(dict(key=key,object=c,region='table'))
+        count=len(occupied)
         show=rng.random()<args.robot_visible_probability
         robot.MakeVisible() if show else robot.MakeInvisible()
         # Physics settling only: no policy action or pick/place execution.
@@ -183,12 +226,18 @@ def collect(env,stage,ns,args):
             roots[prim]=j; classes[str(j)]=dict(name=row['object'],semantic_id=CLASSES.index(row['object'])+3,prim_path=prim)
         metadata=dict(scene_id=index,seed=seed,table_count=count,tray_objects=tray,robot_visible=show,
                       resolution=448,antialiasing='DLAA',materials='recorder',
+                      render_settings=render_contract,requested_table_count=requested_count,
+                      randomization=args.randomization,wide_profile=args.wide,
                       objects=rows,instance_classes=classes,lighting=ns['_p4_domain_randomization'],views=[])
         camera=env.scene['camera']
-        for view in camera_views(rng,LAYOUT,args.ring_cameras):
+        for view in camera_views(rng,LAYOUT,args.ring_cameras,args.wide):
             camera.set_world_poses_from_view(torch.tensor([view['eye']],device=env.device),torch.tensor([view['target']],device=env.device))
             for _ in range(32): env.sim.render()
             camera.update(0.,force_recompute=True)
+            actual_eye=camera.data.pos_w[0].cpu().numpy()
+            if not np.allclose(actual_eye,view['eye'],atol=1e-4,rtol=0):
+                raise RuntimeError(f"Camera {view['name']} pose mismatch: requested={view['eye']}, actual={actual_eye.tolist()}")
+            view['actual_eye']=actual_eye.tolist()
             rgb=camera.data.output['rgb'][0,:,:,:3].cpu().numpy().copy()
             semantic=ns['_phase3_extract_semantic_u16'](camera,448,448,cam_name='camera')
             raw=camera.data.output['instance_id_segmentation_fast'][0].cpu().numpy().squeeze(-1)
@@ -198,7 +247,16 @@ def collect(env,stage,ns,args):
                 raise RuntimeError('Invalid/blank RGB '+view['name'])
             if np.any(((semantic>=3)&(semantic<=7)) & (instance==0)):
                 raise RuntimeError('Unmapped instrument pixels '+view['name'])
-            boxes=visible_boxes(semantic,instances=instance,instance_classes=classes)
+            try:
+                boxes=visible_boxes(semantic,instances=instance,instance_classes=classes)
+            except ValueError:
+                raw_semantic=camera.data.output['semantic_segmentation'][0].cpu().numpy()
+                write_json(pending/'label_error.json',dict(
+                    semantic_shape=list(raw_semantic.shape),semantic_dtype=str(raw_semantic.dtype),
+                    raw_ids=np.unique(raw_semantic).tolist(),canonical_ids=np.unique(semantic).tolist(),
+                    semantic_info=info['semantic_segmentation']))
+                Image.fromarray(rgb).save(pending/'label_error_rgb.png')
+                raise
             Image.fromarray(rgb).save(pending/f'{view["name"]}_rgb.png')
             Image.fromarray(semantic.astype(np.uint16)).save(pending/f'{view["name"]}_semantic.png')
             Image.fromarray(instance).save(pending/f'{view["name"]}_instance.png')

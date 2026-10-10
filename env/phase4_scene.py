@@ -261,6 +261,8 @@ def apply_scene(env_cfg):
         init_state=AssetBaseCfg.InitialStateCfg(pos=g["room_pos"], rot=g["room_rot"]))
     env_cfg.scene.robot.init_state.pos = tuple(LAYOUT["robot_pos"])
     env_cfg.scene.robot.init_state.rot = tuple(LAYOUT["robot_rot_wxyz"])
+    if os.environ.get('P4_ROBOT_USD'):
+        env_cfg.scene.robot.spawn.usd_path = os.environ['P4_ROBOT_USD']
     for name in ('ground','plane'):
         ground = getattr(env_cfg.scene, name, None)
         if ground is not None and getattr(ground,'spawn',None) is not None:

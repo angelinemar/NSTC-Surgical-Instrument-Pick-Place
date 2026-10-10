@@ -1,0 +1,35 @@
+{
+  "light_radius": [
+    0.1,
+    1.4
+  ],
+  "light_height": [
+    0.65,
+    2.4
+  ],
+  "light_intensity": [
+    800.0,
+    12000.0
+  ],
+  "ambient_intensity": [
+    100.0,
+    900.0
+  ],
+  "light_color": [
+    0.55,
+    1.0
+  ],
+  "aim_jitter": 0.25,
+  "cone_angle": [
+    50.0,
+    90.0
+  ],
+  "camera_elevation": [
+    25.0,
+    75.0
+  ],
+  "camera_distance": [
+    1.0,
+    1.2
+  ]
+}

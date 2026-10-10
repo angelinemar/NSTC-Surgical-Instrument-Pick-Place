@@ -1,9 +1,10 @@
-"""Run with ordinary Python (Tkinter), then launch Isaac using its python.bat."""
+"""Tkinter control panel; P4_ISAAC_PYTHON selects the simulator environment."""
 import json
 import math
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
@@ -11,6 +12,7 @@ from phase4_panel_log import LogFilter,LogTail
 from phase4_panel_state import Dashboard,rotate_outline
 from phase4_panel_widgets import Tooltip,cell_style
 from src.recorder.capture_contract import LABELS, capture_contract, storage_budget
+from src.entry.runtime_python import isaac_python
 
 ROOT = Path(__file__).resolve().parent
 NAMES = ('scalpel','scissor','love_retractor','kelly','scalpel_type2')
@@ -442,7 +444,7 @@ class Panel:
         output=dst/('png_previews_'+stamp)
         log=ROOT/'debug'/'logs'/('png_export_'+stamp+'.log'); log.parent.mkdir(parents=True,exist_ok=True)
         self.export_log=log.open('w',encoding='utf-8')
-        launcher=ROOT.parents[3]/'_isaac_sim'/'python.bat'
+        launcher=isaac_python()
         try:
             self.export_process=subprocess.Popen([str(launcher),str(ROOT/'scripts/tools/export_preview_png.py'),
                 '--source',source,'--output',str(output),'--stride',str(stride),
@@ -466,7 +468,7 @@ class Panel:
         purpose=LABELS[self.dataset_purpose.get()]
         log=ROOT/'debug'/'logs'/('export_'+stamp+'.log'); log.parent.mkdir(parents=True,exist_ok=True)
         self.export_log=log.open('w',encoding='utf-8')
-        launcher=ROOT.parents[3]/'_isaac_sim'/'python.bat'
+        launcher=isaac_python()
         try:
             self.export_process=subprocess.Popen([str(launcher),str(ROOT/'training/export_recordings.py'),
                 '--source',source,'--output',str(output),'--purpose',purpose],cwd=ROOT,
@@ -557,7 +559,7 @@ class Panel:
             self.live_geometry=None; self.dashboard=Dashboard(episodes)
             self.dashboard.phase='reset'; self.dashboard.stage='Launching / waiting for environment'; self.update_dashboard()
             self.add_log('info',f'Launching {self.target.get()}: goal {episodes} saved successes; no attempt limit.')
-            launcher=ROOT.parents[3]/'_isaac_sim'/'python.bat'
+            launcher=isaac_python()
             args=[str(launcher),str(ROOT/'record.py'),'--object',self.target.get(),'--episodes',str(episodes),
                   '--max-attempts','0','--record_mode',self.skill.get(),'--out_dir',str(output),'--session-config',str(self.session_path),
                   '--camera-size',self.camera_size.get(),'--randomization-seed',str(seed),
@@ -666,7 +668,10 @@ class Panel:
                          'failure':'No failure evidence has been written. New recordings retain JSON evidence, not PNG snapshots.'}.get(kind,'Folder unavailable.')
             messagebox.showinfo('Not available yet',explanation+'\n\nRun: '+str(output)); return
         try:
-            os.startfile(str(target))
+            if os.name == 'nt':
+                os.startfile(str(target))
+            else:
+                subprocess.Popen(['open' if sys.platform == 'darwin' else 'xdg-open', str(target)])
         except OSError as exc:
             self.add_log('error',f'Cannot open folder: {exc}'); messagebox.showerror('Cannot open folder',str(exc))
 

@@ -13,6 +13,7 @@ import shutil
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from src.recorder.capture_contract import storage_budget
+from src.entry.runtime_python import isaac_python
 OBJECTS = ('scalpel','scissor','love_retractor','kelly','scalpel_type2')
 
 
@@ -40,7 +41,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--track',choices=('dp','perception','both'),required=True)
-    p.add_argument('--python',type=Path,default=Path('C:/IsaacLab/_isaac_sim/python.bat'))
+    p.add_argument('--python',type=Path,default=Path(isaac_python()))
     p.add_argument('--cycles',type=int,default=1)
     p.add_argument('--camera-size',type=int,choices=(224,448),default=448)
     p.add_argument('--train-seeds',type=int,nargs='+',default=[1701,1702])

@@ -33,6 +33,12 @@ def audit_preview(env, ns):
         ids, pixels = np.unique(semantic, return_counts=True)
         counts[name] = {str(int(k)):int(v) for k,v in zip(ids,pixels)}
     out = Path(ns['args_cli'].out_dir)
+    import os
+    if os.environ.get('P4_SCENE_AUDIT_ONLY') == '1':
+        from PIL import Image
+        for name in names:
+            rgb = env.scene[name].data.output['rgb'][0, ..., :3].detach().cpu().numpy()
+            Image.fromarray(rgb).save(out/f'preview_{name}.png')
     # Semantic validation remains mandatory; image previews are on-demand only.
     report = dict(pixel_counts=counts, classes=ns['PHASE3_SEMANTIC_CLASS_IDS'],clutter=ns.get('_p4_clutter'))
     (out/'scene_label_audit.json').write_text(json.dumps(report,indent=2),encoding='utf-8')

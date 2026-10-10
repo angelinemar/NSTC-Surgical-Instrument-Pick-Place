@@ -130,7 +130,14 @@ def main() -> None:
                 first = text(ds["stage_suffixes"][0])
                 last = text(ds["stage_suffixes"][-1])
                 expected_last = "LIFT_CLEAR" if segment == "pick" else "RETREAT"
-                expected_first = "OPEN_HOVER" if segment == "pick" else "MOVE_TO_TARGET"
+                contract = text(h5.attrs.get("policy_window_contract", ""))
+                if contract == "lower_pre_to_lift_clear__lower_place_to_retreat_v1":
+                    expected_first = "LOWER_PRE" if segment == "pick" else "LOWER_PLACE"
+                elif not contract:
+                    expected_first = "OPEN_HOVER" if segment == "pick" else "MOVE_TO_TARGET"
+                else:
+                    failures.append(f"{path}: unknown policy_window_contract {contract!r}")
+                    expected_first = "OPEN_HOVER" if segment == "pick" else "MOVE_TO_TARGET"
                 if first != expected_first or last != expected_last:
                     failures.append(f"{path}: {segment} stages {first} -> {last}, expected {expected_first} -> {expected_last}")
 

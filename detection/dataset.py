@@ -8,7 +8,7 @@ CLASSES = ('scalpel', 'scissor', 'love_retractor', 'kelly', 'scalpel_type2')
 CATEGORIES = [dict(id=i+1, name=n, supercategory='instrument') for i,n in enumerate(CLASSES)]
 
 
-def camera_views(rng, layout, count):
+def camera_views(rng, layout, count, profile=None):
     # Bounding sphere around table workspace AND tray, including raised tools.
     xmin, xmax = layout['grid_x']; ymin, ymax = layout['grid_y']
     tx, ty = layout['tray_xy']
@@ -22,7 +22,8 @@ def camera_views(rng, layout, count):
     result=[]
     for i in range(count):
         az=phase+2*math.pi*i/count+rng.uniform(-.06,.06)
-        el=math.radians(rng.uniform(40,65)); d=distance*rng.uniform(1.,1.05)
+        el=math.radians(rng.uniform(*(profile['camera_elevation'] if profile else (40,65))))
+        d=distance*rng.uniform(*(profile['camera_distance'] if profile else (1.,1.05)))
         eye=[center[0]+d*math.cos(el)*math.cos(az), center[1]+d*math.cos(el)*math.sin(az), center[2]+d*math.sin(el)]
         result.append(dict(name=f'ring_{i:02d}', eye=eye, target=center))
     result.append(dict(name='top', eye=[center[0]+.001,center[1],center[2]+distance], target=center))
