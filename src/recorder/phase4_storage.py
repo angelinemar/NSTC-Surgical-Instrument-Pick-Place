@@ -67,6 +67,11 @@ def require_commit(path, h5):
     if not manifest.exists():
         raise ValueError('Episode has no commit manifest')
     data = json.loads(manifest.read_text())
+    # Collections transferred from Windows retain backslashes in their journal.
+    # Normalize only relative separators; contained() still enforces containment.
+    data['files'] = [p.replace('\\', '/') for p in data['files']]
+    if 'sha256' in data:
+        data['sha256'] = {p.replace('\\', '/'): digest for p, digest in data['sha256'].items()}
     relative = str(Path(path).resolve().relative_to(root))
     if data['transaction_id'] != h5.attrs['pair_transaction_id'] or relative not in data['files']:
         raise ValueError('Commit does not match episode')

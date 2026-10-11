@@ -48,6 +48,20 @@ class SplitStorageTests(unittest.TestCase):
                         require_commit(path,h)
                         self.assertEqual(h.attrs['dataset_split'],allocated['dataset_split'])
             self.assertEqual(summary(root,'scalpel')['counts'],dict(train=1,valid=1,test=1))
+            # Journals recorded on Windows must retain checksum verification
+            # after transfer to Linux, without rewriting the source manifest.
+            first=episode_files(root,'pick','scalpel')[0]
+            manifest=first.parents[2]/'.commits'/('scalpel_'+first.stem+'.json')
+            original=manifest.read_text(); windows=json.loads(original)
+            windows['files']=[p.replace('/', '\\') for p in windows['files']]
+            windows['sha256']={p.replace('/', '\\'):v for p,v in windows['sha256'].items()}
+            manifest.write_text(json.dumps(windows))
+            with h5py.File(first) as h:require_commit(first,h)
+            windows['sha256'][windows['files'][0]]='invalid-checksum'
+            manifest.write_text(json.dumps(windows))
+            with h5py.File(first) as h:
+                with self.assertRaisesRegex(ValueError,'checksum'):require_commit(first,h)
+            manifest.write_text(original)
             self.assertEqual(assignment(root,'scalpel',3,{})['dataset_split'],'train')
             from src.recorder.phase4_coverage import audit_directory
             self.assertTrue(audit_directory(root,'scalpel','both',1,1,3)['complete'])
