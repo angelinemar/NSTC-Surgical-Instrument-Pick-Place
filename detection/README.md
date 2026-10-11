@@ -183,3 +183,11 @@ and annotated prediction examples:
   training/report_dp_cameras.py \
   '/home/user/NSTC/datasets/Object datasets/evaluations/dp_cameras_small_b32'
 ```
+
+Visual label review is separate from checksum and semantic/instance consistency.
+Both stored masks can agree while omitting the same visible object part. If a
+manual review finds this, save its evidence as `label_quality.json` (with
+`finding` and `interpretation` fields) beside the evaluation and optionally
+`label_quality_example.png`. The report renderer carries that qualification into
+the JSON, Markdown, and HTML results rather than presenting the scores as fully
+validated ground-truth accuracy. Source annotations are never silently repaired.

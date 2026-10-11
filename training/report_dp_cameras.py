@@ -19,6 +19,11 @@ from training.export_detection import CAMERAS, CLASSES
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('folder',type=Path);a=p.parse_args()
     report=json.loads((a.folder/'metrics.json').read_text()); threshold=report['selected_threshold']
+    quality_path=a.folder/'label_quality.json'
+    quality=json.loads(quality_path.read_text()) if quality_path.exists() else None
+    if quality:
+        report['source_label_quality']=quality
+        (a.folder/'metrics.json').write_text(json.dumps(report,indent=2))
     rows=[]
     for split,results in report['splits'].items():
         for camera,result in [('all',results['overall']),*results['per_camera'].items()]:
@@ -69,12 +74,19 @@ def main():
         'These are simulated camera images; adjacent video frames are correlated.',
         'The checkpoint was selected on the original static validation set; this evaluation does not retrain it.',
         '', '![Camera metrics](camera_metrics.png)','', '![Camera predictions](camera_predictions.png)']
+    if quality:
+        lines[2:2]=['**Label quality issue:** '+quality['finding'],quality['interpretation'],
+            '', '![RGB and stored semantic-label evidence](label_quality_example.png)','']
     (a.folder/'REPORT.md').write_text('\n'.join(lines)+'\n')
     tables=[]
     for split,result in report['splits'].items():
         body=''.join('<tr><td>'+html.escape(camera)+'</td>'+''.join(f'<td>{r[k]:.2f}%</td>' for k in ['mAP_50_95','mAP_50','precision','recall','F1'])+'</tr>' for camera,r in [('ALL',result['overall']),*result['per_camera'].items()])
         tables.append(f'<h2>{split.title()}</h2><table><tr><th>Camera</th><th>mAP 50:95</th><th>mAP 50</th><th>Precision</th><th>Recall</th><th>F1</th></tr>{body}</table>')
     (a.folder/'report.html').write_text('<!doctype html><meta charset="utf-8"><title>DP camera evaluation</title><style>body{font:16px system-ui;max-width:1200px;margin:40px auto;padding:20px;color:#172b40;background:#f5f7fa}table{border-collapse:collapse;width:100%;background:white}td,th{padding:12px;border-bottom:1px solid #ddd;text-align:right}td:first-child,th:first-child{text-align:left}img{width:100%;margin:20px 0}p{line-height:1.6}</style><h1>RF-DETR Small · DP camera evaluation</h1>'+f'<p>{sum(report["images"].values()):,} images from six cameras. Confidence {threshold:.2f} chosen on validation, frozen for test. Percentages are detection metrics, not classification accuracy.</p>'+''.join(tables)+'<img src="camera_metrics.png"><h2>Actual test recordings</h2><p>Green: ground truth. Orange: model prediction. Detailed per-class results: <a href="metrics.csv">CSV</a> · <a href="metrics.json">JSON</a></p><img src="camera_predictions.png"><p>Precision = TP/(TP+FP). Recall = TP/(TP+FN). F1 = 2PR/(P+R). Matching uses the correct class and IoU ≥ 0.50. mAP 50:95 averages AP across IoU 0.50–0.95 and classes. These simulated video frames are correlated; this does not establish real-camera performance.</p>')
+    if quality:
+        page=a.folder/'report.html'
+        notice='<aside style="background:#fff0d0;padding:18px;border:2px solid #b66c00"><strong>Source label quality issue</strong><p>'+html.escape(quality['finding'])+'</p><p>'+html.escape(quality['interpretation'])+'</p><a href="label_quality_example.png">Inspect RGB / semantic evidence</a></aside>'
+        text=page.read_text();text=text.replace('<h2>Validation</h2>',notice+'<h2>Validation</h2>');page.write_text(text)
     print(a.folder/'report.html')
 
 if __name__=='__main__':main()
