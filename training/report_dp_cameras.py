@@ -41,7 +41,10 @@ def main():
             ax.bar(x+(offset-1.5)*width,vals,width,label=label)
         ax.set_xticks(x,[c.replace('cam_','') for c in CAMERAS],rotation=25);ax.set_ylim(0,105)
         ax.set_title(f'{split.title()} — all frames');ax.set_ylabel('Percent');ax.grid(axis='y',alpha=.2)
-    axes[1].legend(loc='lower right');fig.suptitle(f'RF-DETR Small: different-camera evaluation | confidence {threshold:.2f}, P/R/F1 IoU ≥ 0.50')
+    axes[1].legend(loc='upper right',fontsize=9)
+    title=f'RF-DETR Small: different-camera evaluation | confidence {threshold:.2f}, P/R/F1 IoU ≥ 0.50'
+    if quality:title+='\nStored annotations contain visible omissions; true detector performance needs label review.'
+    fig.suptitle(title,fontsize=12)
     fig.savefig(a.folder/'camera_metrics.png',dpi=150);plt.close(fig)
     fig,axes=plt.subplots(3,2,figsize=(14,19),layout='constrained')
     for camera,ax in zip(CAMERAS,axes.flat):
@@ -86,7 +89,7 @@ def main():
     if quality:
         page=a.folder/'report.html'
         notice='<aside style="background:#fff0d0;padding:18px;border:2px solid #b66c00"><strong>Source label quality issue</strong><p>'+html.escape(quality['finding'])+'</p><p>'+html.escape(quality['interpretation'])+'</p><a href="label_quality_example.png">Inspect RGB / semantic evidence</a></aside>'
-        text=page.read_text();text=text.replace('<h2>Validation</h2>',notice+'<h2>Validation</h2>');page.write_text(text)
+        text=page.read_text();text=text.replace('<h2>Valid</h2>',notice+'<h2>Valid</h2>');page.write_text(text)
     print(a.folder/'report.html')
 
 if __name__=='__main__':main()
