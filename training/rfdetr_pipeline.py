@@ -126,7 +126,8 @@ def train(args: argparse.Namespace, audit: dict[str, Any]) -> dict[str, Any]:
                 resolution=args.resolution, multi_scale=False, expanded_scales=False,
                 num_workers=args.num_workers, checkpoint_interval=5,
                 early_stopping=True, early_stopping_patience=10, early_stopping_use_ema=True,
-                log_per_class_metrics=True, tensorboard=True, wandb=False, run_test=False)
+                log_per_class_metrics=True, tensorboard=True, wandb=args.wandb,
+                project=args.wandb_project, run=args.run_name, run_test=False)
     checkpoint = output / 'checkpoint_best_total.pth'
     _require(checkpoint.is_file(), f'Training ended without expected checkpoint: {checkpoint}')
     # Score the validation-selected checkpoint, not merely the final in-memory
@@ -156,6 +157,9 @@ def main() -> None:
     parser.add_argument('--grad-accum-steps', type=int, default=4)
     parser.add_argument('--resolution',type=int,default=448)
     parser.add_argument('--num-workers',type=int,default=4)
+    parser.add_argument('--wandb', action='store_true', help='Log training to Weights & Biases; run wandb login first')
+    parser.add_argument('--wandb-project', default='nstc-surgical-detection')
+    parser.add_argument('--run-name', default=None, help='Optional Weights & Biases run name')
     parser.add_argument('--check-only', action='store_true')
     args = parser.parse_args()
     if args.resolution<32 or args.resolution%32 or args.num_workers<0:

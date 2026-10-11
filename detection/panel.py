@@ -12,6 +12,7 @@ from tkinter import ttk,filedialog,messagebox,font as tkfont
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from src.entry.runtime_python import isaac_python
+from detection.paths import object_datasets_root
 
 
 class DetectionPanel:
@@ -56,7 +57,7 @@ class DetectionPanel:
         advanced=ttk.Frame(notebook,style='Card.TFrame',padding=22)
         notebook.add(setup,text='Collection'); notebook.add(advanced,text='Advanced')
         defaults=dict(scenes=100,min_objects=8,max_objects=18,ring_cameras=8,randomization='original',
-                      profile='',seed=42,robot=25,tray='random',output=str(ROOT/'datasets'/'detection_runs'))
+                      profile='',seed=42,robot=25,tray='random',output=str(object_datasets_root()/'detection_runs'))
         self.values={k:tk.StringVar(value=str(v)) for k,v in defaults.items()}
         self.headless=tk.BooleanVar(value=True)
         def field(parent,key,label,row,choices=None):

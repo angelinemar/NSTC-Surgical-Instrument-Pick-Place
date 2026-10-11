@@ -131,3 +131,55 @@ On Windows, successful capture exits after synchronous PNG/JSON writes instead o
 running Isaac 5.1 USD teardown, which reproduced an access violation after saving.
 Capture exceptions do not use this success exit. Small smoke tests establish file
 and annotation correctness, not large-collection or model-accuracy validation.
+
+### Shared dataset location (Isaac Sim 6 workstation)
+
+New GUI and CLI captures default to `/home/user/NSTC/datasets/Object datasets/detection_runs`.
+`P4_OBJECT_DATASETS` overrides the object dataset root on other workstations.
+In a `versions/6.0` checkout the root is found above `versions`; standalone
+checkouts use their own `datasets/Object datasets` directory. Explicit `--output`
+and GUI folder selection still override the default. Existing local `datasets/`
+paths are compatibility symlinks to the moved recordings and prepared training set.
+
+### Evaluate a trained detector on the DP cameras (no training)
+
+The DP H5 recordings contain six synchronized RGB/semantic/instance views:
+`front`, `wrist` (labels named `grip_b`), `cam_top`, `cam_left`, `cam_right`,
+`cam_tray`. The following command evaluates every frame of existing `valid` and
+`test` episodes, preserving the recorded split and checking commit checksums:
+
+```bash
+cd /home/user/NSTC/versions/6.0
+/home/user/NSTC/NSTC-Surgical-Instrument-Pick-Place/.venv-rfdetr/bin/python \
+  training/evaluate_dp_cameras.py \
+  --source '/home/user/NSTC/datasets/DP datasets/NSTC' \
+  --checkpoint training/runs/rfdetr_small_b32_20261011_032105/checkpoint_best_total.pth \
+  --output '/home/user/NSTC/datasets/Object datasets/evaluations/dp_cameras_small_b32' \
+  --batch-size 32
+```
+
+Rerunning the same command resumes complete per-file caches after checking
+checkpoint identity and source size/mtime. No training is started. Cached files
+are trusted local Python pickle files; do not use caches from untrusted sources.
+`status.json` shows progress; `metrics.json` contains overall, per-camera, and
+per-class percentages. Test confidence is selected from validation only.
+AP uses IoU .50:.05:.95, 101 recall points, all object sizes, max 100 detections
+per category per image, and a .001 prediction score floor. P/R/F1 use class-correct
+one-to-one matching at IoU .50. Visible instances smaller than eight pixels are
+excluded, matching the recorder export convention. This is object detection,
+so background true negatives and ordinary classification accuracy are undefined.
+Adjacent frames are correlated; this is a full-frame measurement, not a count
+of independent test scenes. Models remain unvalidated on real camera images.
+
+Weights & Biases training logging is enabled with `--wandb`,
+`--wandb-project nstc-surgical-detection`, and optional `--run-name` on
+`training/rfdetr_pipeline.py`. Run the RF-DETR environment's `wandb login` first.
+
+After evaluation completes, render the CSV, HTML dashboard, camera comparison,
+and annotated prediction examples:
+
+```bash
+/home/user/NSTC/NSTC-Surgical-Instrument-Pick-Place/.venv-rfdetr/bin/python \
+  training/report_dp_cameras.py \
+  '/home/user/NSTC/datasets/Object datasets/evaluations/dp_cameras_small_b32'
+```
