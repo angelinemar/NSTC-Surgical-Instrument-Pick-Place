@@ -6,8 +6,8 @@ from phase4_camera_names import sensor_names
 
 
 CAMERA_WIDTH = int(os.environ.get('P4_CAMERA_SIZE', '448'))
-if CAMERA_WIDTH not in (224, 448):
-    raise ValueError('P4_CAMERA_SIZE must be 224 or 448')
+if CAMERA_WIDTH not in (224,448) and not (os.environ.get('P4_DATASET_PURPOSE')=='detection' and 384<=CAMERA_WIDTH<=1536 and CAMERA_WIDTH%24==0):
+    raise ValueError('P4_CAMERA_SIZE must be 224/448, or a detection-only multiple of 24 in 384..1536')
 CAMERA_HEIGHT = CAMERA_WIDTH
 CAMERA_OUTPUT_CROP_SIZE = 224
 CAMERA_DATA_TYPES = ["rgb", "distance_to_image_plane", "semantic_segmentation", "instance_id_segmentation_fast"]

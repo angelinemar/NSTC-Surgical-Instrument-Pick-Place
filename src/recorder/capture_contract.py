@@ -14,7 +14,8 @@ LABELS = {
 def capture_contract(purpose, skill, size, seed, split='unassigned'):
     if purpose not in PURPOSES or skill not in ('pick', 'place', 'both'):
         raise ValueError('Unknown dataset purpose or saved skill')
-    if size not in (224, 448) or split not in ('train', 'valid', 'test', 'unassigned', 'auto'):
+    valid_size=size in (224,448) or (purpose=='detection' and 384<=size<=1536 and size%24==0)
+    if not valid_size or split not in ('train', 'valid', 'test', 'unassigned', 'auto'):
         raise ValueError('Invalid camera size or session split')
     return dict(contract='shared_raw_consumers_v1', purpose=purpose,
                 consumers=PURPOSES[purpose], saved_skill=skill, camera_size=size,
@@ -25,14 +26,14 @@ def capture_contract(purpose, skill, size, seed, split='unassigned'):
 
 
 def storage_budget(destination, episodes, size, reserve_gb=30):
-    if episodes < 1 or reserve_gb < 10 or size not in (224, 448):
+    if episodes < 1 or reserve_gb < 10 or (size not in (224,448) and not (384<=size<=1536 and size%24==0)):
         raise ValueError('Positive episode goal and >=10 GB reserve required')
     existing = Path(destination).resolve()
     while not existing.exists():
         existing = existing.parent
     free = shutil.disk_usage(existing).free
     # Conservatively budget a full pair even when saving only one skill.
-    estimated = int(episodes * (1.1 if size == 448 else .30) * 1e9)
+    estimated = int(episodes * (.30 if size==224 else 1.1*(size/448)**2) * 1e9)
     reserve = int(reserve_gb * 1e9)
     return dict(estimated_bytes=estimated, reserve_bytes=reserve, free_bytes=free,
                 capacity_pass=estimated + reserve <= free)

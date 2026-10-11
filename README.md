@@ -11,6 +11,12 @@ detector GUI with `./scripts/launchers/run_detection6.sh panel`. The original
 5.1 source is preserved on `angel/detection-recorder-sim5.1`.
 [Version setup, wide randomization, and tested commands](docs/ISAAC_VERSIONS.md).
 
+## Trial 02: RF-DETR-Seg
+
+[Commands, held-out camera/lighting protocol, masks and verified smoke tests](docs/TRIAL02_SEGMENTATION.md).
+Use `./scripts/launchers/trial02.sh record` for the new 768-pixel hemisphere segmentation dataset.
+Trial 01 metrics/checkpoints are archived separately. Full Trial 02 recording and training are user-run.
+
 ## Pipeline
 
 ### Separate static detector collection

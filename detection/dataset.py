@@ -49,7 +49,7 @@ def export_index(output):
                     raise ValueError('Incomplete committed view: '+str(folder)+'/'+view['name'])
             iid=len(images)+1
             images.append(dict(id=iid,file_name=f'scenes/{folder.name}/{view["name"]}_rgb.png',
-                               width=448,height=448,scene_id=metadata['scene_id'],camera=view['name']))
+                               width=metadata.get('resolution',448),height=metadata.get('resolution',448),scene_id=metadata['scene_id'],camera=view['name']))
             for box in view['boxes']:
                 annotations.append(dict(box,id=len(annotations)+1,image_id=iid))
     write_json(output/'train'/'_annotations.coco.json',dict(images=images,annotations=annotations,categories=CATEGORIES))

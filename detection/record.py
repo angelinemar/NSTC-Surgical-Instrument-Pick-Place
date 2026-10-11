@@ -30,7 +30,15 @@ def arguments():
     p.add_argument('--headless',action='store_true')
     p.add_argument('--resume',action='store_true')
     p.add_argument('--stop-file',type=Path)
+    p.add_argument('--seg-protocol',type=Path,help='Frozen Trial 02 train/valid/test configuration')
     a=p.parse_args()
+    a.seg=None
+    a.resolution=448
+    if a.seg_protocol:
+        from detection.segmentation_protocol import load_protocol
+        a.seg=load_protocol(a.seg_protocol)
+        a.seed=a.seg['seed'];a.resolution=a.seg['resolution']
+        a.ring_cameras=a.seg['views_per_scene']
     lo,cap,views=(1,64,32) if a.randomization=='wide' else (5,30,16)
     if not (1<=a.scenes and lo<=a.min_objects<=a.max_objects<=cap and 3<=a.ring_cameras<=views and 0<=a.robot_visible_probability<=1):
         p.error(f'Use scenes >=1, {lo}<=min<=max<={cap}, 3..{views} ring cameras, robot probability 0..1')
@@ -51,6 +59,12 @@ def main():
         contract.update(randomization='wide',wide_profile=args.wide,capacity_policy='stop_at_fit_after_minimum')
         from detection.randomization import install_wide_lighting
         install_wide_lighting(args.wide)
+    if args.seg:
+        from detection.segmentation_protocol import install_lighting
+        install_lighting(args.seg)
+        contract.update(contract='p4_static_segmentation_v2',resolution=args.resolution,
+            split=args.seg['split'],labels='visible_instance_coco_rle',
+            segmentation_protocol={k:v for k,v in args.seg.items() if k!='reserved_eyes'})
     config=args.output/'config.json'
     if args.resume:
         if not config.is_file() or json.loads(config.read_text())!=contract:
@@ -59,8 +73,9 @@ def main():
         args.output.mkdir(parents=True,exist_ok=False)
         write_json(config,contract)
     (args.output/'train'/'scenes').mkdir(parents=True,exist_ok=True)
-    os.environ.update(P4_CAMERA_SIZE='448',P4_ANTIALIASING_MODE='DLAA',P4_INSTRUMENT_MATERIALS='recorder',
+    os.environ.update(P4_CAMERA_SIZE=str(args.resolution),P4_ANTIALIASING_MODE='DLAA',P4_INSTRUMENT_MATERIALS='recorder',
                       P4_RANDOMIZATION='train',P4_RANDOMIZATION_SEED=str(args.seed),P4_TRAY_OCCUPANCY='empty')
+    os.environ['P4_DATASET_PURPOSE']='detection'
     # Ignore DP panel environment settings in this separate process.
     for key in ('P4_SESSION_CONFIG','P4_SESSION_FILE'):
         os.environ.pop(key,None)
@@ -86,7 +101,7 @@ def main():
         import isaaclab.sim as sim
         for name in ('grip_cam_b','cam_top','cam_left','cam_right','cam_tray'):
             setattr(cfg.scene,name,None)
-        cfg.scene.camera=CameraCfg(prim_path='{ENV_REGEX_NS}/detection_camera',width=448,height=448,
+        cfg.scene.camera=CameraCfg(prim_path='{ENV_REGEX_NS}/detection_camera',width=args.resolution,height=args.resolution,
             update_latest_camera_pose=True,
             data_types=['rgb','semantic_segmentation','instance_id_segmentation_fast'],
             # Kit 110 returns the semantic palette as packed RGBA. Request
@@ -137,6 +152,9 @@ def collect(env,stage,ns,args):
     from src.recorder.instance_labels import body_mask
     from training.export_detection import visible_boxes
     env.reset()
+    if args.seg:
+        from detection.segmentation_protocol import ensure_lights
+        ensure_lights(stage)
     import carb.settings
     render_settings=carb.settings.get_settings()
     render_contract=dict(aa_op=render_settings.get('/rtx/post/aa/op'),
@@ -182,6 +200,8 @@ def collect(env,stage,ns,args):
             count=rng.randint(args.min_objects,args.max_objects)
             requested_count=count
             types=(list(CLASSES)+rng.choices(CLASSES,k=count-5)) if count>=5 else rng.sample(CLASSES,count)
+            if args.seg:
+                types=[CLASSES[(index+j)%len(CLASSES)] for j in range(count)]
             if args.wide is not None and count>=5:
                 required=types[:5]; extra=types[5:]
                 rng.shuffle(required); rng.shuffle(extra); types=required+extra
@@ -241,7 +261,7 @@ def collect(env,stage,ns,args):
                 prim=obj.cfg.prim_path.replace('{ENV_REGEX_NS}','/World/envs/env_0').replace('env_.*','env_0')
                 roots[prim]=j; classes[str(j)]=dict(name=row['object'],semantic_id=CLASSES.index(row['object'])+3,prim_path=prim)
             metadata=dict(scene_id=index,seed=seed,placement_attempt=retry+1,placement_seed=placement_seed,table_count=count,tray_objects=tray,robot_visible=show,
-                          resolution=448,antialiasing='DLAA',materials='recorder',
+                          resolution=args.resolution,antialiasing='DLAA',materials='recorder',
                           render_settings=render_contract,settling=settling,requested_table_count=requested_count,
                           randomization=args.randomization,wide_profile=args.wide,
                           objects=rows,instance_classes=classes,lighting=ns['_p4_domain_randomization'],views=[])
@@ -252,20 +272,30 @@ def collect(env,stage,ns,args):
             print('[DETECTION RETRY] '+json.dumps(diagnostic),flush=True)
         metadata,rng,roots,classes=retry_placement(prepare_scene,report_rejection)
         camera=env.scene['camera']
-        for view in camera_views(rng,LAYOUT,args.ring_cameras,args.wide):
-            camera.set_world_poses_from_view(torch.tensor([view['eye']],device=env.device),torch.tensor([view['target']],device=env.device))
-            for _ in range(32): env.sim.render()
-            camera.update(0.,force_recompute=True)
-            actual_eye=camera.data.pos_w[0].cpu().numpy()
-            if not np.allclose(actual_eye,view['eye'],atol=1e-4,rtol=0):
-                raise RuntimeError(f"Camera {view['name']} pose mismatch: requested={view['eye']}, actual={actual_eye.tolist()}")
-            view['actual_eye']=actual_eye.tolist()
-            rgb=camera.data.output['rgb'][0,:,:,:3].cpu().numpy().copy()
-            semantic=ns['_phase3_extract_semantic_u16'](camera,448,448,cam_name='camera')
+        if args.seg:
+            from detection.segmentation_protocol import hemisphere_views
+            views=hemisphere_views(rng,LAYOUT,args.ring_cameras,args.seg)
+        else:views=camera_views(rng,LAYOUT,args.ring_cameras,args.wide)
+        for view_index,view in enumerate(views):
+            for camera_attempt in range(20):
+                camera.set_world_poses_from_view(torch.tensor([view['eye']],device=env.device),torch.tensor([view['target']],device=env.device))
+                for _ in range(32): env.sim.render()
+                camera.update(0.,force_recompute=True)
+                actual_eye=camera.data.pos_w[0].cpu().numpy()
+                if not np.allclose(actual_eye,view['eye'],atol=1e-4,rtol=0):
+                    raise RuntimeError(f"Camera {view['name']} pose mismatch: requested={view['eye']}, actual={actual_eye.tolist()}")
+                view['actual_eye']=actual_eye.tolist()
+                rgb=camera.data.output['rgb'][0,:,:,:3].cpu().numpy().copy()
+                if rgb.shape==(args.resolution,args.resolution,3) and float(rgb.astype(float).std(axis=(0,1)).max())>1:break
+                if not args.seg:raise RuntimeError("Invalid/blank RGB "+view["name"])
+                view=hemisphere_views(rng,LAYOUT,args.ring_cameras,args.seg)[view_index]
+            else:raise RuntimeError("No clear camera view after 20 attempts")
+            view["camera_attempts"]=camera_attempt+1
+            semantic=ns['_phase3_extract_semantic_u16'](camera,args.resolution,args.resolution,cam_name='camera')
             raw=camera.data.output['instance_id_segmentation_fast'][0].cpu().numpy().squeeze(-1)
             info=camera.data.info; info=info[0] if isinstance(info,(list,tuple)) else info
             instance=body_mask(raw,info['instance_id_segmentation_fast']['idToLabels'],roots)
-            if rgb.shape!=(448,448,3) or float(rgb.astype(float).std(axis=(0,1)).max())<=1:
+            if rgb.shape!=(args.resolution,args.resolution,3) or float(rgb.astype(float).std(axis=(0,1)).max())<=1:
                 raise RuntimeError('Invalid/blank RGB '+view['name'])
             if np.any(((semantic>=3)&(semantic<=7)) & (instance==0)):
                 raise RuntimeError('Unmapped instrument pixels '+view['name'])
@@ -279,6 +309,15 @@ def collect(env,stage,ns,args):
                     semantic_info=info['semantic_segmentation']))
                 Image.fromarray(rgb).save(pending/'label_error_rgb.png')
                 raise
+            if args.seg:
+                from detection.segmentation_protocol import encode_rle
+                for box in boxes:
+                    box['segmentation']=encode_rle(instance==box['instance_id'])
+                gray=rgb.astype(np.float32).mean(2)
+                lap=-4*gray[1:-1,1:-1]+gray[:-2,1:-1]+gray[2:,1:-1]+gray[1:-1,:-2]+gray[1:-1,2:]
+                view['quality']=dict(laplacian_variance=float(lap.var()),
+                    dark_fraction=float((gray<3).mean()),bright_fraction=float((gray>252).mean()),
+                    visible_instances=len(boxes),instance_pixel_areas=[b['area'] for b in boxes])
             Image.fromarray(rgb).save(pending/f'{view["name"]}_rgb.png')
             Image.fromarray(semantic.astype(np.uint16)).save(pending/f'{view["name"]}_semantic.png')
             Image.fromarray(instance).save(pending/f'{view["name"]}_instance.png')
