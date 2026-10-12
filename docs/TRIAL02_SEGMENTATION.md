@@ -64,3 +64,23 @@ The protocol JSON and reservation are immutable once a trial starts. Raw scene m
 On this machine `start-segmentation6.sh` forwards to `versions/6.0/scripts/launchers/trial02.sh`. From another checkout use `./scripts/launchers/trial02.sh` directly with the documented Isaac Sim 6 runtime and RF-DETR environment. Before a fresh trial, run `prepare` to scan DP camera calibration and freeze protocols; `--trial-root /new/path` selects a separate trial directory. `smoke --headless` repeats the small end-to-end workflow (completed outputs are reused). Current implementation uses installed RF-DETR 1.11.0 and Isaac Sim 6.0.1. Original 5.1 source is preserved separately.
 
 RF-DETR references: [segmentation training](https://rfdetr.roboflow.com/latest/cookbooks/fine-tune_segmentation/) and [Seg Small](https://rfdetr.roboflow.com/latest/reference/seg_small/).
+
+## Two controlled training experiments (2026-10-12)
+
+Production synthetic capture is complete: 9,000 train, 1,350 valid and 1,350 test images. Both experiments train from the same synthetic training set and pretrained Seg Small initialization, seed 42, 768 resolution, batch 1 × accumulation 16, 100-epoch cap and early-stopping patience 15.
+
+From `/home/user/NSTC`:
+
+```bash
+./train-experiments6.sh both
+```
+
+This runs A, then exports DP validation/test, then runs B **sequentially**. A failure stops the queue. To run separately use `./train-experiments6.sh a`, then `./train-experiments6.sh b`; do not start them concurrently. These commands start fresh training runs. See the earlier resume instructions for continuing interrupted training.
+
+- A: synthetic train / synthetic validation / synthetic test. W&B name `trial02A_seg-small_r768_train-SYN_val-SYN_test-SYN_seed42_TIMESTAMP`.
+- B: synthetic train / original DP validation / original DP test. W&B name `trial02B_seg-small_r768_train-SYN_val-DP_test-DP_seed42_TIMESTAMP`.
+- W&B project for both: `nstc-surgical-segmentation`. Checkpoint directories are `training/experiment_A_synthetic_validation_TIMESTAMP` and `training/experiment_B_dp_validation_TIMESTAMP`.
+
+B preparation uses all frames from all six cameras in the original DP valid/test files, preserving their original split. It writes RGB PNGs and visible-instance COCO masks to `dataset_dp_validation`; train is a symlink to the exact synthetic training split. This can take substantial disk space and time: the prior DP inventory contained 136,404 validation and 68,322 test images. Validation on B will consequently be much slower than A. Completed split exports are reused; an interrupted partial split is rebuilt. Export was smoke-checked on six images per split and passed the training dataset preflight; full export and B training remain user-run.
+
+Each training evaluates its designated test source. For a fair final comparison, also evaluate **each checkpoint on both** test sources using the earlier `evaluate` (synthetic) and `evaluate-dp` commands. DP test is never used for checkpoint selection. DP annotation limitations still apply. A and B may stop at different epochs because their validation sources differ.

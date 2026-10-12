@@ -58,7 +58,7 @@ def main():
     prep=sub.add_parser('prepare');prep.add_argument('--dp-source',type=Path,default=object_datasets_root().parent/'DP datasets/NSTC')
     rec=sub.add_parser('record');rec.add_argument('--train-scenes',type=int,default=1000);rec.add_argument('--valid-scenes',type=int,default=150);rec.add_argument('--test-scenes',type=int,default=150);rec.add_argument('--headless',action='store_true')
     smoke=sub.add_parser('smoke');smoke.add_argument('--headless',action='store_true')
-    sub.add_parser('train');sub.add_parser('evaluate');sub.add_parser('evaluate-dp')
+    sub.add_parser('train');sub.add_parser('evaluate');sub.add_parser('evaluate-dp');sub.add_parser('prepare-dp')
     a,extra=p.parse_known_args();root=a.trial_root.resolve();root.mkdir(parents=True,exist_ok=True)
     if a.command in ('prepare','record','smoke') and extra:p.error('Unrecognized arguments: '+' '.join(extra))
     if a.command=='prepare':print(json.dumps(prepare(a.dp_source,root/'protocol',ROOT),indent=2));return
@@ -71,6 +71,9 @@ def main():
         if (output/'result.json').exists():print('Smoke training already complete:',output);return
         if output.exists() and any(output.iterdir()):output=root/('smoke_training_'+datetime.now().strftime('%Y%m%d_%H%M%S'))
         cmd=[sys.executable,'-m','training.rfdetr_seg_pipeline','--dataset',str(dataset),'--output',str(output),'--epochs','1','--batch-size','1','--grad-accum-steps','2','--num-workers','2']
+    elif a.command=='prepare-dp':
+        cmd=[sys.executable,'-m','training.prepare_dp_segmentation','--synthetic',str(root/'dataset'),
+            '--dp-root',str(object_datasets_root().parent/'DP datasets/NSTC'),'--output',str(root/'dataset_dp_validation'),*extra]
     elif a.command=='train':
         output=root/'training'/datetime.now().strftime('%Y%m%d_%H%M%S')
         cmd=[sys.executable,'-m','training.rfdetr_seg_pipeline','--dataset',str(root/'dataset'),'--output',str(output),'--wandb',*extra]

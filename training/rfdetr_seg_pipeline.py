@@ -16,7 +16,7 @@ def main():
     if a.resolution%24 or min(a.epochs,a.batch_size,a.grad_accum_steps,a.resolution)<=0:p.error('Positive settings and resolution divisible by 24 required')
     manifest_path=a.dataset/'manifest.json';m=json.loads(manifest_path.read_text())
     assert m['contract']=='nstc_seg_dataset_v1' and m['export_complete']
-    assert m['split_rule']=='configuration_disjoint_hemisphere_lighting_v1'
+    assert m['split_rule'] in ('configuration_disjoint_hemisphere_lighting_v1','synthetic_train_original_dp_valid_test_v1')
     for split in ('train','valid','test'):
         coco=json.loads((a.dataset/split/'_annotations.coco.json').read_text())
         assert coco['images'] and coco['annotations']
@@ -46,7 +46,7 @@ def main():
     assert checkpoint.is_file(),'Missing best checkpoint'
     best=RFDETRSegSmall.from_checkpoint(str(checkpoint))
     metrics=best.evaluate(dataset_dir=str(a.dataset.resolve()),dataset_file='roboflow',split='test',
-        output_dir=str(a.output/'synthetic_test'),resolution=a.resolution,batch_size=a.batch_size,
+        output_dir=str(a.output/'heldout_test'),resolution=a.resolution,batch_size=a.batch_size,
         num_workers=a.num_workers,log_per_class_metrics=True)
     (a.output/'result.json').write_text(json.dumps(dict(training_complete=True,checkpoint=str(checkpoint.resolve()),
         task='instance_segmentation',test_metrics=_jsonable(metrics),production_ready=False),indent=2))
