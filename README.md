@@ -17,6 +17,10 @@ detector GUI with `./scripts/launchers/run_detection6.sh panel`. The original
 Use `./scripts/launchers/trial02.sh record` for the new 768-pixel hemisphere segmentation dataset.
 Trial 01 metrics/checkpoints are archived separately. Full Trial 02 recording and training are user-run.
 
+## Experiment C: mixed synthetic + DP
+
+[Balanced train/valid/test splits, leakage audits and training command](docs/EXPERIMENT_C.md).
+
 ## Pipeline
 
 ### Separate static detector collection

@@ -16,9 +16,12 @@ def main():
     if a.resolution%24 or min(a.epochs,a.batch_size,a.grad_accum_steps,a.resolution)<=0:p.error('Positive settings and resolution divisible by 24 required')
     manifest_path=a.dataset/'manifest.json';m=json.loads(manifest_path.read_text())
     assert m['contract']=='nstc_seg_dataset_v1' and m['export_complete']
-    assert m['split_rule'] in ('configuration_disjoint_hemisphere_lighting_v1','synthetic_train_original_dp_valid_test_v1')
+    assert m['split_rule'] in ('configuration_disjoint_hemisphere_lighting_v1','synthetic_train_original_dp_valid_test_v1','balanced_syn_dp_episode_disjoint_v1')
     for split in ('train','valid','test'):
-        coco=json.loads((a.dataset/split/'_annotations.coco.json').read_text())
+        annotation_path=a.dataset/split/'_annotations.coco.json'
+        if m.get('annotation_sha256'):
+            assert hashlib.sha256(annotation_path.read_bytes()).hexdigest()==m['annotation_sha256'][split], 'COCO annotations changed since preparation'
+        coco=json.loads(annotation_path.read_text())
         assert coco['images'] and coco['annotations']
         for annotation in coco['annotations']:assert annotation.get('segmentation')
         for image in coco['images']:assert (a.dataset/split/image['file_name']).is_file()
@@ -40,6 +43,7 @@ def main():
         epochs=a.epochs,batch_size=a.batch_size,grad_accum_steps=a.grad_accum_steps,num_workers=a.num_workers,
         resolution=a.resolution,multi_scale=False,expanded_scales=False,seed=a.seed,lr=1e-4,
         use_ema=True,early_stopping=True,early_stopping_patience=15,checkpoint_interval=5,
+        progress_bar='tqdm',train_log_on_step=True,
         tensorboard=True,wandb=a.wandb,project='nstc-surgical-segmentation',run=a.run_name,
         log_per_class_metrics=True,run_test=False,resume=str(a.resume.resolve()) if a.resume else None)
     checkpoint=a.output/'checkpoint_best_total.pth'
