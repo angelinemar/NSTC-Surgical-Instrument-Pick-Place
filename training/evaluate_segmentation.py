@@ -76,12 +76,15 @@ def main():
     p=argparse.ArgumentParser();g=p.add_mutually_exclusive_group(required=True);g.add_argument('--dataset',type=Path);g.add_argument('--dp-root',type=Path)
     p.add_argument('--checkpoint',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--split',choices=('valid','test'),default='test');p.add_argument('--threshold',type=float,default=.5)
-    p.add_argument('--max-files',type=int,default=0);p.add_argument('--frames-per-camera',type=int,default=0)
-    a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True);cache=a.output/'cache';cache.mkdir(exist_ok=True)
+    p.add_argument('--resolution',type=int);p.add_argument('--max-files',type=int,default=0);p.add_argument('--frames-per-camera',type=int,default=0)
+    a=p.parse_args()
+    from training.segmentation_checkpoint import checkpoint_resolution
+    a.resolution=checkpoint_resolution(a.checkpoint,a.resolution)
+    a.output.mkdir(parents=True,exist_ok=True);cache=a.output/'cache';cache.mkdir(exist_ok=True)
     config={k:str(v.resolve()) if isinstance(v,Path) else v for k,v in vars(a).items()}
-    config.update(checkpoint_sha256=hashlib.sha256(a.checkpoint.read_bytes()).hexdigest(),score_floor=.001,iou_match=.5,
+    config.update(evaluation_contract='segmentation_native_resolution_v2',checkpoint_sha256=hashlib.sha256(a.checkpoint.read_bytes()).hexdigest(),score_floor=.001,iou_match=.5,
         metrics_units='percent',scope='sampled_smoke' if a.max_files or a.frames_per_camera else 'all_frames',
-        label_warning='DP source has documented missing/partial labels; scores use supplied masks unchanged.' if a.dp_root else None)
+        label_warning='DP source has documented missing/partial labels; scores use supplied masks unchanged.' if a.dp_root or (a.dataset and a.dataset.name=='dp') else None)
     cp=a.output/'config.json'
     if cp.exists() and json.loads(cp.read_text())!=config:raise ValueError('Output configuration mismatch')
     write_json(cp,config)
@@ -110,7 +113,7 @@ def main():
             if len(images)==32:flush()
             continue
         if model is None:
-            model=RFDETRSegSmall.from_checkpoint(str(a.checkpoint));model.inference(compile=False,dtype=torch.float16)
+            model=RFDETRSegSmall.from_checkpoint(str(a.checkpoint),resolution=a.resolution);model.inference(compile=False,dtype=torch.float16)
         det=model.predict(rgb,threshold=.001,include_source_image=False)
         assert det.mask is not None,'Checkpoint did not produce instance masks'
         for b in boxes:annotations.append(dict(b,id=len(annotations)+1,image_id=image_id))
@@ -151,7 +154,7 @@ def main():
         result['metrics'][kind]=dict(overall=summarize([r for rows in cameras.values() for r in rows],a.threshold),
             per_camera_or_distance={c:summarize(rows,a.threshold) for c,rows in cameras.items()})
     write_json(a.output/'metrics.json',result);write_json(a.output/'status.json',dict(state='complete',images=count))
-    write_json(a.output/'cases.json',dict(note='Class-correct mask IoU >= .50. Best available is not necessarily successful after a smoke training.',cases=cases))
+    write_json(a.output/'cases.json',dict(note='Class-correct mask IoU >= .50. Best available is relative to this evaluation, not a guarantee of success.',cases=cases))
     lines=['# Instance segmentation evaluation', '', f'Images: {count}. Threshold: {a.threshold}. All values below are percentages.', '', config['label_warning'] or 'Synthetic visible-instance ground truth.', '', '| Metric type / group | AP50:95 | AP50 | Precision | Recall | F1 |', '|---|---:|---:|---:|---:|---:|']
     for kind,values in result['metrics'].items():
         for name,row in [('overall',values['overall']),*values['per_camera_or_distance'].items()]:

@@ -48,7 +48,7 @@ def main():
         log_per_class_metrics=True,run_test=False,resume=str(a.resume.resolve()) if a.resume else None)
     checkpoint=a.output/'checkpoint_best_total.pth'
     assert checkpoint.is_file(),'Missing best checkpoint'
-    best=RFDETRSegSmall.from_checkpoint(str(checkpoint))
+    best=RFDETRSegSmall.from_checkpoint(str(checkpoint),resolution=a.resolution)
     metrics=best.evaluate(dataset_dir=str(a.dataset.resolve()),dataset_file='roboflow',split='test',
         output_dir=str(a.output/'heldout_test'),resolution=a.resolution,batch_size=a.batch_size,
         num_workers=a.num_workers,log_per_class_metrics=True)

@@ -21,6 +21,11 @@ Trial 01 metrics/checkpoints are archived separately. Full Trial 02 recording an
 
 [Balanced train/valid/test splits, leakage audits and training command](docs/EXPERIMENT_C.md).
 
+## Matched A/C comparison
+
+[Corrected native-768 evaluation, results and presentation package](docs/EXPERIMENT_COMPARISON.md).
+Older standalone evaluations used the 384-pixel checkpoint fallback; use the corrected matched reports.
+
 ## Pipeline
 
 ### Separate static detector collection
