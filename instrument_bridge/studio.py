@@ -68,6 +68,7 @@ class Studio:
         ttk.Entry(toolbar, textvariable=self.frame, width=6).pack(side='left', padx=(0, 15))
         ttk.Button(toolbar, text='Browse source', command=self.browse).pack(side='left', padx=4)
         ttk.Button(toolbar, text='Open scene recorder', command=self.open_recorder).pack(side='left', padx=4)
+        ttk.Button(toolbar, text='Use latest recorded scene', command=self.latest_scene).pack(side='left', padx=4)
         ttk.Entry(shell, textvariable=self.path).pack(fill='x', pady=(10, 6))
         save_row = ttk.Frame(shell)
         save_row.pack(fill='x', pady=(0, 6))
@@ -117,6 +118,22 @@ class Studio:
         value = filedialog.askdirectory(title='Choose report directory')
         if value:
             self.save_root.set(value)
+
+    def latest_scene(self):
+        state = REPO / 'debug' / 'detection_panel_state.json'
+        if not state.is_file():
+            messagebox.showinfo('No recorder session', 'Record a scene first, or browse to an existing scene folder.')
+            return
+        try:
+            collection = Path(json.loads(state.read_text())['folder'])
+            scenes = sorted((collection / 'train' / 'scenes').glob('scene_*/scene.json'))
+            if not scenes:
+                raise FileNotFoundError('No completed scene in the selected recorder collection')
+            self.source.set('synthetic')
+            self.path.set(str(scenes[-1].parent))
+            self.status.set(f'Loaded latest recorded scene: {scenes[-1].parent.name}')
+        except (OSError, ValueError, KeyError) as exc:
+            messagebox.showerror('Cannot load scene', str(exc))
 
     def open_recorder(self):
         launcher = REPO / 'scripts/launchers/run_detection6.sh'
