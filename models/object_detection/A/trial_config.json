@@ -1,0 +1,15 @@
+{
+  "dataset": "/home/user/NSTC/datasets/Object datasets/trials/trial_02_rfdetr_seg_hemisphere768/dataset",
+  "output": "/home/user/NSTC/datasets/Object datasets/trials/trial_02_rfdetr_seg_hemisphere768/training/experiment_A_synthetic_validation_20261012_123928",
+  "epochs": 100,
+  "batch_size": 1,
+  "grad_accum_steps": 16,
+  "resolution": 768,
+  "num_workers": 8,
+  "seed": 42,
+  "wandb": true,
+  "run_name": "trial02A_seg-small_r768_train-SYN_val-SYN_test-SYN_seed42_20261012_123928",
+  "resume": null,
+  "check_only": false,
+  "dataset_manifest_sha256": "ce8d957e88ac97804ac8ef3137609203c53b96ead571d993d44e2839b9a5942d"
+}

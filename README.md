@@ -1,3 +1,7 @@
+## OpenVLA / RF-DETR-Seg detector bridge
+
+For the standalone model A/B detector, checkpoint setup, live RGB API, six-camera evaluation and OpenVLA subprocess example, see [instrument_bridge/README.md](instrument_bridge/README.md).
+
 # Surgical Instrument Pick & Place
 
 An IsaacLab recorder for five surgical instruments, standalone detector datasets, and Diffusion Policy (DP).

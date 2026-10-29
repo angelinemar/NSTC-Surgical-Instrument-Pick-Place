@@ -1,0 +1,1 @@
+models/object_detection/*/checkpoint_best_total.pth filter=lfs diff=lfs merge=lfs -text

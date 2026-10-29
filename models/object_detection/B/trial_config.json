@@ -1,0 +1,15 @@
+{
+  "dataset": "/home/user/NSTC/datasets/Object datasets/trials/trial_03C_rfdetr_seg_syn_dp_balanced/dataset",
+  "output": "/home/user/NSTC/datasets/Object datasets/trials/trial_03C_rfdetr_seg_syn_dp_balanced/training/experiment_C_mixed_20261016_123637",
+  "epochs": 100,
+  "batch_size": 1,
+  "grad_accum_steps": 16,
+  "resolution": 768,
+  "num_workers": 8,
+  "seed": 42,
+  "wandb": true,
+  "run_name": "trial03C_seg-small_r768_train-SYN50-DP50_val-MIX_test-BOTH_seed42_20261016_123637",
+  "resume": null,
+  "check_only": false,
+  "dataset_manifest_sha256": "e64f502a10162918eb7b1052e3becc0b84898d0c17b84b0f05a5ab9a4d86bbd5"
+}
