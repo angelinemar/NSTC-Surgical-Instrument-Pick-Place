@@ -31,6 +31,28 @@ def compare(predictions,pred_masks,gt,threshold=.5):
  tp,fp,fn=tot
  return dict(contract='visible_instance_mask_iou50_v1',iou_threshold=threshold,per_class=out,overall=dict(TP=tp,FP=fp,FN=fn,precision=tp/max(tp+fp,1),recall=tp/max(tp+fn,1),F1=2*tp/max(2*tp+fp+fn,1)))
 
+def compare_boxes(predictions,gt,threshold=.5):
+ """Class-correct box matching using boxes derived from visible GT masks."""
+ ground=[]
+ for row in gt:
+  ys,xs=np.where(row['mask'])
+  if len(xs):ground.append(dict(class_name=row['class_name'],box=[int(xs.min()),int(ys.min()),int(xs.max())+1,int(ys.max())+1]))
+ out={};tot=[0,0,0]
+ for name in CLASSES:
+  pi=[i for i,o in enumerate(predictions) if o['class_name']==name];gi=[i for i,o in enumerate(ground) if o['class_name']==name]
+  matched=set();tp=0
+  for i in sorted(pi,key=lambda i:-predictions[i]['score']):
+   candidates=[(iou_box(predictions[i]['bbox_xyxy'],ground[j]['box']),j) for j in gi if j not in matched]
+   if candidates:
+    value,j=max(candidates)
+    if value>=threshold:matched.add(j);tp+=1
+  fp=len(pi)-tp;fn=len(gi)-tp;tot[0]+=tp;tot[1]+=fp;tot[2]+=fn
+  out[name]=dict(visible_gt=len(gi),predicted=len(pi),TP=tp,FP=fp,FN=fn,
+                 precision=tp/max(tp+fp,1),recall=tp/max(tp+fn,1),F1=2*tp/max(2*tp+fp+fn,1))
+ tp,fp,fn=tot
+ return dict(contract='visible_instance_box_iou50_v1',iou_threshold=threshold,per_class=out,
+             overall=dict(TP=tp,FP=fp,FN=fn,precision=tp/max(tp+fp,1),recall=tp/max(tp+fn,1),F1=2*tp/max(2*tp+fp+fn,1)))
+
 def table_spawn_counts(attrs,include_target=True):
  """Count scene-clutter metadata labelled region=table plus active target if on table."""
  scene=json.loads(attrs['scene_clutter']);counts={n:0 for n in CLASSES}

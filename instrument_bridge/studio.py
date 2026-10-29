@@ -134,9 +134,9 @@ class Studio:
         self.object_list.bind('<<ListboxSelect>>', self.choose_from_list)
         self.camera_summary = tk.StringVar(value='Camera scores appear after analysis. Live frames show predictions; ground truth is available for recorded scenes.')
         ttk.Label(left, textvariable=self.camera_summary, wraplength=480, justify='left').pack(fill='x', pady=(8, 6))
-        self.class_table = ttk.Treeview(left, columns=('spawn', 'visible', 'pred', 'f1'), show='tree headings', height=5)
+        self.class_table = ttk.Treeview(left, columns=('spawn', 'visible', 'pred', 'box_f1', 'mask_f1'), show='tree headings', height=5)
         self.class_table.heading('#0', text='Instrument')
-        for col, title in (('spawn', 'Spawn'), ('visible', 'Visible'), ('pred', 'Detected'), ('f1', 'Mask F1')):
+        for col, title in (('spawn', 'Spawn'), ('visible', 'Visible'), ('pred', 'Detected'), ('box_f1', 'Box F1'), ('mask_f1', 'Mask F1')):
             self.class_table.heading(col, text=title)
             self.class_table.column(col, width=70, anchor='center')
         self.class_table.column('#0', width=155)
@@ -405,12 +405,16 @@ class Studio:
                 scene_text = f"scene {row['scene_id']}" if row.get('scene_id') is not None else 'camera stream'
                 if row['metrics']:
                     metric = row['metrics']['overall']
-                    self.camera_list.insert('end', f"{row['name']:<16} {scene_text:<13} F1 {metric['F1'] * 100:5.1f}%  ·  {sum(row['predicted'].values())} detected")
+                    box = (row.get('bbox_metrics') or {}).get('overall', {}).get('F1')
+                    box_text = f'{box * 100:.1f}%' if box is not None else '—'
+                    self.camera_list.insert('end', f"{row['name']:<12} {scene_text:<9} Box {box_text}  Mask {metric['F1'] * 100:.1f}%")
                 else:
                     self.camera_list.insert('end', f"{row['name']:<16} {scene_text:<13} {sum(row['predicted'].values())} detected  ·  no GT")
             else:
                 metric = row['metrics']['overall']
-                self.camera_list.insert('end', f"{row['name']:<18}  F1 {metric['F1'] * 100:5.1f}%  ·  TP {metric['TP']}  FP {metric['FP']}  FN {metric['FN']}")
+                box = (row.get('bbox_metrics') or {}).get('overall', {}).get('F1')
+                box_text = f'{box * 100:.1f}%' if box is not None else '—'
+                self.camera_list.insert('end', f"{row['name']:<12} Box {box_text}  Mask {metric['F1'] * 100:.1f}%")
         if is_live:
             labelled = sum(row['metrics'] is not None for row in report['per_camera'])
             summary = f"LIVE FEED  •  Model {report['model']}  •  {len(report['per_camera'])} camera(s) received  •  {labelled} with ground-truth masks.\nCamera results remain separate; views from different scene IDs are not combined. Saved snapshots: {self.output}"
@@ -442,25 +446,33 @@ class Studio:
         if is_live:
             if row['metrics']:
                 m = row['metrics']['overall']
-                self.camera_summary.set(f"LIVE {row['name']}  •  scene {row.get('scene_id')}  •  {interpret(row)}\nMask IoU≥0.50: precision {m['precision'] * 100:.1f}%  •  recall {m['recall'] * 100:.1f}%  •  F1 {m['F1'] * 100:.1f}%")
+                box_f1 = (row.get('bbox_metrics') or {}).get('overall', {}).get('F1')
+                box_text = f'{box_f1 * 100:.1f}%' if box_f1 is not None else '—'
+                self.camera_summary.set(f"LIVE {row['name']}  •  scene {row.get('scene_id')}  •  {interpret(row)}\nIoU≥0.50: Box F1 {box_text}  •  Mask F1 {m['F1'] * 100:.1f}%  •  Mask precision {m['precision'] * 100:.1f}%  •  recall {m['recall'] * 100:.1f}%")
             else:
                 self.camera_summary.set(f"LIVE {row['name']}  •  {sum(row['predicted'].values())} detections\nPredictions only; this feed did not provide instance ground truth.")
         else:
             m = row['metrics']['overall']
-            self.camera_summary.set(f"{interpret(row)}\nPrecision {m['precision'] * 100:.1f}%  •  Recall {m['recall'] * 100:.1f}%  •  F1 {m['F1'] * 100:.1f}%\nTP {m['TP']}   FP {m['FP']}   FN {m['FN']}")
+            box_f1 = (row.get('bbox_metrics') or {}).get('overall', {}).get('F1')
+            box_text = f'{box_f1 * 100:.1f}%' if box_f1 is not None else '—'
+            self.camera_summary.set(f"{interpret(row)}\nIoU≥0.50: Box F1 {box_text}  •  Mask F1 {m['F1'] * 100:.1f}%\nMask precision {m['precision'] * 100:.1f}%  •  Recall {m['recall'] * 100:.1f}%  •  TP {m['TP']}  FP {m['FP']}  FN {m['FN']}")
         for item in self.class_table.get_children():
             self.class_table.delete(item)
         for name in CLASSES:
             if is_live:
                 if row['metrics']:
                     c = row['metrics']['per_class'][name]
+                    box = (row.get('bbox_metrics') or {}).get('per_class', {}).get(name, {}).get('F1')
                     spawn = row.get('spawn_on_table') or {}
-                    values = (spawn.get(name, '—'), c['visible_gt'], c['predicted'], f"{c['F1'] * 100:.1f}%")
+                    values = (spawn.get(name, '—'), c['visible_gt'], c['predicted'],
+                              f'{box * 100:.1f}%' if box is not None else '—', f"{c['F1'] * 100:.1f}%")
                 else:
-                    values = ('—', '—', row['predicted'][name], '—')
+                    values = ('—', '—', row['predicted'][name], '—', '—')
             else:
                 c = row['metrics']['per_class'][name]
-                values = (self.report['spawn_on_table'][name], c['visible_gt'], c['predicted'], f"{c['F1'] * 100:.1f}%")
+                box = (row.get('bbox_metrics') or {}).get('per_class', {}).get(name, {}).get('F1')
+                values = (self.report['spawn_on_table'][name], c['visible_gt'], c['predicted'],
+                          f'{box * 100:.1f}%' if box is not None else '—', f"{c['F1'] * 100:.1f}%")
             self.class_table.insert('', 'end', text=name.replace('_', ' '), values=values)
         if self.overlay_mode.get() == 'Ground truth' and not row.get('ground_truth_preview'):
             self.preview_ref = None

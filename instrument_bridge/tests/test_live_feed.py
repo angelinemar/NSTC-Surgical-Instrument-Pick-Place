@@ -7,10 +7,27 @@ import numpy as np
 from PIL import Image
 
 from instrument_bridge.live_feed import publish_frame
-from instrument_bridge.studio_worker import associate_tracks, evaluate_live_frame
+from instrument_bridge.studio_worker import associate_tracks, evaluate_live_frame, synthetic_ground_truth
+from instrument_bridge.evaluate import compare_boxes
 
 
 class LiveFeedTest(unittest.TestCase):
+    def test_box_metric_keeps_shape_separate_from_location(self):
+        gt_mask = np.zeros((16, 16), dtype=bool)
+        gt_mask[2:5, 3:7] = True
+        predictions = [dict(class_name='scalpel', score=.9, bbox_xyxy=[3, 2, 7, 5])]
+        box = compare_boxes(predictions, [dict(class_name='scalpel', mask=gt_mask)])
+        self.assertEqual(box['overall']['F1'], 1.0)
+
+    def test_regular_recorder_instance_png_is_valid_ground_truth(self):
+        ids = np.zeros((8, 8), dtype=np.uint16)
+        ids[1:4, 2:6] = 3
+        view = dict(boxes=[dict(instance_id=3, category_id=1)])
+        gt = synthetic_ground_truth(view, ids)
+        self.assertEqual(len(gt), 1)
+        self.assertEqual(gt[0]['class_name'], 'scalpel')
+        self.assertEqual(int(gt[0]['mask'].sum()), 12)
+
     def test_same_camera_track_association(self):
         previous = [dict(class_name='kelly', score=.9, bbox_xyxy=[0, 0, 10, 10], track_id=7)]
         current = [dict(class_name='kelly', score=.8, bbox_xyxy=[1, 1, 11, 11]),
@@ -74,6 +91,7 @@ class LiveFeedTest(unittest.TestCase):
             info = json.loads((folder / 'front_latest.json').read_text())
             row = evaluate_live_frame(Detector(), folder, info, Path(root) / 'output')
             self.assertEqual(row['metrics']['overall']['F1'], 1.0)
+            self.assertEqual(row['bbox_metrics']['overall']['F1'], 1.0)
             self.assertEqual(row['visible_ground_truth']['scalpel'], 1)
             self.assertTrue((Path(root) / 'output' / row['ground_truth_preview']).is_file())
 

@@ -10,20 +10,27 @@ from pycocotools import mask as mask_api
 
 from .api import CLASSES, InstrumentDetector
 from .cli import ground_truth
-from .evaluate import compare, iou_box, table_spawn_counts
+from .evaluate import compare, compare_boxes, iou_box, table_spawn_counts
 
 
 DP_CAMERAS = ('front', 'wrist', 'cam_top', 'cam_left', 'cam_right', 'cam_tray')
 COLORS = ('#e95756', '#6b63db', '#f2a23a', '#139c87', '#2986d8')
 
 
-def synthetic_ground_truth(view):
+def synthetic_ground_truth(view, instance_ids=None):
     result = []
     for box in view['boxes']:
-        segmentation = box['segmentation']
-        if isinstance(segmentation['counts'], list):
-            segmentation = mask_api.frPyObjects(segmentation, *segmentation['size'])
-        mask = mask_api.decode(segmentation).astype(bool)
+        if 'segmentation' in box:
+            segmentation = box['segmentation']
+            if isinstance(segmentation['counts'], list):
+                segmentation = mask_api.frPyObjects(segmentation, *segmentation['size'])
+            mask = mask_api.decode(segmentation).astype(bool)
+        elif instance_ids is not None:
+            mask = instance_ids == int(box['instance_id'])
+            if not mask.any():
+                raise ValueError(f"Instance {box['instance_id']} is in scene boxes but absent from instance PNG")
+        else:
+            raise ValueError('Scene has no RLE segmentation or instance-ID PNG')
         result.append(dict(class_name=CLASSES[box['category_id'] - 1],
                            instance_id=box['instance_id'], mask=mask))
     return result
@@ -100,6 +107,7 @@ def evaluate_live_frame(detector, folder, info, output, previous=None, next_trac
     draw_preview(rgb, result['objects'], masks, output / preview_name)
     gt_name = None
     metrics = None
+    bbox_metrics = None
     visible = None
     if info.get('instance_mask') and info.get('instance_classes'):
         ids = np.asarray(Image.open(Path(folder) / info['instance_mask']))
@@ -114,12 +122,14 @@ def evaluate_live_frame(detector, folder, info, output, previous=None, next_trac
             if mask.any():
                 gt.append(dict(class_name=class_name, instance_id=int(text_id), mask=mask))
         metrics = compare(result['objects'], masks, gt)
+        bbox_metrics = compare_boxes(result['objects'], gt)
         visible = {label: sum(row['class_name'] == label for row in gt) for label in CLASSES}
         gt_name = f'{name}_{frame_token}_ground_truth.png'
         draw_ground_truth(rgb, gt, output / gt_name)
     return dict(name=name, rgb=rgb_name, preview=preview_name,
                 ground_truth_preview=gt_name, predicted=result['counts'],
-                visible_ground_truth=visible, metrics=metrics, objects=result['objects'],
+                visible_ground_truth=visible, metrics=metrics, bbox_metrics=bbox_metrics,
+                objects=result['objects'],
                 captured_at_unix=float(info['captured_at_unix']), scene_id=info.get('scene_id'),
                 spawn_on_table=info.get('spawn_on_table'), next_track_id=next_track_id)
 
@@ -135,8 +145,10 @@ def evaluate(args):
                            for obj in scene['objects']) for name in CLASSES}
         for view in scene['views']:
             image_path = args.path / f"{view['name']}_rgb.png"
+            instance_path = args.path / f"{view['name']}_instance.png"
+            instance_ids = np.asarray(Image.open(instance_path)) if instance_path.is_file() else None
             views.append((view['name'], np.asarray(Image.open(image_path).convert('RGB')),
-                          synthetic_ground_truth(view)))
+                          synthetic_ground_truth(view, instance_ids)))
         lighting = scene.get('lighting')
     else:
         with h5py.File(args.path, 'r') as h:
@@ -153,6 +165,7 @@ def evaluate(args):
         Image.fromarray(rgb).save(output / rgb_name)
         prediction, masks = detector.predict(rgb)
         metrics = compare(prediction['objects'], masks, gt)
+        bbox_metrics = compare_boxes(prediction['objects'], gt)
         image_name = f'{name}_prediction.png'
         gt_image_name = f'{name}_ground_truth.png'
         draw_preview(rgb, prediction['objects'], masks, output / image_name)
@@ -160,7 +173,7 @@ def evaluate(args):
         visible = {label: sum(row['class_name'] == label for row in gt) for label in CLASSES}
         per_camera.append(dict(name=name, rgb=rgb_name, preview=image_name, ground_truth_preview=gt_image_name,
                                predicted=prediction['counts'],
-                               visible_ground_truth=visible, metrics=metrics,
+                               visible_ground_truth=visible, metrics=metrics, bbox_metrics=bbox_metrics,
                                objects=prediction['objects']))
     summary = dict(contract='instrument_studio_v1', source=args.source, path=str(args.path),
                    model=args.model, threshold=args.threshold, frame=args.frame if args.source == 'dp' else None,
