@@ -25,6 +25,19 @@ Verify `git lfs pull` downloaded the weights: both checkpoint files should be ab
 
 ## Run on a camera image
 
+## Graphical camera audit
+
+Start the local GUI with `./instrument-studio6.sh` after installing the RF-DETR environment and running `git lfs pull`. Choose **A** or **B**, set a score threshold, and load either:
+
+- a synthetic recorder's `train/scenes/scene_XXXXXX` folder containing `scene.json`, or
+- a recorded DP `.h5` episode and a frame number.
+
+Click **Run detection on every camera**. The left side lists every camera separately with mask IoU≥0.50 TP, FP, FN and F1. Select a camera to see its prediction overlay, ground-truth overlay, per-class visible counts, and its own conclusion. Toggle **Image overlay** between model and ground truth. Synthetic scenes show every recorded hemisphere view; DP episodes show all six DP cameras. The GUI intentionally does **not** combine the six views into a single accuracy score, because they observe different parts of the scene. Reports and preview PNGs are saved under the chosen **Save reports to** folder.
+
+**Open scene recorder** starts the existing Isaac Sim detection recorder panel. There you can set instrument count, camera views, randomization mode and a custom wide lighting profile. Record a new scene, then choose its saved `scene_XXXXXX` folder in this GUI. A live Isaac Sim scene is not controlled from the audit GUI itself; the recorder saves the ground truth used for evaluation. Do not use a scene from the model's training split as evidence of generalization. Prefer an independent test split or a new held-out capture.
+
+The `Spawn` column counts all instruments placed on the table, including hidden ones. `Visible` is the camera's annotated instance count; `Pred` is the model output. Precision/recall/F1 compare predicted **masks** with visible instance masks, class-correct at mask IoU≥0.50. They are diagnostic values for one scene/frame, not mAP or whole-table object-count accuracy. DP labels may be incomplete. Action model selection, robot control and 3D pose estimation are outside this GUI; the JSON detector API is the handoff point for an OpenVLA or other policy.
+
 ```bash
 ./detect-instruments6.sh --model B --image /absolute/path/frame.png --output /tmp/detect_B
 ./detect-instruments6.sh --model A --image /absolute/path/frame.png --output /tmp/detect_A
