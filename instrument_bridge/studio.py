@@ -12,6 +12,7 @@ from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
 
 from .api import CLASSES, MODEL_PATHS, REPO
+from .target_handoff import build_request, matching_indices, pick_at_pixel, requested_class, save_request
 
 
 def interpret(camera):
@@ -33,8 +34,8 @@ class Studio:
     def __init__(self, root):
         self.root = root
         root.title('Instrument Detection Studio | A / B')
-        root.geometry('1350x880')
-        root.minsize(1000, 700)
+        root.geometry('1450x980')
+        root.minsize(1150, 850)
         self.model = tk.StringVar(value='B')
         self.threshold = tk.StringVar(value='0.50')
         self.path = tk.StringVar()
@@ -42,11 +43,20 @@ class Studio:
         self.frame = tk.StringVar(value='0')
         self.overlay_mode = tk.StringVar(value='Model prediction')
         self.save_root = tk.StringVar(value=str(REPO.parent / 'datasets' / 'Object datasets' / 'inference_studio'))
+        self.instruction = tk.StringVar(value='pick up the scalpel')
+        self.action_backend = tk.StringVar(value='OpenVLA adapter')
+        self.adapter_python = tk.StringVar(value=sys.executable)
+        self.adapter_script = tk.StringVar()
         self.status = tk.StringVar(value='Choose a synthetic scene or DP episode, then run detection.')
         self.report = None
         self.output = None
         self.preview_ref = None
         self.busy = False
+        self.locked_index = None
+        self.locked_camera = None
+        self.request_path = None
+        self.display_size = (0, 0)
+        self.updating_object_list = False
         style = ttk.Style(root)
         style.theme_use('clam')
         style.configure('.', font=('DejaVu Sans', 10))
@@ -94,6 +104,10 @@ class Studio:
         self.camera_list = tk.Listbox(left, font=('DejaVu Sans', 11), height=14, exportselection=False)
         self.camera_list.pack(fill='x')
         self.camera_list.bind('<<ListboxSelect>>', self.show_camera)
+        ttk.Label(left, text='Detected instances in selected camera').pack(anchor='w', pady=(8, 2))
+        self.object_list = tk.Listbox(left, font=('DejaVu Sans', 10), height=6, exportselection=False)
+        self.object_list.pack(fill='x')
+        self.object_list.bind('<<ListboxSelect>>', self.choose_from_list)
         self.details = tk.Text(left, wrap='word', font=('DejaVu Sans Mono', 10), bg='white')
         self.details.pack(fill='both', expand=True, pady=(8, 0))
         preview_toolbar = ttk.Frame(right)
@@ -104,6 +118,26 @@ class Studio:
         self.overlay_mode.trace_add('write', lambda *_: self.show_camera())
         self.preview = ttk.Label(right, text='Camera preview with predicted boxes and masks')
         self.preview.pack(fill='both', expand=True)
+        self.preview.bind('<Button-1>', self.choose_from_image)
+        handoff = ttk.LabelFrame(shell, text='Target lock and action handoff', padding=8)
+        handoff.pack(fill='x', pady=(8, 0))
+        first = ttk.Frame(handoff)
+        first.pack(fill='x')
+        ttk.Label(first, text='Language command').pack(side='left', padx=(0, 6))
+        ttk.Entry(first, textvariable=self.instruction, width=42).pack(side='left', padx=(0, 8))
+        ttk.Button(first, text='Select by command', command=self.choose_from_language).pack(side='left', padx=4)
+        ttk.Button(first, text='Lock selected target', command=self.lock_target).pack(side='left', padx=4)
+        self.lock_status = tk.StringVar(value='No target locked. Click a predicted instrument, choose the list, or enter a command.')
+        ttk.Label(handoff, textvariable=self.lock_status, wraplength=1200).pack(anchor='w', pady=4)
+        second = ttk.Frame(handoff)
+        second.pack(fill='x')
+        ttk.Combobox(second, textvariable=self.action_backend, values=('OpenVLA adapter', 'DP adapter'), state='readonly', width=18).pack(side='left', padx=(0, 8))
+        ttk.Label(second, text='Adapter Python').pack(side='left')
+        ttk.Entry(second, textvariable=self.adapter_python, width=23).pack(side='left', padx=(4, 8))
+        ttk.Label(second, text='Adapter script').pack(side='left')
+        ttk.Entry(second, textvariable=self.adapter_script, width=38).pack(side='left', fill='x', expand=True, padx=4)
+        ttk.Button(second, text='Browse', command=self.choose_adapter).pack(side='left', padx=4)
+        ttk.Button(second, text='Run adapter', command=self.run_adapter).pack(side='left', padx=4)
         ttk.Label(shell, text='One camera = one conclusion. No pooled success percentage. DP labels can be partial; inspect missing labels before interpreting false positives.', wraplength=1200).pack(anchor='w', pady=(8, 0))
 
     def browse(self):
@@ -118,6 +152,11 @@ class Studio:
         value = filedialog.askdirectory(title='Choose report directory')
         if value:
             self.save_root.set(value)
+
+    def choose_adapter(self):
+        value = filedialog.askopenfilename(title='Choose your OpenVLA or DP adapter Python script', filetypes=[('Python script', '*.py')])
+        if value:
+            self.adapter_script.set(value)
 
     def latest_scene(self):
         state = REPO / 'debug' / 'detection_panel_state.json'
@@ -167,6 +206,10 @@ class Studio:
             return
         self.output = Path(self.save_root.get()).expanduser() / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
         self.output.mkdir(parents=True, exist_ok=False)
+        self.locked_index = None
+        self.locked_camera = None
+        self.request_path = None
+        self.lock_status.set('No target locked. Waiting for fresh detections.')
         python = os.environ.get('NSTC_RFDETR_PYTHON', sys.executable)
         command = [python, '-m', 'instrument_bridge.studio_worker', '--source', source,
                    '--path', str(path), '--output', str(self.output), '--model', self.model.get(),
@@ -213,6 +256,16 @@ class Studio:
         if not self.report or not self.camera_list.curselection():
             return
         row = self.report['per_camera'][self.camera_list.curselection()[0]]
+        if self.locked_camera != row['name']:
+            self.locked_index = None
+            self.locked_camera = None
+            self.request_path = None
+            self.lock_status.set('No target locked in this camera. Choose one of its predicted instances.')
+        self.updating_object_list = True
+        self.object_list.delete(0, 'end')
+        for index, obj in enumerate(row['objects']):
+            self.object_list.insert('end', f"#{index + 1}  {obj['class_name']:<18} score {obj['score']:.2f}  ({obj['center_xy'][0]:.0f}, {obj['center_xy'][1]:.0f})")
+        self.updating_object_list = False
         m = row['metrics']['overall']
         lines = [row['name'].upper(), interpret(row), '',
                  f"Visible labels: {sum(row['visible_ground_truth'].values())}",
@@ -231,8 +284,108 @@ class Studio:
         filename = row['preview'] if self.overlay_mode.get() == 'Model prediction' else row['ground_truth_preview']
         image = Image.open(self.output / filename).convert('RGB')
         image.thumbnail((680, 680))
+        self.display_size = image.size
         self.preview_ref = ImageTk.PhotoImage(image)
         self.preview.configure(image=self.preview_ref, text='')
+
+    def current_camera(self):
+        if not self.report or not self.camera_list.curselection():
+            raise ValueError('Run detection and choose a camera first')
+        return self.report['per_camera'][self.camera_list.curselection()[0]]
+
+    def select_index(self, index, method):
+        row = self.current_camera()
+        if not 0 <= index < len(row['objects']):
+            raise ValueError('Select a predicted instance')
+        self.updating_object_list = True
+        self.object_list.selection_clear(0, 'end')
+        self.object_list.selection_set(index)
+        self.object_list.see(index)
+        self.updating_object_list = False
+        self.locked_index = index
+        self.locked_camera = row['name']
+        self.request_path = None
+        self.selected_by = method
+        obj = row['objects'][index]
+        self.lock_status.set(f"Selected {obj['class_name']} #{index + 1} in {row['name']} (score {obj['score']:.2f}). Click Lock selected target to export the handoff JSON.")
+
+    def choose_from_list(self, event=None):
+        if not self.updating_object_list and self.object_list.curselection():
+            index = self.object_list.curselection()[0]
+            if self.locked_index != index or self.locked_camera != self.current_camera()['name']:
+                self.select_index(index, 'list')
+
+    def choose_from_image(self, event):
+        if self.overlay_mode.get() != 'Model prediction':
+            messagebox.showinfo('Use model overlay', 'Switch Image overlay to Model prediction to select a model detection.')
+            return
+        try:
+            row = self.current_camera()
+            width, height = self.display_size
+            x = event.x - (self.preview.winfo_width() - width) / 2
+            y = event.y - (self.preview.winfo_height() - height) / 2
+            source_width = row['objects'][0]['mask_rle']['size'][1] if row['objects'] else width
+            source_height = row['objects'][0]['mask_rle']['size'][0] if row['objects'] else height
+            index = pick_at_pixel(row['objects'], x * source_width / width, y * source_height / height)
+            if index is None:
+                self.lock_status.set('No predicted box at that pixel. Choose an instance from the list.')
+            else:
+                self.select_index(index, 'click')
+        except ValueError as exc:
+            messagebox.showerror('Target selection', str(exc))
+
+    def choose_from_language(self):
+        try:
+            row = self.current_camera()
+            class_name = requested_class(self.instruction.get())
+            candidates = matching_indices(row['objects'], class_name)
+            if len(candidates) == 1:
+                self.select_index(candidates[0], 'language_unique')
+            elif not candidates:
+                self.lock_status.set(f'No {class_name} detected in {row["name"]}. Choose another camera or inspect detections.')
+            else:
+                self.lock_status.set(f'{len(candidates)} {class_name} instances detected in {row["name"]}. Click the intended one or choose it in the list.')
+        except ValueError as exc:
+            messagebox.showerror('Language selection', str(exc))
+
+    def lock_target(self):
+        try:
+            row = self.current_camera()
+            if self.locked_camera != row['name'] or self.locked_index is None:
+                raise ValueError('Choose a predicted instance in this camera first')
+            request = build_request(self.report, row['name'], self.locked_index,
+                                    self.instruction.get(), self.selected_by,
+                                    self.output / row['rgb'])
+            request['action_backend_requested'] = self.action_backend.get()
+            self.request_path = save_request(self.output / 'target_request.json', request)
+            self.lock_status.set(f"LOCKED {request['target']['class_name']} #{self.locked_index + 1} in {row['name']}. Saved {self.request_path}")
+        except (ValueError, FileNotFoundError) as exc:
+            messagebox.showerror('Cannot lock target', str(exc))
+
+    def run_adapter(self):
+        if self.request_path is None or not self.request_path.is_file():
+            messagebox.showerror('No target request', 'Lock one detected instance first.')
+            return
+        if json.loads(self.request_path.read_text()).get('action_backend_requested') != self.action_backend.get():
+            messagebox.showerror('Backend changed', 'Lock the target again after changing the action backend.')
+            return
+        python = Path(self.adapter_python.get()).expanduser()
+        script = Path(self.adapter_script.get()).expanduser()
+        if not python.is_file() or not script.is_file():
+            messagebox.showerror('Adapter missing', 'Choose an existing adapter Python and script. The GUI does not contain trained OpenVLA or a closed-loop DP runner.')
+            return
+        self.lock_status.set(f'Running {self.action_backend.get()} script with locked target…')
+        threading.Thread(target=self._run_adapter_process, args=(str(python), str(script), str(self.request_path)), daemon=True).start()
+
+    def _run_adapter_process(self, python, script, request):
+        try:
+            result = subprocess.run([python, script, request], cwd=REPO, capture_output=True, text=True)
+            outcome = dict(adapter=script, exit_code=result.returncode, stdout=result.stdout[-10000:], stderr=result.stderr[-10000:])
+            (self.output / 'action_result.json').write_text(json.dumps(outcome, indent=2))
+            status = f'Adapter finished, exit {result.returncode}. See action_result.json in report folder.'
+        except OSError as exc:
+            status = f'Adapter failed to start: {exc}'
+        self.root.after(0, lambda: self.lock_status.set(status))
 
 
 def main():

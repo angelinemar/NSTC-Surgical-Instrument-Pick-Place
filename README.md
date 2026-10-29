@@ -1,6 +1,6 @@
 ## OpenVLA / RF-DETR-Seg detector bridge
 
-For the standalone model A/B detector, checkpoint setup, live RGB API, six-camera evaluation and OpenVLA subprocess example, see [instrument_bridge/README.md](instrument_bridge/README.md).
+For the standalone model A/B detector, checkpoint setup, camera evaluation GUI, live RGB API and OpenVLA subprocess example, see [instrument_bridge/README.md](instrument_bridge/README.md). For a selected-instance JSON handoff and partner action-policy integration, see [instrument_bridge/OPENVLA_HANDOFF.md](instrument_bridge/OPENVLA_HANDOFF.md).
 
 # Surgical Instrument Pick & Place
 

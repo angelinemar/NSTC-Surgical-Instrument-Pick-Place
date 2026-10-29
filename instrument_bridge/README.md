@@ -23,11 +23,11 @@ export NSTC_RFDETR_PYTHON="$PWD/.venv-rfdetr/bin/python"
 
 Verify `git lfs pull` downloaded the weights: both checkpoint files should be about 133 MB rather than small text pointers. A CUDA-capable PyTorch installation is recommended; use your machine's supported PyTorch/CUDA setup.
 
-## Run on a camera image
-
 ## Graphical camera audit
 
 Start the local GUI with `./instrument-studio6.sh` after installing the RF-DETR environment and running `git lfs pull`. Choose **A** or **B**, set a score threshold, and load either:
+
+The GUI uses Tkinter, which must be available in the Python 3.11 installation. On this NSTC workstation it is available in the RF-DETR virtual environment. If `import tkinter` fails on another computer, install that system's Python Tk package before launching the GUI.
 
 - a synthetic recorder's `train/scenes/scene_XXXXXX` folder containing `scene.json`, or
 - a recorded DP `.h5` episode and a frame number.
@@ -36,7 +36,13 @@ Click **Run detection on every camera**. The left side lists every camera separa
 
 **Open scene recorder** starts the existing Isaac Sim detection recorder panel. There you can set instrument count, camera views, randomization mode and a custom wide lighting profile. Record a new scene, then click **Use latest recorded scene** here, or browse to its `scene_XXXXXX` folder. A live Isaac Sim scene is not controlled from the audit GUI itself; the recorder saves the ground truth used for evaluation. Do not use a scene from the model's training split as evidence of generalization. Prefer an independent test split or a new held-out capture.
 
-The `Spawn` column counts all instruments placed on the table, including hidden ones. `Visible` is the camera's annotated instance count; `Pred` is the model output. Precision/recall/F1 compare predicted **masks** with visible instance masks, class-correct at mask IoU≥0.50. They are diagnostic values for one scene/frame, not mAP or whole-table object-count accuracy. DP labels may be incomplete. Action model selection, robot control and 3D pose estimation are outside this GUI; the JSON detector API is the handoff point for an OpenVLA or other policy.
+The `Spawn` column counts all instruments placed on the table, including hidden ones. `Visible` is the camera's annotated instance count; `Pred` is the model output. Precision/recall/F1 compare predicted **masks** with visible instance masks, class-correct at mask IoU≥0.50. They are diagnostic values for one scene/frame, not mAP or whole-table object-count accuracy. DP labels may be incomplete.
+
+After detection, pick one **predicted instance** by clicking its box or selecting it from the list. Type `pick up the scalpel` (or another supported class) and click **Select by command** to select it automatically only when exactly one instance of that class appears in the selected camera. Duplicates require an explicit click/list selection. Click **Lock selected target** to write `target_request.json`, which contains the instruction, class, confidence, box, mask, pixel center, camera, model A/B, and a clean RGB image path. Simulator spawn pose and ground-truth annotations are excluded from this action request. If you change camera or run detection again, the old lock is cleared.
+
+The optional **Run adapter** button launches a user-supplied Python script with the request JSON as its sole argument. Choose **OpenVLA adapter** or **DP adapter** only to label the intended backend; neither model is packaged in this GUI. For a safe end-to-end handoff check, select `instrument_bridge/examples/dry_run_action_adapter.py` and the desired Python interpreter. It prints the selected instance without moving a robot. See [OPENVLA_HANDOFF.md](OPENVLA_HANDOFF.md) for the partner integration contract and the steps required before live action.
+
+## Run on a camera image
 
 ```bash
 ./detect-instruments6.sh --model B --image /absolute/path/frame.png --output /tmp/detect_B

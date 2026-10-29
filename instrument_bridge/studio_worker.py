@@ -90,6 +90,8 @@ def evaluate(args):
         lighting = None
     per_camera = []
     for name, rgb, gt in views:
+        rgb_name = f'{name}_rgb.png'
+        Image.fromarray(rgb).save(output / rgb_name)
         prediction, masks = detector.predict(rgb)
         metrics = compare(prediction['objects'], masks, gt)
         image_name = f'{name}_prediction.png'
@@ -97,7 +99,7 @@ def evaluate(args):
         draw_preview(rgb, prediction['objects'], masks, output / image_name)
         draw_ground_truth(rgb, gt, output / gt_image_name)
         visible = {label: sum(row['class_name'] == label for row in gt) for label in CLASSES}
-        per_camera.append(dict(name=name, preview=image_name, ground_truth_preview=gt_image_name,
+        per_camera.append(dict(name=name, rgb=rgb_name, preview=image_name, ground_truth_preview=gt_image_name,
                                predicted=prediction['counts'],
                                visible_ground_truth=visible, metrics=metrics,
                                objects=prediction['objects']))
