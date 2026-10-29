@@ -33,7 +33,7 @@ def interpret(camera):
 class Studio:
     def __init__(self, root):
         self.root = root
-        root.title('Instrument Detection Studio | A / B')
+        root.title('Instrument Vision Studio | A / B')
         root.geometry('1450x980')
         root.minsize(1150, 850)
         self.model = tk.StringVar(value='B')
@@ -46,7 +46,7 @@ class Studio:
         self.instruction = tk.StringVar(value='pick up the scalpel')
         self.action_backend = tk.StringVar(value='OpenVLA adapter')
         self.adapter_python = tk.StringVar(value=sys.executable)
-        self.adapter_script = tk.StringVar()
+        self.adapter_script = tk.StringVar(value=str(REPO / 'instrument_bridge/examples/dry_run_action_adapter.py'))
         self.status = tk.StringVar(value='Choose a synthetic scene or DP episode, then run detection.')
         self.report = None
         self.output = None
@@ -57,20 +57,36 @@ class Studio:
         self.request_path = None
         self.display_size = (0, 0)
         self.updating_object_list = False
+        self.live_stop = threading.Event()
+        self.live_rows = {}
+        self.live_active = False
+        root.configure(background='#f3f6fb')
         style = ttk.Style(root)
         style.theme_use('clam')
-        style.configure('.', font=('DejaVu Sans', 10))
-        style.configure('Title.TLabel', font=('DejaVu Sans', 19, 'bold'))
-        style.configure('Metric.TLabel', font=('DejaVu Sans', 12, 'bold'))
+        style.configure('.', font=('DejaVu Sans', 10), background='#f3f6fb', foreground='#172b4d')
+        style.configure('TFrame', background='#f3f6fb')
+        style.configure('TLabel', background='#f3f6fb', foreground='#172b4d')
+        style.configure('Title.TLabel', font=('DejaVu Sans', 20, 'bold'), foreground='#12345a')
+        style.configure('Metric.TLabel', font=('DejaVu Sans', 12, 'bold'), foreground='#12345a')
+        style.configure('TLabelframe', background='#ffffff', bordercolor='#dce5ef')
+        style.configure('TLabelframe.Label', font=('DejaVu Sans', 11, 'bold'), foreground='#17365c', background='#f3f6fb')
+        style.configure('TButton', padding=(11, 7), background='#e6edf5', borderwidth=0)
+        style.map('TButton', background=[('active', '#d4e1ef')])
+        style.configure('Primary.TButton', background='#176b94', foreground='white', font=('DejaVu Sans', 10, 'bold'))
+        style.map('Primary.TButton', background=[('active', '#105879')], foreground=[('disabled', '#8b9aac')])
+        style.configure('Treeview', background='#ffffff', fieldbackground='#ffffff', foreground='#20334d', rowheight=26)
+        style.configure('Treeview.Heading', background='#e8f0f8', foreground='#17365c', font=('DejaVu Sans', 10, 'bold'))
+        style.map('Treeview', background=[('selected', '#d6eaf5')], foreground=[('selected', '#172b4d')])
         shell = ttk.Frame(root, padding=16)
         shell.pack(fill='both', expand=True)
-        ttk.Label(shell, text='Instrument Detection Studio', style='Title.TLabel').pack(anchor='w')
-        ttk.Label(shell, text='Per-camera evidence · same A/B checkpoint choices · mask IoU ≥ 0.50').pack(anchor='w', pady=(2, 12))
+        ttk.Label(shell, text='Instrument Vision Studio', style='Title.TLabel').pack(anchor='w')
+        ttk.Label(shell, text='1  Choose source   →   2  Inspect each camera   →   3  Lock one instrument',
+                  foreground='#45627f').pack(anchor='w', pady=(2, 12))
         toolbar = ttk.Frame(shell)
         toolbar.pack(fill='x')
         for label, value in (('Model', self.model), ('Source', self.source)):
             ttk.Label(toolbar, text=label).pack(side='left', padx=(0, 5))
-            options = ('A', 'B') if label == 'Model' else ('synthetic', 'dp')
+            options = ('A', 'B') if label == 'Model' else ('synthetic', 'dp', 'live')
             ttk.Combobox(toolbar, textvariable=value, values=options, state='readonly', width=11).pack(side='left', padx=(0, 15))
         ttk.Label(toolbar, text='Score threshold').pack(side='left', padx=(0, 5))
         ttk.Entry(toolbar, textvariable=self.threshold, width=6).pack(side='left', padx=(0, 15))
@@ -79,7 +95,9 @@ class Studio:
         ttk.Button(toolbar, text='Browse source', command=self.browse).pack(side='left', padx=4)
         ttk.Button(toolbar, text='Open scene recorder', command=self.open_recorder).pack(side='left', padx=4)
         ttk.Button(toolbar, text='Use latest recorded scene', command=self.latest_scene).pack(side='left', padx=4)
-        ttk.Entry(shell, textvariable=self.path).pack(fill='x', pady=(10, 6))
+        ttk.Button(toolbar, text='Use recorder live feed', command=self.recorder_live_feed).pack(side='left', padx=4)
+        ttk.Label(shell, text='Source folder / DP episode (live: recorder live folder)').pack(anchor='w', pady=(10, 0))
+        ttk.Entry(shell, textvariable=self.path).pack(fill='x', pady=(4, 6))
         save_row = ttk.Frame(shell)
         save_row.pack(fill='x', pady=(0, 6))
         ttk.Label(save_row, text='Save reports to').pack(side='left', padx=(0, 8))
@@ -87,34 +105,49 @@ class Studio:
         ttk.Button(save_row, text='Choose', command=self.choose_output).pack(side='left', padx=(8, 0))
         action = ttk.Frame(shell)
         action.pack(fill='x')
-        self.run_button = ttk.Button(action, text='Run detection on every camera', command=self.run)
+        self.run_button = ttk.Button(action, text='Analyze cameras / Start live', command=self.run, style='Primary.TButton')
         self.run_button.pack(side='left')
         ttk.Label(action, textvariable=self.status, wraplength=850).pack(side='left', padx=15)
-        self.meta = tk.Text(shell, height=4, wrap='word', bg='white', relief='flat')
-        self.meta.pack(fill='x', pady=(12, 7))
-        self.meta.insert('1.0', 'Spawned on table and visible ground truth are different quantities. Each camera is evaluated on what its image can see.')
-        self.meta.configure(state='disabled')
+        summary = ttk.LabelFrame(shell, text='Scene summary', padding=(12, 8))
+        summary.pack(fill='x', pady=(10, 7))
+        self.summary_text = tk.StringVar(value='Choose a source to see model, camera counts, and report location here.')
+        ttk.Label(summary, textvariable=self.summary_text, wraplength=1250, justify='left').pack(anchor='w')
         body = ttk.Panedwindow(shell, orient='horizontal')
         body.pack(fill='both', expand=True)
         left = ttk.Frame(body)
         right = ttk.Frame(body)
         body.add(left, weight=2)
         body.add(right, weight=3)
-        ttk.Label(left, text='Camera results', style='Metric.TLabel').pack(anchor='w', pady=(0, 6))
-        self.camera_list = tk.Listbox(left, font=('DejaVu Sans', 11), height=14, exportselection=False)
+        ttk.Label(left, text='Camera results · select one view', style='Metric.TLabel').pack(anchor='w', pady=(0, 6))
+        self.camera_list = tk.Listbox(left, font=('DejaVu Sans', 11), height=12, exportselection=False,
+                                      bg='white', fg='#172b4d', selectbackground='#176b94',
+                                      selectforeground='white', relief='flat', highlightthickness=1,
+                                      highlightbackground='#dce5ef')
         self.camera_list.pack(fill='x')
         self.camera_list.bind('<<ListboxSelect>>', self.show_camera)
         ttk.Label(left, text='Detected instances in selected camera').pack(anchor='w', pady=(8, 2))
-        self.object_list = tk.Listbox(left, font=('DejaVu Sans', 10), height=6, exportselection=False)
+        self.object_list = tk.Listbox(left, font=('DejaVu Sans', 10), height=6, exportselection=False,
+                                      bg='white', fg='#172b4d', selectbackground='#176b94',
+                                      selectforeground='white', relief='flat', highlightthickness=1,
+                                      highlightbackground='#dce5ef')
         self.object_list.pack(fill='x')
         self.object_list.bind('<<ListboxSelect>>', self.choose_from_list)
-        self.details = tk.Text(left, wrap='word', font=('DejaVu Sans Mono', 10), bg='white')
-        self.details.pack(fill='both', expand=True, pady=(8, 0))
+        self.camera_summary = tk.StringVar(value='Camera scores appear after analysis. Live frames show predictions; ground truth is available for recorded scenes.')
+        ttk.Label(left, textvariable=self.camera_summary, wraplength=480, justify='left').pack(fill='x', pady=(8, 6))
+        self.class_table = ttk.Treeview(left, columns=('spawn', 'visible', 'pred', 'f1'), show='tree headings', height=5)
+        self.class_table.heading('#0', text='Instrument')
+        for col, title in (('spawn', 'Spawn'), ('visible', 'Visible'), ('pred', 'Detected'), ('f1', 'Mask F1')):
+            self.class_table.heading(col, text=title)
+            self.class_table.column(col, width=70, anchor='center')
+        self.class_table.column('#0', width=155)
+        self.class_table.pack(fill='both', expand=True)
         preview_toolbar = ttk.Frame(right)
         preview_toolbar.pack(fill='x', pady=(0, 6))
         ttk.Label(preview_toolbar, text='Image overlay').pack(side='left', padx=(0, 8))
-        ttk.Combobox(preview_toolbar, textvariable=self.overlay_mode,
-                     values=('Model prediction', 'Ground truth'), state='readonly', width=20).pack(side='left')
+        self.overlay_combo = ttk.Combobox(preview_toolbar, textvariable=self.overlay_mode,
+                                          values=('Model prediction', 'Ground truth'), state='readonly', width=20)
+        self.overlay_combo.pack(side='left')
+        ttk.Button(preview_toolbar, text='Open full-size PNG', command=self.open_preview).pack(side='left', padx=(10, 0))
         self.overlay_mode.trace_add('write', lambda *_: self.show_camera())
         self.preview = ttk.Label(right, text='Camera preview with predicted boxes and masks')
         self.preview.pack(fill='both', expand=True)
@@ -129,6 +162,7 @@ class Studio:
         ttk.Button(first, text='Lock selected target', command=self.lock_target).pack(side='left', padx=4)
         self.lock_status = tk.StringVar(value='No target locked. Click a predicted instrument, choose the list, or enter a command.')
         ttk.Label(handoff, textvariable=self.lock_status, wraplength=1200).pack(anchor='w', pady=4)
+        ttk.Label(handoff, text='Adapter is optional. Default script is a dry run: it reads the target and never moves the robot.', foreground='#526479').pack(anchor='w', pady=(0, 4))
         second = ttk.Frame(handoff)
         second.pack(fill='x')
         ttk.Combobox(second, textvariable=self.action_backend, values=('OpenVLA adapter', 'DP adapter'), state='readonly', width=18).pack(side='left', padx=(0, 8))
@@ -144,7 +178,7 @@ class Studio:
         if self.source.get() == 'dp':
             value = filedialog.askopenfilename(title='Choose DP episode', filetypes=[('HDF5 episode', '*.h5 *.hdf5')])
         else:
-            value = filedialog.askdirectory(title='Choose scene folder containing scene.json')
+            value = filedialog.askdirectory(title='Choose live feed folder' if self.source.get() == 'live' else 'Choose scene folder containing scene.json')
         if value:
             self.path.set(value)
 
@@ -157,6 +191,16 @@ class Studio:
         value = filedialog.askopenfilename(title='Choose your OpenVLA or DP adapter Python script', filetypes=[('Python script', '*.py')])
         if value:
             self.adapter_script.set(value)
+
+    def open_preview(self):
+        try:
+            row = self.current_camera()
+            filename = row['preview'] if self.overlay_mode.get() == 'Model prediction' else row.get('ground_truth_preview')
+            if not filename:
+                raise ValueError('Ground-truth overlay is unavailable for this camera frame')
+            subprocess.Popen(['xdg-open', str(self.output / filename)], start_new_session=True)
+        except (ValueError, OSError) as exc:
+            messagebox.showerror('Cannot open preview', str(exc))
 
     def latest_scene(self):
         state = REPO / 'debug' / 'detection_panel_state.json'
@@ -174,6 +218,19 @@ class Studio:
         except (OSError, ValueError, KeyError) as exc:
             messagebox.showerror('Cannot load scene', str(exc))
 
+    def recorder_live_feed(self):
+        state = REPO / 'debug' / 'detection_panel_state.json'
+        if not state.is_file():
+            messagebox.showinfo('No recorder session', 'Open the recorder and start a collection first.')
+            return
+        try:
+            collection = Path(json.loads(state.read_text())['folder'])
+            self.source.set('live')
+            self.path.set(str(collection / 'live'))
+            self.status.set('Recorder feed selected. Start live detection while the recorder captures views.')
+        except (OSError, ValueError, KeyError) as exc:
+            messagebox.showerror('Cannot find live feed', str(exc))
+
     def open_recorder(self):
         launcher = REPO / 'scripts/launchers/run_detection6.sh'
         try:
@@ -183,6 +240,15 @@ class Studio:
             messagebox.showerror('Recorder could not start', str(exc))
 
     def run(self):
+        if self.live_active:
+            self.live_stop.set()
+            self.status.set('Stopping live detection after the current frame…')
+            return
+        if self.source.get() == 'live':
+            if self.busy:
+                return
+            self.start_live()
+            return
         if self.busy:
             return
         source = self.source.get()
@@ -235,27 +301,133 @@ class Studio:
         self.busy = False
         self.run_button.configure(state='normal')
 
+    def start_live(self):
+        folder = Path(self.path.get()).expanduser()
+        if not folder.is_dir():
+            messagebox.showerror('Live feed missing', 'Choose an existing live folder. Start the Isaac recorder first or publish camera frames with live_feed.publish_frame().')
+            return
+        if not MODEL_PATHS[self.model.get()].is_file() or MODEL_PATHS[self.model.get()].stat().st_size < 1000000:
+            messagebox.showerror('Model unavailable', 'Download checkpoints first: git lfs pull')
+            return
+        try:
+            threshold = float(self.threshold.get())
+            if not 0 <= threshold <= 1:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror('Threshold', 'Enter a score threshold between 0 and 1.')
+            return
+        self.output = Path(self.save_root.get()).expanduser() / datetime.now().strftime('live_%Y%m%d_%H%M%S_%f')
+        self.output.mkdir(parents=True, exist_ok=False)
+        self.live_rows = {}
+        self.live_stop.clear()
+        self.live_active = True
+        self.busy = True
+        self.overlay_mode.set('Model prediction')
+        self.run_button.configure(text='Stop live detection')
+        self.status.set('Loading model for live camera detection…')
+        threading.Thread(target=self._live_loop, args=(folder, self.model.get(), threshold), daemon=True).start()
+
+    def _live_loop(self, folder, model, threshold):
+        try:
+            from .api import InstrumentDetector
+            from .studio_worker import evaluate_live_frame
+            detector = InstrumentDetector(model, threshold)
+            seen = {}
+            previous = {}
+            next_ids = {}
+            self.root.after(0, lambda: self.status.set('Watching Isaac camera frames. New rendered views will appear here.'))
+            while not self.live_stop.is_set():
+                for manifest in sorted(folder.glob('*_latest.json')):
+                    if self.live_stop.is_set():
+                        break
+                    try:
+                        info = json.loads(manifest.read_text())
+                        name = info['camera']
+                        stamp = int(info.get('frame_id_ns', float(info['captured_at_unix']) * 1_000_000_000))
+                        if seen.get(name, 0) >= stamp:
+                            continue
+                        old = previous.get(name)
+                        if old and old.get('scene_id') != info.get('scene_id'):
+                            old = None
+                            next_ids[name] = 1
+                        row = evaluate_live_frame(detector, folder, info, self.output,
+                                                  previous=old['objects'] if old else None,
+                                                  next_track_id=next_ids.get(name, 1))
+                        previous[name] = row
+                        next_ids[name] = row['next_track_id']
+                        seen[name] = stamp
+                        self.root.after(0, lambda item=row: self._live_update(item, model, threshold, folder))
+                    except (OSError, ValueError, KeyError) as exc:
+                        error_text = f'Live feed read error: {exc}'
+                        self.root.after(0, lambda message=error_text: self.status.set(message))
+                self.live_stop.wait(.4)
+        except Exception as exc:
+            error_text = f'Live detector stopped: {type(exc).__name__}: {exc}'
+            self.root.after(0, lambda message=error_text: self.status.set(message))
+        finally:
+            self.root.after(0, self._live_idle)
+
+    def _live_update(self, row, model, threshold, folder):
+        if not self.live_active:
+            return
+        if self.locked_camera == row['name']:
+            self.locked_camera = None
+            self.locked_index = None
+            self.request_path = None
+            self.lock_status.set('The selected camera received a newer frame. Choose and lock a target again.')
+        self.live_rows[row['name']] = row
+        report = dict(contract='instrument_studio_live_v1', source='live', path=str(folder),
+                      model=model, threshold=threshold, frame=None,
+                      spawn_on_table=None, lighting=None,
+                      per_camera=[self.live_rows[name] for name in sorted(self.live_rows)],
+                      note='Each camera is independent. Mask IoU≥0.50 metrics appear only for frames published with instance ground truth. No cross-camera identity tracking.')
+        (self.output / 'live_report.json').write_text(json.dumps(report, indent=2))
+        self.display(report)
+
+    def _live_idle(self):
+        self.live_active = False
+        self.busy = False
+        self.run_button.configure(text='Analyze cameras / Start live', state='normal')
+        if self.status.get().startswith('Stopping'):
+            self.status.set('Live detection stopped. Last frame report remains saved.')
+
     def display(self, report):
+        previous_name = None
+        if self.report and self.camera_list.curselection():
+            previous_index = self.camera_list.curselection()[0]
+            if previous_index < len(self.report['per_camera']):
+                previous_name = self.report['per_camera'][previous_index]['name']
         self.report = report
+        is_live = report['source'] == 'live'
         self.camera_list.delete(0, 'end')
         for row in report['per_camera']:
-            metric = row['metrics']['overall']
-            self.camera_list.insert('end', f"{row['name']:<18}  F1 {metric['F1'] * 100:5.1f}%  ·  TP {metric['TP']}  FP {metric['FP']}  FN {metric['FN']}")
-        self.meta.configure(state='normal')
-        self.meta.delete('1.0', 'end')
-        self.meta.insert('1.0', f"MODEL {report['model']} | {report['source'].upper()} | threshold {report['threshold']:.2f}\n"
-                         f"Spawned on table (all, including hidden): {report['spawn_on_table']}\n"
-                         f"Lighting metadata: {str(report.get('lighting'))[:220] if report.get('lighting') else 'See DP episode metadata / not present'}\n"
-                         f"Report: {self.output / 'report.json'}")
-        self.meta.configure(state='disabled')
-        self.camera_list.selection_set(0)
+            if is_live:
+                scene_text = f"scene {row['scene_id']}" if row.get('scene_id') is not None else 'camera stream'
+                if row['metrics']:
+                    metric = row['metrics']['overall']
+                    self.camera_list.insert('end', f"{row['name']:<16} {scene_text:<13} F1 {metric['F1'] * 100:5.1f}%  ·  {sum(row['predicted'].values())} detected")
+                else:
+                    self.camera_list.insert('end', f"{row['name']:<16} {scene_text:<13} {sum(row['predicted'].values())} detected  ·  no GT")
+            else:
+                metric = row['metrics']['overall']
+                self.camera_list.insert('end', f"{row['name']:<18}  F1 {metric['F1'] * 100:5.1f}%  ·  TP {metric['TP']}  FP {metric['FP']}  FN {metric['FN']}")
+        if is_live:
+            labelled = sum(row['metrics'] is not None for row in report['per_camera'])
+            summary = f"LIVE FEED  •  Model {report['model']}  •  {len(report['per_camera'])} camera(s) received  •  {labelled} with ground-truth masks.\nCamera results remain separate; views from different scene IDs are not combined. Saved snapshots: {self.output}"
+        else:
+            spawn = ', '.join(f'{k}: {v}' for k, v in report['spawn_on_table'].items())
+            summary = f"Model {report['model']}  •  {report['source'].upper()}  •  Score threshold {report['threshold']:.2f}  •  {len(report['per_camera'])} cameras\nSpawned on table (including hidden): {spawn}\nReport: {self.output / 'report.json'}"
+        self.summary_text.set(summary)
+        names = [row['name'] for row in report['per_camera']]
+        self.camera_list.selection_set(names.index(previous_name) if previous_name in names else 0)
         self.show_camera()
-        self.status.set(f"Finished {len(report['per_camera'])} cameras. Select each row for its own conclusion.")
+        self.status.set(f"{'Watching' if is_live else 'Finished'} {len(report['per_camera'])} cameras. Select one for its own results.")
 
     def show_camera(self, event=None):
         if not self.report or not self.camera_list.curselection():
             return
         row = self.report['per_camera'][self.camera_list.curselection()[0]]
+        is_live = self.report['source'] == 'live'
         if self.locked_camera != row['name']:
             self.locked_index = None
             self.locked_camera = None
@@ -264,26 +436,41 @@ class Studio:
         self.updating_object_list = True
         self.object_list.delete(0, 'end')
         for index, obj in enumerate(row['objects']):
-            self.object_list.insert('end', f"#{index + 1}  {obj['class_name']:<18} score {obj['score']:.2f}  ({obj['center_xy'][0]:.0f}, {obj['center_xy'][1]:.0f})")
+            track = f"track {obj['track_id']}" if obj.get('track_id') is not None else f"#{index + 1}"
+            self.object_list.insert('end', f"{track:<9} {obj['class_name']:<18} score {obj['score']:.2f}  ({obj['center_xy'][0]:.0f}, {obj['center_xy'][1]:.0f})")
         self.updating_object_list = False
-        m = row['metrics']['overall']
-        lines = [row['name'].upper(), interpret(row), '',
-                 f"Visible labels: {sum(row['visible_ground_truth'].values())}",
-                 f"Predicted objects: {sum(row['predicted'].values())}",
-                 f"Precision: {m['precision'] * 100:.1f}%  Recall: {m['recall'] * 100:.1f}%  F1: {m['F1'] * 100:.1f}%",
-                 f"Correct matches: {m['TP']}  Extra: {m['FP']}  Missed: {m['FN']}", '',
-                 'CLASS              SPAWN   VISIBLE   PRED   F1']
+        if is_live:
+            if row['metrics']:
+                m = row['metrics']['overall']
+                self.camera_summary.set(f"LIVE {row['name']}  •  scene {row.get('scene_id')}  •  {interpret(row)}\nMask IoU≥0.50: precision {m['precision'] * 100:.1f}%  •  recall {m['recall'] * 100:.1f}%  •  F1 {m['F1'] * 100:.1f}%")
+            else:
+                self.camera_summary.set(f"LIVE {row['name']}  •  {sum(row['predicted'].values())} detections\nPredictions only; this feed did not provide instance ground truth.")
+        else:
+            m = row['metrics']['overall']
+            self.camera_summary.set(f"{interpret(row)}\nPrecision {m['precision'] * 100:.1f}%  •  Recall {m['recall'] * 100:.1f}%  •  F1 {m['F1'] * 100:.1f}%\nTP {m['TP']}   FP {m['FP']}   FN {m['FN']}")
+        for item in self.class_table.get_children():
+            self.class_table.delete(item)
         for name in CLASSES:
-            c = row['metrics']['per_class'][name]
-            lines.append(f"{name:<19}{self.report['spawn_on_table'][name]:>3}{c['visible_gt']:>10}{c['predicted']:>7}{c['F1'] * 100:>7.1f}%")
-        lines.extend(['', 'Predicted instances:'])
-        for obj in row['objects']:
-            lines.append(f"{obj['class_name']:<18} score {obj['score']:.2f}  center ({obj['center_xy'][0]:.0f}, {obj['center_xy'][1]:.0f})")
-        self.details.delete('1.0', 'end')
-        self.details.insert('1.0', '\n'.join(lines))
+            if is_live:
+                if row['metrics']:
+                    c = row['metrics']['per_class'][name]
+                    spawn = row.get('spawn_on_table') or {}
+                    values = (spawn.get(name, '—'), c['visible_gt'], c['predicted'], f"{c['F1'] * 100:.1f}%")
+                else:
+                    values = ('—', '—', row['predicted'][name], '—')
+            else:
+                c = row['metrics']['per_class'][name]
+                values = (self.report['spawn_on_table'][name], c['visible_gt'], c['predicted'], f"{c['F1'] * 100:.1f}%")
+            self.class_table.insert('', 'end', text=name.replace('_', ' '), values=values)
+        if self.overlay_mode.get() == 'Ground truth' and not row.get('ground_truth_preview'):
+            self.preview_ref = None
+            self.display_size = (0, 0)
+            self.preview.configure(image='', text='No ground-truth mask was published for this camera frame.')
+            return
         filename = row['preview'] if self.overlay_mode.get() == 'Model prediction' else row['ground_truth_preview']
         image = Image.open(self.output / filename).convert('RGB')
-        image.thumbnail((680, 680))
+        image.thumbnail((max(260, min(900, self.preview.winfo_width() - 16)),
+                         max(260, min(720, self.preview.winfo_height() - 16))))
         self.display_size = image.size
         self.preview_ref = ImageTk.PhotoImage(image)
         self.preview.configure(image=self.preview_ref, text='')

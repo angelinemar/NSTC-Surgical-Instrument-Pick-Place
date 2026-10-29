@@ -319,6 +319,14 @@ def collect(env,stage,ns,args):
                     dark_fraction=float((gray<3).mean()),bright_fraction=float((gray>252).mean()),
                     visible_instances=len(boxes),instance_pixel_areas=[b['area'] for b in boxes])
             Image.fromarray(rgb).save(pending/f'{view["name"]}_rgb.png')
+            # Publish each rendered camera immediately for the detector studio.
+            # This is a camera feed only; committed scene labels remain the
+            # source for ground-truth evaluation after the scene is complete.
+            from instrument_bridge.live_feed import publish_frame
+            publish_frame(args.output/'live',view['name'],rgb,scene_id=index,
+                          instance_mask=instance,instance_classes=classes,
+                          spawn_on_table={name:sum(row['object']==name and row['region']=='table'
+                                                   for row in metadata['objects']) for name in CLASSES})
             Image.fromarray(semantic.astype(np.uint16)).save(pending/f'{view["name"]}_semantic.png')
             Image.fromarray(instance).save(pending/f'{view["name"]}_instance.png')
             view.update(boxes=boxes,intrinsics=camera.data.intrinsic_matrices[0].cpu().tolist())

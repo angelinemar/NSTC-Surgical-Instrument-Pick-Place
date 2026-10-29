@@ -10,7 +10,7 @@ from pycocotools import mask as mask_api
 
 from .api import CLASSES, InstrumentDetector
 from .cli import ground_truth
-from .evaluate import compare, table_spawn_counts
+from .evaluate import compare, iou_box, table_spawn_counts
 
 
 DP_CAMERAS = ('front', 'wrist', 'cam_top', 'cam_left', 'cam_right', 'cam_tray')
@@ -44,7 +44,8 @@ def draw_preview(rgb, objects, masks, path):
         color = COLORS[CLASSES.index(obj['class_name'])]
         draw.rectangle(obj['bbox_xyxy'], outline=color, width=3)
         x, y = obj['bbox_xyxy'][:2]
-        draw.text((x, max(0, y - 18)), f"{obj['class_name']} {obj['score']:.2f}",
+        track = f" #{obj['track_id']}" if obj.get('track_id') is not None else ''
+        draw.text((x, max(0, y - 18)), f"{obj['class_name']}{track} {obj['score']:.2f}",
                   fill='white', stroke_width=2, stroke_fill='black')
     image.save(path)
 
@@ -63,6 +64,64 @@ def draw_ground_truth(rgb, gt, path):
             draw.text((int(xs.min()), max(0, int(ys.min()) - 18)), row['class_name'],
                       fill='white', stroke_width=2, stroke_fill='black')
     image.save(path)
+
+
+def associate_tracks(previous, current, next_track_id, min_iou=.3):
+    """Greedy same-class box association within one camera only."""
+    used = set()
+    for obj in sorted(current, key=lambda item: -item['score']):
+        choices = [(iou_box(obj['bbox_xyxy'], old['bbox_xyxy']), i, old)
+                   for i, old in enumerate(previous)
+                   if i not in used and old['class_name'] == obj['class_name']
+                   and old.get('track_id') is not None]
+        if choices:
+            score, i, old = max(choices, key=lambda item: item[0])
+            if score >= min_iou:
+                obj['track_id'] = old['track_id']
+                used.add(i)
+                continue
+        obj['track_id'] = next_track_id
+        next_track_id += 1
+    return next_track_id
+
+
+def evaluate_live_frame(detector, folder, info, output, previous=None, next_track_id=1):
+    """Predict one published RGB frame; no ground truth or fake accuracy."""
+    name = info['camera']
+    rgb = np.asarray(Image.open(Path(folder) / info['image']).convert('RGB')).copy()
+    result, masks = detector.predict(rgb)
+    next_track_id = associate_tracks(previous or [], result['objects'], next_track_id)
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    frame_token = int(info.get('frame_id_ns', float(info['captured_at_unix']) * 1_000_000_000))
+    rgb_name = f'{name}_{frame_token}_rgb.png'
+    preview_name = f'{name}_{frame_token}_prediction.png'
+    Image.fromarray(rgb).save(output / rgb_name)
+    draw_preview(rgb, result['objects'], masks, output / preview_name)
+    gt_name = None
+    metrics = None
+    visible = None
+    if info.get('instance_mask') and info.get('instance_classes'):
+        ids = np.asarray(Image.open(Path(folder) / info['instance_mask']))
+        if ids.shape != rgb.shape[:2]:
+            raise ValueError('Live instance mask size differs from RGB')
+        gt = []
+        for text_id, descriptor in info['instance_classes'].items():
+            class_name = descriptor['name'] if isinstance(descriptor, dict) else descriptor
+            if class_name not in CLASSES:
+                continue
+            mask = ids == int(text_id)
+            if mask.any():
+                gt.append(dict(class_name=class_name, instance_id=int(text_id), mask=mask))
+        metrics = compare(result['objects'], masks, gt)
+        visible = {label: sum(row['class_name'] == label for row in gt) for label in CLASSES}
+        gt_name = f'{name}_{frame_token}_ground_truth.png'
+        draw_ground_truth(rgb, gt, output / gt_name)
+    return dict(name=name, rgb=rgb_name, preview=preview_name,
+                ground_truth_preview=gt_name, predicted=result['counts'],
+                visible_ground_truth=visible, metrics=metrics, objects=result['objects'],
+                captured_at_unix=float(info['captured_at_unix']), scene_id=info.get('scene_id'),
+                spawn_on_table=info.get('spawn_on_table'), next_track_id=next_track_id)
 
 
 def evaluate(args):

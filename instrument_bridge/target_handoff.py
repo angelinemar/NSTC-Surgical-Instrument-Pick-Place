@@ -65,6 +65,8 @@ def build_request(report, camera, object_index, instruction, selected_by, image_
         raise FileNotFoundError(image_path)
     camera_observations = []
     for view in report['per_camera']:
+        if report['source'] == 'live' and row.get('scene_id') is not None and view.get('scene_id') != row['scene_id']:
+            continue
         view_image = Path(image_path).parent / view.get('rgb', Path(image_path).name)
         camera_observations.append(dict(camera=view['name'], image_path=str(view_image.resolve()),
                                         predicted_counts={name: sum(o['class_name'] == name for o in view['objects']) for name in CLASSES},
@@ -75,10 +77,11 @@ def build_request(report, camera, object_index, instruction, selected_by, image_
                 perception_model=report['model'], score_threshold=report['threshold'],
                 source_type=report['source'], source_path=report['path'], source_frame=report['frame'],
                 camera=camera, image_path=str(Path(image_path).resolve()),
+                source_scene_id=row.get('scene_id'), captured_at_unix=row.get('captured_at_unix'),
                 selected_by=selected_by, instance_index=object_index,
                 target=dict(class_name=class_name, score=obj['score'],
                             bbox_xyxy=obj['bbox_xyxy'], center_xy=obj['center_xy'],
-                            mask_rle=obj['mask_rle']),
+                            mask_rle=obj['mask_rle'], track_id=obj.get('track_id')),
                 camera_observations=camera_observations,
                 coordinate_frame='camera_pixels',
                 pose_3d=None,

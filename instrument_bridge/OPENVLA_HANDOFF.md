@@ -3,7 +3,7 @@
 ## What this branch actually provides
 
 - RF-DETR-Seg Small checkpoints **A** (synthetic training) and **B** (synthetic + DP training), both in Git LFS.
-- Local GUI `./instrument-studio6.sh` for saved synthetic scenes and DP HDF5 frames. It scores **each camera separately** and shows predicted and ground-truth overlays. The existing Isaac Sim recorder panel can create new randomized scenes and lighting; the GUI can then load the latest completed scene.
+- Local GUI `./instrument-studio6.sh` for saved synthetic scenes, DP HDF5 frames, and a live RGB feed. It scores **each camera separately** when instance ground truth is supplied, and shows predicted and ground-truth overlays. The Isaac Sim recorder publishes newly rendered camera views with instance masks while creating randomized scenes and lighting; the GUI can also load the latest completed scene.
 - One-click target selection from a model-predicted box, a list, or a simple class instruction. Multiple same-class instances require an explicit choice. This is a **single-camera 2D instance lock**; it is not a cross-camera 3D track.
 - A JSON handoff file plus a clean RGB PNG. External action code can consume these without importing RF-DETR or Isaac Sim into OpenVLA's Python environment.
 
@@ -44,7 +44,7 @@
 }
 ```
 
-The example values above are illustrative and abbreviate the remaining classes/cameras. The real file also contains the threshold, recorded source path/frame, backend label and a note. `camera_observations` lists **separate 2D observations per camera**; repeated views of one object are not deduplicated. Ground-truth counts and spawn poses are not included. The adapter is called as:
+The example values above are illustrative and abbreviate the remaining classes/cameras. The real file also contains the threshold, source path/frame or live capture time, backend label and a note. `camera_observations` lists **separate 2D observations per camera**; repeated views of one object are not deduplicated. In live mode, views with a different `scene_id` are excluded from the target request. Ground-truth counts and spawn poses are not included. The adapter is called as:
 
 ```bash
 <adapter-python> <adapter-script.py> <absolute-path-to-target_request.json>
@@ -54,7 +54,7 @@ Exit code, stdout and stderr are saved to `action_result.json`. **Exit code 0 me
 
 ## How to connect your OpenVLA policy
 
-Read `target_request.json`, load `image_path`, and use the `instruction` together with the selected `target` box/mask. Your policy wrapper may crop or highlight the selected instance if its input contract supports it. Retain the full original image and the target metadata in logs. Check that the live camera still observes the same object before executing actions: this GUI currently exports a **saved frame**, not a synchronized live camera stream. If the robot or object moved, refresh the observation and detect/track again.
+Read `target_request.json`, load `image_path`, and use the `instruction` together with the selected `target` box/mask. Your policy wrapper may crop or highlight the selected instance if its input contract supports it. Retain the full original image and the target metadata in logs. The GUI can watch live camera frames, but the handoff JSON always refers to one **immutable captured frame**, not a synchronized robot control tick. Check the live camera and robot state again before executing actions. If the robot or object moved, refresh the observation and detect/track again. The simple `track_id` in a live camera is a short-term 2D box association, not a reliable object identity across occlusion or cameras.
 
 Do not assume OpenVLA accepts this JSON natively. The partner's adapter must translate it into that model's actual image, language, and action API, and implement robot/simulator stepping, gripper control, stop conditions, and success measurement. Switching **OpenVLA adapter** to **DP adapter** in the GUI only changes the label in the handoff. The current DP models cover trained Pick/Place stages, so a DP adapter also needs stage preparation and transitions outside those learned stages.
 
