@@ -1,0 +1,82 @@
+[
+  {
+    "model": "A",
+    "domain": "synthetic",
+    "split": "valid",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/01_A1_SYNTHETIC/evaluations/synthetic_valid/metrics.json",
+    "checkpoint_sha256": "6c15f47d239c783e6109ba6cf6bb45a7f4d4b5f45eb89251aa7cac58a7d3db15",
+    "annotation_sha256": "134a724bc159a76dcd75a085cec9a9159759a0e37aa16bab7f93676548a6e944",
+    "images": 1350,
+    "resolution": 768
+  },
+  {
+    "model": "A",
+    "domain": "synthetic",
+    "split": "test",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/01_A1_SYNTHETIC/evaluations/synthetic_test/metrics.json",
+    "checkpoint_sha256": "6c15f47d239c783e6109ba6cf6bb45a7f4d4b5f45eb89251aa7cac58a7d3db15",
+    "annotation_sha256": "130fe46428aa1c6dc1d76e0a5cfdb8b6b6f082a8650da90ee01aafe34d4330be",
+    "images": 1350,
+    "resolution": 768
+  },
+  {
+    "model": "A",
+    "domain": "dp",
+    "split": "valid",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/02_A2_DP/evaluations/dp_valid/metrics.json",
+    "checkpoint_sha256": "6c15f47d239c783e6109ba6cf6bb45a7f4d4b5f45eb89251aa7cac58a7d3db15",
+    "annotation_sha256": "a2f0e147fbb2a8896aa91bffe07f18c2a8db20bea1aae26c8339b0c3d186feab",
+    "images": 1350,
+    "resolution": 768
+  },
+  {
+    "model": "A",
+    "domain": "dp",
+    "split": "test",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/02_A2_DP/evaluations/dp_test/metrics.json",
+    "checkpoint_sha256": "6c15f47d239c783e6109ba6cf6bb45a7f4d4b5f45eb89251aa7cac58a7d3db15",
+    "annotation_sha256": "f542243b95e79c18f72a791817b93b59f9b51c4eb9b6870c5cbc522c3c902ba1",
+    "images": 1350,
+    "resolution": 768
+  },
+  {
+    "model": "B",
+    "domain": "synthetic",
+    "split": "valid",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/03_B_MIXED/evaluations/synthetic_valid/metrics.json",
+    "checkpoint_sha256": "7d97fad639a711e75418d92b5142adf0512f842e8cef8a94d9e8ea068d2bece9",
+    "annotation_sha256": "134a724bc159a76dcd75a085cec9a9159759a0e37aa16bab7f93676548a6e944",
+    "images": 1350,
+    "resolution": 768
+  },
+  {
+    "model": "B",
+    "domain": "synthetic",
+    "split": "test",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/03_B_MIXED/evaluations/synthetic_test/metrics.json",
+    "checkpoint_sha256": "7d97fad639a711e75418d92b5142adf0512f842e8cef8a94d9e8ea068d2bece9",
+    "annotation_sha256": "130fe46428aa1c6dc1d76e0a5cfdb8b6b6f082a8650da90ee01aafe34d4330be",
+    "images": 1350,
+    "resolution": 768
+  },
+  {
+    "model": "B",
+    "domain": "dp",
+    "split": "valid",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/03_B_MIXED/evaluations/dp_valid/metrics.json",
+    "checkpoint_sha256": "7d97fad639a711e75418d92b5142adf0512f842e8cef8a94d9e8ea068d2bece9",
+    "annotation_sha256": "a2f0e147fbb2a8896aa91bffe07f18c2a8db20bea1aae26c8339b0c3d186feab",
+    "images": 1350,
+    "resolution": 768
+  },
+  {
+    "model": "B",
+    "domain": "dp",
+    "split": "test",
+    "metrics": "/home/user/NSTC/presentation_RFDETR_20261019/03_B_MIXED/evaluations/dp_test/metrics.json",
+    "checkpoint_sha256": "7d97fad639a711e75418d92b5142adf0512f842e8cef8a94d9e8ea068d2bece9",
+    "annotation_sha256": "f542243b95e79c18f72a791817b93b59f9b51c4eb9b6870c5cbc522c3c902ba1",
+    "images": 1350,
+    "resolution": 768
+  }
+]

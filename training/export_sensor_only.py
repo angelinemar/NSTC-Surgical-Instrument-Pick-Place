@@ -26,19 +26,21 @@ def task_command(name):
     return np.eye(len(TASK_TARGETS),dtype=np.float32)[TASK_TARGETS.index(name)]
 
 
-def copy_policy_images(src, destination, name, mask=False):
-    """DP contract stays 224; original native detector pixels remain in raw H5."""
+def copy_policy_images(src, destination, name, mask=False, image_size=224):
+    """Keep native pixels at 448, or explicitly downsample to 224."""
+    if image_size not in (224, 448):
+        raise ValueError("Unsupported policy image size")
     from PIL import Image
-    if src.shape[1:3] == (224, 224):
+    if src.shape[1:3] == (image_size, image_size):
         src.file.copy(src, destination, name=name)
         return
     if src.shape[1:3] != (448, 448):
         raise ValueError('Unsupported native image dimensions')
-    output = destination.create_dataset(name, shape=(len(src), 224, 224) + src.shape[3:],
+    output = destination.create_dataset(name, shape=(len(src), image_size, image_size) + src.shape[3:],
                                         dtype=src.dtype, compression='gzip', chunks=True)
     method = Image.Resampling.NEAREST if mask else Image.Resampling.LANCZOS
     for start in range(0, len(src), 16):
-        output[start:start+16] = np.stack([np.asarray(Image.fromarray(frame).resize((224,224), method))
+        output[start:start+16] = np.stack([np.asarray(Image.fromarray(frame).resize((image_size,image_size), method))
                                          for frame in src[start:start+16]])
 
 
@@ -101,7 +103,7 @@ def source_pairs(source, validation_cells):
     return pairs, True, 'independent_session_seed'
 
 
-def export(source, output, validation_cells, panel_pairs=None):
+def export(source, output, validation_cells, panel_pairs=None, image_size=224):
     # Auditing raw expert files belongs to export, never to the model's forward path.
     from training.audit_training_topics import inspect
     source, output = source.resolve(), output.resolve()
@@ -116,7 +118,7 @@ def export(source, output, validation_cells, panel_pairs=None):
                     action_contract='absolute robot-base XYZ, wxyz unit quaternion, gripper -1/+1',
                     control_dt_s=0.02, validation_cells=sorted(validation_cells), episodes=[],
                     source_snapshot_complete=source_complete, split_rule=split_rule, production_ready=False,
-                    policy_image_size=224, raw_native_pixels_retained=True)
+                    policy_image_size=image_size, raw_native_pixels_retained=True)
     policy_files = {s: h5py.File(output / (s + '.hdf5'), 'w') for s in ('pick', 'place')}
     labels = h5py.File(output / 'perception_labels.hdf5', 'w')
     contracts = set()
@@ -181,9 +183,9 @@ def export(source, output, validation_cells, panel_pairs=None):
                     obs.create_dataset('robot_proprio', data=proprio)
                     label_group = labels.create_group(skill + '/' + episode)
                     for camera in CAMERAS:
-                        copy_policy_images(src['observations/' + camera + '_rgb'], obs, camera + '_rgb')
+                        copy_policy_images(src['observations/' + camera + '_rgb'], obs, camera + '_rgb', image_size=image_size)
                         sem_name = 'grip_b_semantic' if camera == 'wrist' else camera + '_semantic'
-                        copy_policy_images(src['observations/' + sem_name], label_group, camera, mask=True)
+                        copy_policy_images(src['observations/' + sem_name], label_group, camera, mask=True, image_size=image_size)
                     assert_sensor_inputs(obs)
                     demo.create_dataset('actions', data=actions)
                     demo.create_dataset('dones', data=np.arange(n) == n - 1)

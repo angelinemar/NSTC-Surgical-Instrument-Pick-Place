@@ -1,0 +1,23 @@
+{
+  "variant": "target_relative_dp_scalpel_place_v1",
+  "instrument": "scalpel",
+  "skill": "place",
+  "train_episodes": 70,
+  "valid_episodes": 20,
+  "test_episodes": 10,
+  "train_windows": 5234,
+  "valid_windows": 1511,
+  "epochs": 100,
+  "batch_size": 128,
+  "patience": 15,
+  "lr": 0.0001,
+  "seed": 42,
+  "smoke": false,
+  "horizon": 16,
+  "target_pose_training_source": "train-only assigned tray-slot center",
+  "target_pose_inference_source": "known/calibrated tray-slot center",
+  "action_representation": "target-relative XYZ + quaternion; separate binary event head",
+  "event_name": "OPEN",
+  "controller_contract": "tcp_frame_correct_bounded_place_integral_v6",
+  "closed_loop_verified": false
+}

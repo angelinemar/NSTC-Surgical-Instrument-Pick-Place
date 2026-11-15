@@ -1,0 +1,9 @@
+{
+  "training_complete": true,
+  "model": "target_relative_dp_love_retractor_place_v1",
+  "best_epoch": 84,
+  "epochs_completed": 99,
+  "checkpoint": "/home/user/NSTC/datasets/DP_training/runs/target_relative_dp_love_retractor_place_v1_20261103/checkpoint_best.pt",
+  "smoke_only": false,
+  "closed_loop_verified": false
+}

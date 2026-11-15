@@ -109,6 +109,9 @@ class Panel:
             widget.pack(side='left'); self.controls.append(widget)
         self.coverage_text=tk.StringVar(value='Single mode: saved successes, no per-cell quota.')
         ttk.Label(main,textvariable=self.coverage_text,padding=(3,6),wraplength=1050).pack(fill='x')
+        self.show_coverage_labels=tk.BooleanVar(value=True)
+        ttk.Checkbutton(main,text='Show per-cell coverage labels on map',variable=self.show_coverage_labels,
+                        command=self.redraw).pack(anchor='w',padx=4)
         dataset_summary=ttk.Frame(main); dataset_summary.pack(fill='x')
         ttk.Label(dataset_summary,textvariable=self.dataset_purpose).pack(side='left',padx=4)
         ttk.Button(dataset_summary,text='Dataset / camera / save folder...',command=lambda:self.notebook.select(traypage)).pack(side='right')
@@ -328,7 +331,8 @@ class Panel:
                 a=self.xy_to_canvas(x0+col*(x1-x0)/nx,y0+row*(y1-y0)/ny)
                 b=self.xy_to_canvas(x0+(col+1)*(x1-x0)/nx,y0+(row+1)*(y1-y0)/ny)
                 c.create_rectangle(*a,*b,fill=fill,outline=edge,width=3 if current else 1,tags=('coverage_cell',f'cell_{cell}',state))
-                c.create_text((a[0]+b[0])/2,min(a[1],b[1])+5,anchor='n',width=max(30,abs(b[0]-a[0])-6),text=f"{cell} {state}\n{count}/{coverage['cycles']} saved",fill=edge,font=('Segoe UI',9,'bold'),tags=('coverage_label',))
+                if self.show_coverage_labels.get():
+                    c.create_text((a[0]+b[0])/2,min(a[1],b[1])+5,anchor='n',width=max(30,abs(b[0]-a[0])-6),text=f"{cell} {state}\n{count}/{coverage['cycles']} saved",fill=edge,font=('Segoe UI',9,'bold'),tags=('coverage_label',))
             else:
                 c.create_text(*self.xy_to_canvas(x,y),text=str(cell),fill='#8baaa2',font=('Segoe UI',11,'bold'))
         rx,ry,_=self.layout['robot_pos']; u,v=self.xy_to_canvas(rx,ry)
@@ -362,8 +366,11 @@ class Panel:
             p=positions[name]; u,v=self.xy_to_canvas(p['x'],p['y']); radius=RADII[name]
             ru=rv=radius*scale
             c.create_oval(u-ru,v-rv,u+ru,v+rv,outline=color,width=3 if name==self.target.get() else 1,dash=(3,3))
-            self.draw_instrument(name,color,p,self.live_geometry.get(name) if self.process and self.live_geometry else None)
-            c.create_text(u,v+rv+11,text=name,fill=color)
+            measured=self.live_geometry.get(name) if self.process and self.live_geometry else None
+            self.draw_instrument(name,color,p,measured)
+            label_xy=measured['center_xy'] if measured else (p['x'],p['y'])
+            lu,lv=self.xy_to_canvas(*label_xy)
+            c.create_text(lu,lv+rv+11,text=name,fill=color)
         if self.process and self.live_geometry:
             for key, geometry in self.live_geometry.items():
                 if not key.startswith('clutter_'):
@@ -371,7 +378,7 @@ class Panel:
                 color=COLORS[NAMES.index(geometry['class_name'])]
                 polygon=[v for xy in geometry['hull_xy'] for v in self.xy_to_canvas(*xy)]
                 c.create_polygon(*polygon,outline=color,fill='',width=2,tags=('extra_distractor',key))
-            caption=f"After settle: 1 target + {len(self.live_geometry)-1} distractors (snapshot)"
+            caption=f"After settle: 1 target + {len(self.live_geometry)-1} distractors | solid = measured; dashed = requested"
         else:
             caption='Base-object preview; randomized duplicates appear after Prepare / settle'
         c.create_text(self.canvas.winfo_width()/2,self.canvas.winfo_height()-10,text=caption,fill='#cbd5e0')

@@ -1,0 +1,38 @@
+{
+  "variant": "target_relative_dp_joint_place_v1",
+  "skill": "place",
+  "class_order": [
+    "scalpel",
+    "scissor",
+    "love_retractor",
+    "kelly",
+    "scalpel_type2"
+  ],
+  "train_episodes": 350,
+  "valid_episodes": 100,
+  "test_episodes": 50,
+  "train_windows": 23821,
+  "valid_windows": 6791,
+  "train_windows_by_class": {
+    "scalpel": 5234,
+    "scissor": 4632,
+    "love_retractor": 4722,
+    "kelly": 4608,
+    "scalpel_type2": 4625
+  },
+  "class_sampling": "uniform class x transition weight",
+  "epochs": 100,
+  "batch_size": 128,
+  "patience": 15,
+  "lr": 0.0001,
+  "seed": 42,
+  "smoke": false,
+  "horizon": 16,
+  "target_pose_training_source": "train-only assigned tray slot",
+  "target_pose_inference_source": "known calibrated assigned tray slot",
+  "observation": "two frames of 16D target-relative robot state + 5D class one-hot",
+  "action": "16 x target-relative 7D TCP pose + separate binary gripper event",
+  "event": "OPEN",
+  "controller_contract": "tcp_frame_correct_bounded_place_integral_v6",
+  "closed_loop_verified": false
+}

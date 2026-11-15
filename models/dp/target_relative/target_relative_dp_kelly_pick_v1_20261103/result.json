@@ -1,0 +1,9 @@
+{
+  "training_complete": true,
+  "model": "target_relative_dp_kelly_pick_v1",
+  "best_epoch": 75,
+  "epochs_completed": 90,
+  "checkpoint": "/home/user/NSTC/datasets/DP_training/runs/target_relative_dp_kelly_pick_v1_20261103/checkpoint_best.pt",
+  "smoke_only": false,
+  "closed_loop_verified": false
+}

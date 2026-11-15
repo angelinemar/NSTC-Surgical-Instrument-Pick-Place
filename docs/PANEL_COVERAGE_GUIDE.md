@@ -44,8 +44,14 @@ reason rather than interpreting a partial run as complete coverage.
   reported as incomplete, not successful. No forced process kill is used.
 - The right-hand log shows attempts, stage sim/wall times, failure reasons,
   resets, completed saves and process exit. `console.log` retains the full log.
-- During a run the diagram displays the requested spawn setup from the backend,
-  NOT a live physics animation. It distinguishes table and tray occupancy.
+- Before preparation, the diagram is a placement preview. After the simulator
+  settles, solid instrument outlines come from measured rigid-body geometry in
+  the recorder status file; dashed circles show requested base-object positions.
+  Physics settling can move a tool, so these two markers need not coincide. The
+  diagram is a status snapshot in world coordinates, NOT a live physics animation
+  or a camera image. It distinguishes table and tray occupancy. Use **Show
+  per-cell coverage labels on map** to hide dense grid labels while inspecting
+  object outlines; the coverage summary remains above the map.
 - Tray counts remain 0/1 per class, with target absent from the initial tray.
   `random` samples 0..4 other types; `manual` preserves your selection on retry.
 

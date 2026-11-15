@@ -50,7 +50,7 @@ def main():
             raise
     policy = PolicyRuntime(args.checkpoint, allow_smoke=True)
     policy.set_target(requested_target)
-    actions, recognition = policy.predict(sensors, inference_steps=10)
+    actions, recognition = policy.predict(sensors, inference_steps=100)
     poisoned = dict(sensors, selected_object_pose_b=np.zeros(7))
     try:
         policy.predict(poisoned)

@@ -124,7 +124,9 @@ class SensorPolicy(nn.Module):
         return diffusion_loss + .2 * perception_loss, diffusion_loss, perception_loss
 
     @torch.no_grad()
-    def act(self, rgb, proprio, inference_steps=20, generator=None, *, task_target=None):
+    def act(self, rgb, proprio, inference_steps=100, generator=None, *, task_target=None):
+        if inference_steps != self.scheduler.config.num_train_timesteps:
+            raise ValueError('This DDPM sampler requires all training timesteps; skipped steps are not supported')
         if task_target is None:
             raise ValueError('Choose the requested target before DP inference')
         context, logits = self.encode(rgb, proprio, task_target)

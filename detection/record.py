@@ -31,6 +31,8 @@ def arguments():
     p.add_argument('--resume',action='store_true')
     p.add_argument('--stop-file',type=Path)
     p.add_argument('--seg-protocol',type=Path,help='Frozen Trial 02 train/valid/test configuration')
+    p.add_argument('--aa-study-mode',choices=('Off','FXAA','TAA','DLSS','DLAA'),
+                   help='Isolated render comparison only; never use these captures for training')
     a=p.parse_args()
     a.seg=None
     a.resolution=448
@@ -43,6 +45,7 @@ def arguments():
     if not (1<=a.scenes and lo<=a.min_objects<=a.max_objects<=cap and 3<=a.ring_cameras<=views and 0<=a.robot_visible_probability<=1):
         p.error(f'Use scenes >=1, {lo}<=min<=max<={cap}, 3..{views} ring cameras, robot probability 0..1')
     if a.randomization_config and a.randomization!='wide': p.error('JSON overrides require --randomization wide')
+    if a.aa_study_mode and a.seg_protocol: p.error('AA study cannot use the frozen segmentation dataset protocol')
     from detection.randomization import load_profile
     a.wide=load_profile(a.randomization_config) if a.randomization=='wide' else None
     a.output=a.output.resolve()
@@ -51,7 +54,9 @@ def arguments():
 
 def main():
     args=arguments()
-    contract=dict(contract='p4_static_detection_v1',resolution=448,antialiasing='DLAA',materials='recorder',
+    aa_mode=args.aa_study_mode or 'DLAA'
+    contract=dict(contract='p4_aa_render_study_v1' if args.aa_study_mode else 'p4_static_detection_v1',
+                  resolution=448,antialiasing=aa_mode,materials='recorder',
                   seed=args.seed,min_objects=args.min_objects,max_objects=args.max_objects,
                   ring_cameras=args.ring_cameras,robot_visible_probability=args.robot_visible_probability,tray=args.tray,
                   split='train',robot_pose='home_static',labels='visible_rigid_instance_boxes')
@@ -73,7 +78,7 @@ def main():
         args.output.mkdir(parents=True,exist_ok=False)
         write_json(config,contract)
     (args.output/'train'/'scenes').mkdir(parents=True,exist_ok=True)
-    os.environ.update(P4_CAMERA_SIZE=str(args.resolution),P4_ANTIALIASING_MODE='DLAA',P4_INSTRUMENT_MATERIALS='recorder',
+    os.environ.update(P4_CAMERA_SIZE=str(args.resolution),P4_ANTIALIASING_MODE=aa_mode,P4_INSTRUMENT_MATERIALS='recorder',
                       P4_RANDOMIZATION='train',P4_RANDOMIZATION_SEED=str(args.seed),P4_TRAY_OCCUPANCY='empty')
     os.environ['P4_DATASET_PURPOSE']='detection'
     # Ignore DP panel environment settings in this separate process.
@@ -159,8 +164,9 @@ def collect(env,stage,ns,args):
     render_settings=carb.settings.get_settings()
     render_contract=dict(aa_op=render_settings.get('/rtx/post/aa/op'),
                          render_mode=render_settings.get('/rtx/rendermode'))
-    if render_contract['aa_op'] != 4:
-        raise RuntimeError('DLAA is required; active renderer settings: '+str(render_contract))
+    expected_op={'Off':0,'FXAA':2,'TAA':1,'DLSS':3,'DLAA':4}[args.aa_study_mode or 'DLAA']
+    if render_contract['aa_op'] != expected_op:
+        raise RuntimeError('Requested antialiasing mode is not active: '+str(render_contract))
     print('[DETECTION RENDER] '+json.dumps(render_contract),flush=True)
     # Initialize flat orientation through existing mesh-specific spawn functions.
     rng0=np.random.default_rng(args.seed)
@@ -261,7 +267,7 @@ def collect(env,stage,ns,args):
                 prim=obj.cfg.prim_path.replace('{ENV_REGEX_NS}','/World/envs/env_0').replace('env_.*','env_0')
                 roots[prim]=j; classes[str(j)]=dict(name=row['object'],semantic_id=CLASSES.index(row['object'])+3,prim_path=prim)
             metadata=dict(scene_id=index,seed=seed,placement_attempt=retry+1,placement_seed=placement_seed,table_count=count,tray_objects=tray,robot_visible=show,
-                          resolution=args.resolution,antialiasing='DLAA',materials='recorder',
+                          resolution=args.resolution,antialiasing=args.aa_study_mode or 'DLAA',materials='recorder',
                           render_settings=render_contract,settling=settling,requested_table_count=requested_count,
                           randomization=args.randomization,wide_profile=args.wide,
                           objects=rows,instance_classes=classes,lighting=ns['_p4_domain_randomization'],views=[])
@@ -319,14 +325,6 @@ def collect(env,stage,ns,args):
                     dark_fraction=float((gray<3).mean()),bright_fraction=float((gray>252).mean()),
                     visible_instances=len(boxes),instance_pixel_areas=[b['area'] for b in boxes])
             Image.fromarray(rgb).save(pending/f'{view["name"]}_rgb.png')
-            # Publish each rendered camera immediately for the detector studio.
-            # This is a camera feed only; committed scene labels remain the
-            # source for ground-truth evaluation after the scene is complete.
-            from instrument_bridge.live_feed import publish_frame
-            publish_frame(args.output/'live',view['name'],rgb,scene_id=index,
-                          instance_mask=instance,instance_classes=classes,
-                          spawn_on_table={name:sum(row['object']==name and row['region']=='table'
-                                                   for row in metadata['objects']) for name in CLASSES})
             Image.fromarray(semantic.astype(np.uint16)).save(pending/f'{view["name"]}_semantic.png')
             Image.fromarray(instance).save(pending/f'{view["name"]}_instance.png')
             view.update(boxes=boxes,intrinsics=camera.data.intrinsic_matrices[0].cpu().tolist())

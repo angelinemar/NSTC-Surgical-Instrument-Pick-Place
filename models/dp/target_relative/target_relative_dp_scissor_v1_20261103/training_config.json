@@ -1,0 +1,17 @@
+{
+  "variant": "target_relative_dp_scissor_v1",
+  "train_episodes": 70,
+  "valid_episodes": 20,
+  "test_episodes": 10,
+  "train_windows": 9122,
+  "valid_windows": 2410,
+  "epochs": 100,
+  "batch_size": 128,
+  "patience": 15,
+  "lr": 0.0001,
+  "seed": 42,
+  "smoke": false,
+  "target_pose_training_source": "train-only simulator label",
+  "target_pose_inference_source": "RF-DETR B + live RGB-D shape registration",
+  "action_representation": "target-relative XYZ + quaternion; separate CLOSE head"
+}

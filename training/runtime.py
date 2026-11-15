@@ -7,14 +7,15 @@ import torch
 
 if __package__:
     from .export_sensor_only import CAMERAS, assert_sensor_inputs
-    from .sensor_policy import SensorPolicy, decode_actions
+
 else:
     from export_sensor_only import CAMERAS, assert_sensor_inputs
-    from sensor_policy import SensorPolicy, decode_actions
+
 
 
 class PolicyRuntime:
     def __init__(self, checkpoint, device='cpu', allow_smoke=False):
+        from training.sensor_policy import SensorPolicy
         data = torch.load(Path(checkpoint), map_location=device, weights_only=True)
         if data.get('input_contract') != 'p4_sensor_task_v2':
             raise ValueError('Incompatible checkpoint input contract')
@@ -22,6 +23,9 @@ class PolicyRuntime:
             raise ValueError('Smoke checkpoint is not approved for deployment')
         self.device, self.stats = device, data['stats']
         self.skill = data['skill']
+        self.image_size = data.get('policy_image_size', 224)
+        if self.image_size not in (224,448):
+            raise ValueError('Unsupported checkpoint resolution')
         self.controller_contract = data.get('controller_contract')
         self.model = SensorPolicy(data['observation_horizon'], data['prediction_horizon']).to(device)
         self.model.load_state_dict(data['model'])
@@ -52,8 +56,8 @@ class PolicyRuntime:
         images = []
         for name in CAMERAS:
             image = np.asarray(sensors[name + '_rgb'])
-            if image.shape != (224, 224, 3) or image.dtype != np.uint8:
-                raise ValueError('Expected the recorded 224x224 uint8 sensor image')
+            if image.shape != (self.image_size, self.image_size, 3) or image.dtype != np.uint8:
+                raise ValueError(f'Expected {self.image_size}x{self.image_size} uint8 sensor image')
             images.append(image)
         proprio = np.asarray(sensors['robot_proprio'], dtype=np.float32).copy()
         if proprio.shape != (16,) or not np.isfinite(proprio).all():
@@ -72,7 +76,8 @@ class PolicyRuntime:
         while len(self.history) < self.history.maxlen:
             self.history.appendleft(self.history[0])
 
-    def predict(self, sensors=None, inference_steps=20):
+    def predict(self, sensors=None, inference_steps=100):
+        from training.sensor_policy import decode_actions
         if self.task_target is None:
             raise ValueError('Call set_target with the requested instrument before inference')
         if sensors is not None:
@@ -87,8 +92,10 @@ class PolicyRuntime:
         return decode_actions(normalized, self.stats)[0].cpu().numpy(), semantic_prediction[0].cpu().numpy()
 
 
-def read_live_sensors(env):
+def read_live_sensors(env, image_size=224):
     """Only robot encoders/FK and camera RGB. Never access an instrument prim."""
+    if image_size not in (224,448):
+        raise ValueError('Unsupported policy image size')
     from isaaclab.utils.math import subtract_frame_transforms
     robot = env.scene['robot']
     ee = env.scene['ee_frame'].data
@@ -103,8 +110,10 @@ def read_live_sensors(env):
         h, w = frame.shape[:2]
         if (h,w) not in ((224,224),(448,448)):
             raise ValueError('Expected native square P4 camera; legacy wide sensors need explicit migration')
-        if (h,w) == (448,448):
+        if h < image_size:
+            raise ValueError("Camera resolution is lower than checkpoint resolution")
+        if h != image_size:
             from PIL import Image
-            frame = np.asarray(Image.fromarray(frame).resize((224,224), Image.Resampling.LANCZOS))
+            frame = np.asarray(Image.fromarray(frame).resize((image_size,image_size), Image.Resampling.LANCZOS))
         result[public + '_rgb'] = frame.copy()
     return result

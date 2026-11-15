@@ -1,0 +1,23 @@
+{
+  "variant": "target_relative_dp_love_retractor_pick_v1",
+  "instrument": "love_retractor",
+  "skill": "pick",
+  "train_episodes": 70,
+  "valid_episodes": 20,
+  "test_episodes": 10,
+  "train_windows": 10005,
+  "valid_windows": 2868,
+  "epochs": 100,
+  "batch_size": 128,
+  "patience": 15,
+  "lr": 0.0001,
+  "seed": 42,
+  "smoke": false,
+  "horizon": 16,
+  "target_pose_training_source": "train-only simulator object label",
+  "target_pose_inference_source": "camera-estimated object pose; estimator must be validated per class",
+  "action_representation": "target-relative XYZ + quaternion; separate binary event head",
+  "event_name": "CLOSE",
+  "controller_contract": "tcp_frame_correct_bounded_place_integral_v6",
+  "closed_loop_verified": false
+}

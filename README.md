@@ -1,7 +1,3 @@
-## OpenVLA / RF-DETR-Seg detector bridge
-
-For the standalone model A/B detector, checkpoint setup, camera evaluation GUI, live RGB API and OpenVLA subprocess example, see [instrument_bridge/README.md](instrument_bridge/README.md). For a selected-instance JSON handoff and partner action-policy integration, see [instrument_bridge/OPENVLA_HANDOFF.md](instrument_bridge/OPENVLA_HANDOFF.md). For the Isaac recorder live feed and six-camera runtime publisher, see [instrument_bridge/LIVE_CAMERA.md](instrument_bridge/LIVE_CAMERA.md).
-
 # Surgical Instrument Pick & Place
 
 An IsaacLab recorder for five surgical instruments, standalone detector datasets, and Diffusion Policy (DP).
@@ -25,7 +21,7 @@ Trial 01 metrics/checkpoints are archived separately. Full Trial 02 recording an
 
 [Balanced train/valid/test splits, leakage audits and training command](docs/EXPERIMENT_C.md).
 
-## Matched A/C comparison
+## Matched A1 / A2 / B comparison
 
 [Corrected native-768 evaluation, results and presentation package](docs/EXPERIMENT_COMPARISON.md).
 Older standalone evaluations used the 384-pixel checkpoint fallback; use the corrected matched reports.
@@ -270,3 +266,11 @@ Do not publish raw H5, checkpoints, logs, or credentials. Run `python scripts/ch
 **Integration branch: `angel/main`.** Develop changes on the appropriate functional branch and review them before merging.
 The legacy `main` retains the pre-reorganization code baseline; documentation may receive maintenance updates.
 `jordan` has independent history. See the [branch workflow](docs/BRANCHES.md).
+
+## Linux Diffusion Policy training
+
+[Current RF-DETR + target-relative DP release, checkpoints, results, and data requirements](docs/OUR_RFDETR_DP_RELEASE.md).
+
+[DP training: batch 128, W&B, early stopping, resumable export and checkpoints](docs/DP_TRAINING_LINUX.md). Run `/home/user/NSTC/train-dp6.sh prepare`, then `train-dp6.sh both` to train Pick and Place sequentially on all five instruments. RF-DETR B is unchanged.
+
+Closed-loop DP skill evaluation (FSM approach/transfer, learned Pick/Place): [protocol and commands](docs/DP_CLOSED_LOOP_EVALUATION.md). GUI rollout validation is pending completion of Place training.
