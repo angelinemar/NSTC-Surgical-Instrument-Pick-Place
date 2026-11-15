@@ -16,7 +16,6 @@ flowchart TD
     T -.-> M
     D -.-> M
     I -.-> M
-    J["jordan - independent orphan history"]
 ```
 
 | Branch | Responsibility | Guide |
@@ -27,7 +26,6 @@ flowchart TD
 | `angel/training` | Export, detector, DP, evaluation | [Training](../training/README.md) |
 | `angel/debug` | Diagnostics and experiments | Branch-local documentation |
 | `angel/inference` | Runtime and controller integration | [Inference](INFERENCE.md) |
-| `jordan` | Orphan history: initially README-only, with no Angel source | README on the Jordan branch |
 | `main` | Legacy code baseline; not for new feature work | Code baseline at `7c37aed`; documentation may receive maintenance updates |
 
 Git does not have parent/child branches; `angel/` is a naming prefix.
@@ -41,7 +39,6 @@ A ref named `angel` cannot coexist with `angel/main`.
 | Model runtime changes | Work on `angel/inference` |
 | Integration | Review and test changes before merging into `angel/main` |
 | Panel export | Available in the shared baseline; maintained on `angel/training` |
-| Datasets, logs, credentials | Keep local / ignored; not part of Jordan |
 
 ## Development flow
 
@@ -60,7 +57,6 @@ git switch angel/recorder
 git pull --ff-only
 ```
 
-Do not merge the entire Jordan branch into Angel; their histories are intentionally separate.
 Branches do not change data-split rules, policy boundaries, or dataset quality.
 
 Do not store datasets or API keys in branches. Do not switch branches while recording; use separate checkouts/worktrees for parallel workflows.

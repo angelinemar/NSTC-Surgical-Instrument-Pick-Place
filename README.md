@@ -265,7 +265,6 @@ Do not publish raw H5, checkpoints, logs, or credentials. Run `python scripts/ch
 
 **Integration branch: `angel/main`.** Develop changes on the appropriate functional branch and review them before merging.
 The legacy `main` retains the pre-reorganization code baseline; documentation may receive maintenance updates.
-`jordan` has independent history. See the [branch workflow](docs/BRANCHES.md).
 
 ## Linux Diffusion Policy training
 

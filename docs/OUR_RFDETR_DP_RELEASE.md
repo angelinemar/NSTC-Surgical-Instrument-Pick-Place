@@ -1,6 +1,6 @@
 # RF-DETR and Diffusion Policy work
 
-This branch contains our RF-DETR-Seg detection and target-relative Diffusion Policy work. It does not contain a GR00T policy or partner training code.
+This branch contains our RF-DETR-Seg detection and target-relative Diffusion Policy work.
 
 ## What is included
 
